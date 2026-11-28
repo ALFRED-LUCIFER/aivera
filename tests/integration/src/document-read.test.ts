@@ -13,7 +13,7 @@ import {
   readPersonAsSystem,
 } from '@credalent/candidates/composition';
 import { createDb, withWorkspace, type Db, type Envelope } from '@credalent/db';
-import { createConsumer, type Delivery } from '@credalent/db/consumer';
+import { createConsumer, MAX_DELIVERIES, type Delivery } from '@credalent/db/consumer';
 import { createRelay } from '@credalent/db/relay';
 import { DocumentReadRequestedV1, type EvidenceContract } from '@credalent/evidence';
 import { createEvidence, createFileReadHandlers, EVIDENCE_QUEUE } from '@credalent/evidence/composition';
@@ -493,7 +493,7 @@ describe('Scenario: A document read completes without calling embed', () => {
 
 describe('Scenario: A Document Intelligence outage does not deadlock', () => {
   // SAFETY: mutation check: locked the read row before the call (.for('update') in documentReadStore.find) -> this test failed (each own-connection write hit the lock timeout: 'pending', not 'failed')
-  it('20 reads during a Document Intelligence outage each fail, back off, and leave the pool idle', async () => {
+  it('20 reads failing their last delivery during a Document Intelligence outage each fail and leave the pool idle', async () => {
     const pool = createDb(urlFor('aivera_app'), { max: 10 });
     docintel.use(
       http.post(`${DI}/documentintelligence/documentModels/prebuilt-layout:analyze`, () =>
@@ -527,10 +527,11 @@ describe('Scenario: A Document Intelligence outage does not deadlock', () => {
       await Promise.all(
         Array.from({ length: 4 }, async () => {
           for (let next = requests.shift(); next; next = requests.shift())
-            settled.push(...(await consume([next], 1, pool)));
+            settled.push(...(await consume([next], MAX_DELIVERIES, pool)));
         }),
       );
-      expect(settled).toEqual(Array.from({ length: 20 }, () => 'abandon'));
+      // The last delivery of each, so each writes 'failed' on its own connection (AIV-P1-134).
+      expect(settled).toEqual(Array.from({ length: 20 }, () => 'deadLetter: max deliveries'));
       for (const sourceId of sources) expect((await read(candidateId, sourceId)).view?.status).toBe('failed');
       expect(modelCalls).toBe(0);
       const { connections, idle, leased, waiting } = pool.$client.stats;

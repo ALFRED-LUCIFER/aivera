@@ -3,8 +3,9 @@ import { uuidv7 } from '@credalent/db/uuidv7';
 import { and, asc, desc, eq, inArray, isNotNull, notInArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { IntakeStore } from '../application/applications.ts';
+import type { SheetStore } from '../application/sheetImports.ts';
 import type { Source, Stage } from '../domain/application.ts';
-import { application, applicationSource, importBatch } from './schema.ts';
+import { application, applicationSource, importBatch, sheetImport } from './schema.ts';
 
 /**
  * The intake store over a workspace-scoped transaction. The `workspace_id` filter here is the first layer; row-level
@@ -136,6 +137,7 @@ export function intakeStore(tx: Tx): IntakeStore {
       await tx.delete(applicationSource).where(eq(applicationSource.workspaceId, workspaceId));
       await tx.delete(application).where(eq(application.workspaceId, workspaceId));
       await tx.delete(importBatch).where(eq(importBatch.workspaceId, workspaceId));
+      await tx.delete(sheetImport).where(eq(sheetImport.workspaceId, workspaceId));
     },
     async countForJob(workspaceId, jobId) {
       // The inner join drops only an application a duplicate merge emptied (AIV-P1-018), which no longer counts.
@@ -339,3 +341,27 @@ export const applicationRecords = {
         .where(and(eq(applicationSource.workspaceId, workspaceId), eq(applicationSource.id, id)));
   },
 };
+
+/** Sheet imports (AIV-P1-103) over a workspace-scoped transaction; filtered by workspace, with RLS the second layer. */
+export function sheetStore(tx: Tx): SheetStore {
+  return {
+    async insert(values) {
+      await tx.insert(sheetImport).values(values);
+    },
+    async find(workspaceId, id) {
+      const [row] = await tx
+        .select()
+        .from(sheetImport)
+        .where(and(eq(sheetImport.workspaceId, workspaceId), eq(sheetImport.id, id)));
+      return row ?? null;
+    },
+    async move(workspaceId, id, from, change) {
+      const moved = await tx
+        .update(sheetImport)
+        .set(change)
+        .where(and(eq(sheetImport.workspaceId, workspaceId), eq(sheetImport.id, id), eq(sheetImport.status, from)))
+        .returning({ id: sheetImport.id });
+      return moved.length > 0;
+    },
+  };
+}

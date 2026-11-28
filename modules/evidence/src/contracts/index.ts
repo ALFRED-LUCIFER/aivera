@@ -2,7 +2,7 @@
 import type { EventDefinition } from '@credalent/db/outbox';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
-import type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
+import type { CvParseView, CvStatusView, RequestCvParseInput } from '../application/cvParse.ts';
 import type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
 import type { LinkReadView, RequestLinkReadInput } from '../application/linkRead.ts';
 import type {
@@ -53,7 +53,7 @@ export type { Citation, CoverageGap, GradeReason, SkillGrade } from '../domain/s
 export { parseRepositoryUrl } from '../domain/repository.ts';
 export type { AuthorshipClass, RepositoryReadStatus } from '../domain/repository.ts';
 export type { EvidenceRequest, EvidenceRequestView, RequestOutcome } from '../application/requests.ts';
-export type { CvParseView, RequestCvParseInput } from '../application/cvParse.ts';
+export type { CvParseView, CvStatusView, RequestCvParseInput } from '../application/cvParse.ts';
 export { CV_PARSE_STATUSES, NOTE_REASONS } from '../domain/cv.ts';
 export type { DocumentReadView, RequestDocumentReadInput } from '../application/documentRead.ts';
 export { DOCUMENT_READ_STATUSES } from '../domain/document.ts';
@@ -301,6 +301,25 @@ export interface EvidenceContract {
    * Candidate screen (AIV-P1-045). Null when the workspace has no such parse. Admins and recruiters.
    */
   getCvParse(ctx: WorkspaceContext, sourceId: string): Promise<CvParseView | null>;
+  /**
+   * Reads a CV that could not be read again (AIV-P1-134): a `failed` parse goes back to pending ("Reading the CV…") and
+   * `CvParseRequested.v1` is written for the same source (opaque ids), never a new source. Admins and recruiters.
+   * Audited (`evidence.retried`). Throws `EvidenceError('cv_not_found')` for no such CV in the workspace, and
+   * `EvidenceError('not_retryable')` unless the parse is `failed` (so a second retry while it is pending writes nothing).
+   */
+  retryCvParse(ctx: WorkspaceContext, sourceId: string): Promise<void>;
+  /**
+   * Assesses a candidate's evidence for the job again after its mapping failed for good (AIV-P1-165): queues
+   * `EvidenceMappingRequested.v1` for that candidate and job only. Admins and recruiters. Audited (`evidence.retried`).
+   * Throws `EvidenceError('not_retryable')` when no failure is recorded (so a second retry writes nothing).
+   */
+  retryMapping(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<void>;
+  /**
+   * Each candidate's newest CV parse status and whether mapping their evidence to the job failed for good
+   * (AIV-P1-165), in `candidateIds` order: what the ranking and the profile say while a CV is read and assessed. Every
+   * role with a grant on the job; a job-scoped member is refused unless every candidate applied to a job they may see.
+   */
+  listCvStatuses(ctx: WorkspaceContext, jobId: string, candidateIds: string[]): Promise<CvStatusView[]>;
   /**
    * Stores a pending `document` source (the given label, provenance "Candidate-submitted") for an uploaded document,
    * write-up or image and queues its read (`DocumentReadRequested.v1`). The worker reads it only once the files module

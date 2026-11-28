@@ -83,6 +83,7 @@ const shortlist = (over: Record<string, unknown> = {}) => ({
   jobId: JOB.jobId,
   name: 'Round 2 shortlist: Senior AI Engineer',
   members: [{ candidateId: SARA }, { candidateId: ARJUN }, { candidateId: HUDA }],
+  reason: 'Shortlist for the hiring decision',
   ...over,
 });
 const advanceAll = (candidates: readonly string[] = [SARA, ARJUN, HUDA]) => ({
@@ -105,13 +106,32 @@ describe('createPack', () => {
     expect(ports.publishPackReady).toHaveBeenCalledWith({}, written);
   });
 
+  // SAFETY: mutation check: dropped .min(1) from reasonInput -> this test failed (pack stored with no reason)
+  it('a pack with no reason, or a blank one, is refused before anything is written (AIV-P1-165)', async () => {
+    const { useCases, store, ports } = setup();
+    await expect(useCases.createPack(ctxAs('recruiter'), shortlist({ reason: '  ' }))).rejects.toThrow();
+    await expect(useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }], '')).rejects.toThrow();
+    expect(store.insertPack).not.toHaveBeenCalled();
+    expect(store.insertMembers).not.toHaveBeenCalled();
+    expect(ports.auditMemberAdded).not.toHaveBeenCalled();
+  });
+
   // SAFETY: mutation check: removed the auditMemberAdded loop from createPack -> this test failed (no member_added call)
   it('audits the pack and each member who joins it, after every other write (AGENTS.md 3.6)', async () => {
     const { useCases, store, ports } = setup();
     await useCases.createPack(ctxAs('recruiter'), shortlist());
-    expect(ports.auditPackCreated).toHaveBeenCalledWith(ctxAs('recruiter'), pack());
+    expect(ports.auditPackCreated).toHaveBeenCalledWith(
+      ctxAs('recruiter'),
+      pack(),
+      'Shortlist for the hiring decision',
+    );
     expect(vi.mocked(ports.auditMemberAdded).mock.calls).toEqual(
-      [member(SARA, 0), member(ARJUN, 1), member(HUDA, 2)].map((m) => [ctxAs('recruiter'), JOB.jobId, m]),
+      [member(SARA, 0), member(ARJUN, 1), member(HUDA, 2)].map((m) => [
+        ctxAs('recruiter'),
+        JOB.jobId,
+        m,
+        'Shortlist for the hiring decision',
+      ]),
     );
     const lastOther = Math.max(
       ...[store.insertPack, store.insertMembers, vi.mocked(ports.publishPackReady)].map(
@@ -181,7 +201,12 @@ describe('addMembers', () => {
   it('a candidate already in the pack is ignored and keeps the snapshot she has; a new one joins after the last', async () => {
     const { useCases, store, ports } = setup({}, pack(), [member(SARA, 0, 58, 80)]);
     expect(
-      await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }, { candidateId: ARJUN }]),
+      await useCases.addMembers(
+        ctxAs('recruiter'),
+        PACK,
+        [{ candidateId: SARA }, { candidateId: ARJUN }],
+        'Shortlist for the hiring decision',
+      ),
     ).toEqual({
       added: 1,
     });
@@ -192,10 +217,17 @@ describe('addMembers', () => {
   // SAFETY: mutation check: removed the auditMemberAdded loop from addMembers -> this test failed (no member_added call)
   it('records who added the new member and when, and audits only that member, after storing it', async () => {
     const { useCases, store, ports } = setup({ now: () => LATER }, pack(), [member(SARA, 0)]);
-    await useCases.addMembers(ctxAs('admin', ALEX), PACK, [{ candidateId: SARA }, { candidateId: ARJUN }]);
+    await useCases.addMembers(
+      ctxAs('admin', ALEX),
+      PACK,
+      [{ candidateId: SARA }, { candidateId: ARJUN }],
+      'Shortlist for the hiring decision',
+    );
     const arjun = { ...member(ARJUN, 1), addedBy: ALEX, addedAt: LATER };
     expect(store.insertMembers.mock.calls).toEqual([[[arjun]]]);
-    expect(vi.mocked(ports.auditMemberAdded).mock.calls).toEqual([[ctxAs('admin', ALEX), JOB.jobId, arjun]]);
+    expect(vi.mocked(ports.auditMemberAdded).mock.calls).toEqual([
+      [ctxAs('admin', ALEX), JOB.jobId, arjun, 'Shortlist for the hiring decision'],
+    ]);
     expect(ports.auditPackCreated).not.toHaveBeenCalled();
     expect(vi.mocked(ports.auditMemberAdded).mock.invocationCallOrder[0]).toBeGreaterThan(
       store.insertMembers.mock.invocationCallOrder[0] ?? Infinity,
@@ -205,22 +237,26 @@ describe('addMembers', () => {
   // SAFETY: mutation check: removed publishMembersAdded from addMembers -> this test failed (no call)
   it('announces the added members from their first position, so the worker summarises them (AIV-P2-011); nothing new, nothing announced', async () => {
     const { useCases, ports } = setup({ now: () => LATER }, pack(), [member(SARA, 0)]);
-    await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }]);
+    await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }], 'Shortlist for the hiring decision');
     expect(ports.publishMembersAdded).toHaveBeenCalledWith({}, pack(), 1, LATER);
-    await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }]);
+    await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }], 'Shortlist for the hiring decision');
     expect(ports.publishMembersAdded).toHaveBeenCalledTimes(1);
   });
 
   it('adding only candidates already in the pack writes nothing', async () => {
     const { useCases, store, ports } = setup({}, pack(), [member(SARA, 0)]);
-    expect(await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }])).toEqual({ added: 0 });
+    expect(
+      await useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: SARA }], 'Shortlist for the hiring decision'),
+    ).toEqual({ added: 0 });
     expect(store.insertMembers).not.toHaveBeenCalled();
     expect(ports.auditMemberAdded).not.toHaveBeenCalled();
   });
 
   it('locks the pack, and refuses a decided one', async () => {
     const { useCases, store, ports } = setup({}, pack({ status: 'decided' }), [member(SARA, 0)]);
-    await expect(useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }])).rejects.toMatchObject({
+    await expect(
+      useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }], 'Shortlist for the hiring decision'),
+    ).rejects.toMatchObject({
       code: 'pack_decided',
     });
     expect(store.findPack).toHaveBeenCalledWith('w1', PACK, true);
@@ -230,7 +266,9 @@ describe('addMembers', () => {
 
   it("nobody joins once the job's approved rubric version is no longer the pack's", async () => {
     const { useCases, store } = setup({ ranking: async () => ({ rubricVersionId: id(12), candidateIds: [ARJUN] }) });
-    await expect(useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }])).rejects.toMatchObject({
+    await expect(
+      useCases.addMembers(ctxAs('recruiter'), PACK, [{ candidateId: ARJUN }], 'Shortlist for the hiring decision'),
+    ).rejects.toMatchObject({
       code: 'candidate_not_assessed',
     });
     expect(store.insertMembers).not.toHaveBeenCalled();
@@ -320,10 +358,11 @@ describe('getPack', () => {
   });
 
   // AIV-P2-012: the page shows the decision controls read-only to anyone who may not record them.
-  it('says only the hiring owner named on the job may decide: not a recruiter, nor an admin', async () => {
+  it('says only the member named on the job may decide: not a recruiter, nor an admin who is not named', async () => {
     const { useCases } = setup();
     expect((await useCases.getPack(ctxAs('recruiter'), PACK))?.mayDecide).toBe(false);
     expect((await useCases.getPack(ctxAs('admin', ALEX), PACK))?.mayDecide).toBe(false);
+    expect((await useCases.getPack(ctxAs('admin', FAISAL), PACK))?.mayDecide).toBe(true);
   });
 
   // SAFETY: mutation check: made visible() ignore a null job -> this test failed (pack returned)

@@ -20,7 +20,7 @@ import { addToPackSchema, type AddToPackResult } from '../domain/pack.ts';
 export async function addToDecisionPack(input: unknown): Promise<AddToPackResult> {
   const parsed = addToPackSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
-  const { jobId, applicationIds, pack } = parsed.data;
+  const { jobId, applicationIds, pack, reason } = parsed.data;
   let result;
   try {
     result = await inActiveWorkspace(async (ctx) => {
@@ -32,10 +32,15 @@ export async function addToDecisionPack(input: unknown): Promise<AddToPackResult
       if (members.some((m) => m === undefined)) return 'notOnJob' as const;
       const candidates = members.flatMap((candidateId) => (candidateId ? [{ candidateId }] : []));
       if ('packId' in pack) {
-        const { added } = await getDecisions().addMembers(ctx, pack.packId, candidates);
+        const { added } = await getDecisions().addMembers(ctx, pack.packId, candidates, reason);
         return { packId: pack.packId, added };
       }
-      const { packId } = await getDecisions().createPack(ctx, { jobId, name: pack.name, members: candidates });
+      const { packId } = await getDecisions().createPack(ctx, {
+        jobId,
+        name: pack.name,
+        members: candidates,
+        reason,
+      });
       return { packId, added: new Set(candidates.map((c) => c.candidateId)).size };
     });
   } catch (error) {

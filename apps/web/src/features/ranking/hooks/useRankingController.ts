@@ -1,10 +1,13 @@
 import type { Route } from 'next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { useLiveRefresh } from '@/features/evidence-profile';
+import { orderBasis } from '../domain/order.ts';
 import {
   FIRST_ROWS,
   NO_FILTERS,
   filterRows,
+  inProgress,
   missingOptions,
   stageOptions,
   type HideableColumn,
@@ -32,14 +35,19 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
   const [hidden, setHidden] = useState<HideableColumn[]>([]);
   const matching = filterRows(rows, filters);
   const shown = showAll ? matching : matching.slice(0, FIRST_ROWS);
+  const assessing = inProgress(rows);
+  // While a CV is read or assessed, the page refreshes itself until it is scored (AIV-P1-165 §7).
+  useLiveRefresh(assessing > 0);
   return {
     status: 'ready' as const,
     jobId,
     awaitingRubric,
     total: rows.length,
+    // Of every row, not the filtered ones: the banner is about how the whole ranking was ordered (AIV-P1-165 §9).
+    orderBasis: orderBasis(rows),
     matching: matching.length,
     assessed: matching.filter((row) => row.score).length,
-    shown: shown.filter((row) => row.score).length,
+    assessing,
     filtered: filters.query.trim() !== '' || filters.stage !== '' || filters.missing !== '',
     rows: shown,
     filters,

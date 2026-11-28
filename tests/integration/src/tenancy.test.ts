@@ -392,6 +392,8 @@ async function seed(
       },
       source: 'email',
     });
+    // A sheet import waiting for the worker (intake.sheet_imports, AIV-P1-103); the file id is opaque to intake.
+    await intake.startSheetImport(ctx, { jobId: job.id, fileId: crypto.randomUUID() });
     // A Round 1 interview with a time, so its InterviewScheduled.v1 is in the outbox (interviews.*, AIV-P2-001).
     const approved = await createApprovedRubricReads().approvedRubric(ctx.tx, workspaceId, job.id);
     const { interviewId } = await interviews.createInterview(ctx, {
@@ -480,6 +482,7 @@ async function seed(
     // A decision pack with that candidate's snapshot and its PackReady.v1 (decisions.pack, .pack_member, .outbox,
     // AIV-P2-009). The job has no hiring owner to record a decision, so its row is written as recordDecisions does.
     const { packId } = await decisions.createPack(ctx, {
+      reason: 'Shortlist for the hiring decision',
       jobId: job.id,
       name: 'Round 2 shortlist',
       members: [{ candidateId: personId }],
@@ -545,6 +548,9 @@ async function seed(
       ${rubric.id}, 'evidence.mapToCompetency@1', 'gpt-4.1-mini', '[]'::jsonb, now())`);
     await ctx.tx.execute(sql`insert into evidence.evidence_gap (id, workspace_id, mapping_id, competency_id, kind)
       values (${crypto.randomUUID()}, ${workspaceId}, ${mappingId}, ${crypto.randomUUID()}, 'no_evidence')`);
+    // A mapping that failed for good (evidence.mapping_failure, AIV-P1-165).
+    await ctx.tx.execute(sql`insert into evidence.mapping_failure (workspace_id, candidate_id, job_id, failed_at)
+      values (${workspaceId}, ${personId}, ${job.id}, now())`);
     const mappedItemId = crypto.randomUUID();
     await ctx.tx.execute(sql`insert into evidence.item (id, workspace_id, source_id, candidate_id, excerpt,
       provenance, strength, limit_statement, synthetic, created_at, mapping_id)

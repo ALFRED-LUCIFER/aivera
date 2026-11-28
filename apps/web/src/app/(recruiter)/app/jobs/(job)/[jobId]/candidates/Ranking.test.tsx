@@ -19,6 +19,7 @@ const fake = vi.hoisted(() => ({
   pack: vi.fn(),
   undo: vi.fn(),
   refresh: vi.fn(),
+  retry: vi.fn(),
   push: vi.fn(),
   urlListeners: new Set<() => void>(),
 }));
@@ -42,6 +43,7 @@ window.history.replaceState = (...args) => {
 vi.mock('@/features/ranking/services/mergeDuplicates.ts', () => ({ mergeDuplicate: fake.merge, undoMerge: fake.undo }));
 vi.mock('@/features/ranking/services/chooseForInterview.ts', () => ({ chooseForInterview: fake.choose }));
 vi.mock('@/features/ranking/services/addToDecisionPack.ts', () => ({ addToDecisionPack: fake.pack }));
+vi.mock('@/features/evidence-profile/services/retryCv.ts', () => ({ retryCv: fake.retry }));
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -83,6 +85,26 @@ const nine = [
     scoredRow(i + 4, name, 50 - i * 5, 60, []),
   ),
   { id: 'a9', personId: 'p9', name: 'Huda Rahman', stage: 'new', score: null } satisfies CandidateRow,
+];
+
+// AIV-P1-165 §7: six CVs added, one assessed; each other row says where its CV is.
+const SOURCE = '0190d4a2-0000-7000-8000-0000000000c3';
+const unscored = (n: number, cv: NonNullable<CandidateRow['cv']>, fileName?: string): CandidateRow => ({
+  id: `a${n}`,
+  personId: `p${n}`,
+  name: 'Unnamed applicant',
+  stage: 'new',
+  score: null,
+  cv,
+  ...(fileName && { fileName }),
+});
+const six = [
+  scoredRow(1, 'Sara Al Qahtani', 68, 84, []),
+  unscored(2, { state: 'reading', retry: null }, 'cv-a.pdf'),
+  unscored(3, { state: 'unreadable', retry: null }, 'cv-b.pdf'),
+  unscored(4, { state: 'failed', retry: { kind: 'cv', sourceId: SOURCE } }, 'cv-c.pdf'),
+  unscored(5, { state: 'waiting', retry: null }, 'cv-d.pdf'),
+  unscored(6, { state: 'assessing', retry: null }, 'cv-f.pdf'),
 ];
 
 const showRanking = (rows: CandidateRow[], awaitingRubric = false, bulkActions: BulkActionId[] = []) =>
@@ -128,11 +150,12 @@ describe('Scenario: The ranking for Senior AI Engineer', () => {
     expect(screen.getByRole('img', { name: '68 backed by evidence · up to 84 if claims hold' })).toBeTruthy();
   });
 
-  it('the first 7 rows show, the footer counts them, and "Show all 9" lists everyone, the unscored last', async () => {
+  // AIV-P1-165 §7: the footer counts every row, never "8 of 8 assessed" with a ninth row unscored.
+  it('the first 7 rows show, the footer counts every row, and "Show all 9" lists everyone, the unscored last', async () => {
     showRanking(nine);
     expect(bodyRows()).toHaveLength(7);
     expect(
-      screen.getByText('Showing 7 of 8 assessed. Ranking orders your attention. Nobody is rejected automatically.'),
+      screen.getByText('8 of 9 assessed. Ranking orders your attention. Nobody is rejected automatically.'),
     ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Show all 9' }));
     expect(bodyRows()).toHaveLength(9);
@@ -179,7 +202,7 @@ describe('Scenario: Filter by missing evidence', () => {
     expect(screen.getByText(/^None of these is assessed yet\. Ranking orders your attention/)).toBeTruthy();
     await userEvent.clear(search);
     await userEvent.type(search, 'Sara');
-    expect(screen.getByText(/^Showing 1 of 1 assessed that match\./)).toBeTruthy();
+    expect(screen.getByText(/^1 of 1 that match are assessed\./)).toBeTruthy();
   });
 
   it('the Columns menu hides a column and shows it again', async () => {
@@ -201,6 +224,30 @@ describe('Scenario: Job without an approved rubric', () => {
     );
     expect(bodyRows()[0]?.textContent).toMatch(/^Huda Rahman/);
     expect(screen.getByText(/^No one is assessed yet\. Ranking orders your attention/)).toBeTruthy();
+  });
+});
+
+describe('Scenario: When every backed score is 0, one plain banner says so (AIV-P1-165 §9)', () => {
+  it('shows the banner and the claims order, and lists every candidate, none hidden', () => {
+    showRanking([
+      scoredRow(1, 'Daniel Novak', 0, 78, []),
+      scoredRow(2, 'Priya Nair', 0, 77, []),
+      { id: 'a9', personId: 'p9', name: 'Maria Santos', stage: 'new', score: null },
+    ]);
+    expect(
+      screen.getAllByText('No one has inspected work yet. Ordered by what their CVs claim, which is not verified.'),
+    ).toHaveLength(1);
+    expect(screen.getByText('Not verified')).toBeTruthy();
+    expect(screen.getByText(/^Ordered by the "up to" score, which rests on claims/)).toBeTruthy();
+    expect(screen.queryByText(/^Ranked by backed score/)).toBeNull();
+    const names = ['Daniel Novak', 'Priya Nair', 'Maria Santos'];
+    expect(bodyRows().map((row) => names.find((name) => row.textContent?.includes(name)))).toEqual(names);
+  });
+
+  it('shows no banner once anyone has a backed score', () => {
+    showRanking([scoredRow(1, 'Daniel Novak', 55, 78, []), scoredRow(2, 'Priya Nair', 0, 77, [])]);
+    expect(screen.queryByText(/^No one has inspected work yet/)).toBeNull();
+    expect(screen.getByText(/^Ranked by backed score/)).toBeTruthy();
   });
 });
 
@@ -586,6 +633,7 @@ const openPack = async (...names: string[]) => {
 
 describe('Scenario: Preview, then add (AIV-P2-010)', () => {
   // SAFETY: mutation check: made canConfirm ignore the pack name -> this test failed (sent with no name)
+  // SAFETY: mutation check: dropped .min(1) from addToPackSchema.reason -> this test failed (Confirm enabled with no reason)
   it('lists the three with their backed scores, needs a name for a new pack, and only Confirm sends', async () => {
     fake.pack.mockResolvedValue({ ok: true, packId: PACK, added: 3 });
     packable();
@@ -607,11 +655,19 @@ describe('Scenario: Preview, then add (AIV-P2-010)', () => {
     expect(fake.pack).not.toHaveBeenCalled();
 
     await userEvent.type(within(preview()).getByRole('textbox', { name: 'Pack name' }), 'Round 2 shortlist');
+    // AIV-P1-165: the reason is audited with each addition, so a blank one blocks Confirm.
+    const reason = within(preview()).getByRole('textbox', { name: 'Reason, recorded in the audit log' });
+    expect((reason as HTMLTextAreaElement).value).toBe('Shortlist for the hiring decision');
+    await userEvent.clear(reason);
+    expect(confirm.disabled).toBe(true);
+    expect(within(preview()).getByText('Give a reason for adding them')).toBeTruthy();
+    await userEvent.type(reason, 'Shortlist for the hiring decision');
     await userEvent.click(confirm);
     expect(fake.pack).toHaveBeenCalledExactlyOnceWith({
       jobId: JOB,
       applicationIds: ['a1', 'a2', 'a3'].map(uid),
       pack: { name: 'Round 2 shortlist' },
+      reason: 'Shortlist for the hiring decision',
     });
     expect(fake.refresh).toHaveBeenCalledOnce();
     expect(screen.getByText(/3 candidates added to Round 2 shortlist\./)).toBeTruthy();
@@ -644,6 +700,7 @@ describe('Scenario: Add to an existing pack (AIV-P2-010)', () => {
       jobId: JOB,
       applicationIds: [uid('a4')],
       pack: { packId: PACK },
+      reason: 'Shortlist for the hiring decision',
     });
   });
 });
@@ -700,5 +757,73 @@ describe('Scenario: No selection (AIV-P2-010)', () => {
     expect(screen.queryByRole('button', { name: 'Add to decision pack' })).toBeNull();
     await pick('Sara Al Qahtani');
     expect(within(bar()).getByRole('button', { name: 'Add to decision pack' })).toBeTruthy();
+  });
+});
+
+describe('Feature: CV reading status (AIV-P1-165 §7)', () => {
+  it('each row says its own status with an icon and a word, and the file name stands in for the name', () => {
+    showRanking(six);
+    const words = bodyRows().map((r) => within(r).getAllByRole('cell')[2]?.textContent);
+    expect(words).toEqual([
+      expect.stringMatching(/up to 84/),
+      'Reading the CV…',
+      'Could not be read automatically',
+      'We could not read this CV. Try again.Try again',
+      "Waiting for tomorrow's AI allowance",
+      'Assessing the evidence…',
+    ]);
+    // An icon beside every word: colour never says it alone.
+    for (const row of bodyRows().slice(1))
+      expect(within(row).getAllByRole('cell')[2]?.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'cv-a.pdf' })).toBeTruthy();
+    expect(screen.queryByText('Unnamed applicant')).toBeNull();
+    expect(screen.queryByText('Not yet scored')).toBeNull();
+  });
+
+  it('the footer counts every row, and "Assessing N CVs" counts those read or assessed', () => {
+    showRanking(six);
+    expect(screen.getByText(/^1 of 6 assessed\./)).toBeTruthy();
+    expect(screen.getByText('Assessing 2 CVs')).toBeTruthy();
+    cleanup();
+    showRanking(six.slice(0, 1));
+    expect(screen.queryByText(/^Assessing/)).toBeNull();
+  });
+
+  it('"Try again" re-runs that CV only, then refreshes the page', async () => {
+    fake.retry.mockResolvedValueOnce({ ok: true });
+    showRanking(six);
+    await userEvent.click(screen.getByRole('button', { name: 'Try again for cv-c.pdf' }));
+    expect(fake.retry).toHaveBeenCalledWith({ kind: 'cv', sourceId: SOURCE });
+    expect(fake.refresh).toHaveBeenCalled();
+  });
+
+  // mutation check: useLiveRefresh(true) -> this test failed (refreshed with nothing in progress); useLiveRefresh(false) ->
+  // this test failed (no refresh)
+  it('refreshes itself every few seconds while any CV is read or assessed, and stops when none is', () => {
+    vi.useFakeTimers();
+    try {
+      showRanking(six);
+      vi.advanceTimersByTime(5000);
+      expect(fake.refresh).toHaveBeenCalledTimes(1);
+      cleanup();
+      fake.refresh.mockClear();
+      showRanking(six.filter((row) => row.cv?.state !== 'reading' && row.cv?.state !== 'assessing'));
+      vi.advanceTimersByTime(20_000);
+      expect(fake.refresh).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // mutation check: dropped the clearInterval at the limit -> this test failed (refreshed 300 times, not 180)
+  it('stops refreshing itself after 15 minutes, so a stuck CV does not reload the ranking forever', () => {
+    vi.useFakeTimers();
+    try {
+      showRanking(six);
+      vi.advanceTimersByTime(25 * 60_000);
+      expect(fake.refresh).toHaveBeenCalledTimes((15 * 60_000) / 5000);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

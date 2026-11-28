@@ -1,9 +1,9 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { MappingStore } from '../application/mapping.ts';
 import { pairKey, type Resolution } from '../domain/corroboration.ts';
-import { comparison, competencyLink, evidenceGap, item, mapping } from './schema.ts';
+import { comparison, competencyLink, evidenceGap, item, mapping, mappingFailure } from './schema.ts';
 
 /** Mapping runs over a workspace-scoped transaction: the workspace filter here, row-level security below it. */
 export function mappingStore(tx: Tx): MappingStore {
@@ -29,6 +29,42 @@ export function mappingStore(tx: Tx): MappingStore {
           })),
         );
       if (comparisons.length) await tx.insert(comparison).values(comparisons);
+    },
+    async fail(workspaceId, candidateId, jobId, at) {
+      await tx
+        .insert(mappingFailure)
+        .values({ workspaceId, candidateId, jobId, failedAt: at })
+        .onConflictDoUpdate({
+          target: [mappingFailure.workspaceId, mappingFailure.candidateId, mappingFailure.jobId],
+          set: { failedAt: at },
+        });
+    },
+    async clearFailure(workspaceId, candidateId, jobId) {
+      const deleted = await tx
+        .delete(mappingFailure)
+        .where(
+          and(
+            eq(mappingFailure.workspaceId, workspaceId),
+            eq(mappingFailure.candidateId, candidateId),
+            eq(mappingFailure.jobId, jobId),
+          ),
+        )
+        .returning({ candidateId: mappingFailure.candidateId });
+      return deleted.length > 0;
+    },
+    async failed(workspaceId, jobId, candidateIds) {
+      if (!candidateIds.length) return [];
+      const rows = await tx
+        .select({ candidateId: mappingFailure.candidateId })
+        .from(mappingFailure)
+        .where(
+          and(
+            eq(mappingFailure.workspaceId, workspaceId),
+            eq(mappingFailure.jobId, jobId),
+            inArray(mappingFailure.candidateId, candidateIds),
+          ),
+        );
+      return rows.map((r) => r.candidateId);
     },
     async resolutions(workspaceId, candidateId, jobId) {
       const other = alias(item, 'other_item');

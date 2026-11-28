@@ -75,11 +75,15 @@ export function jobHeaderView(
     assessed,
     ownerChange,
     rubric: { approved: approved !== null, latest: latest?.status ?? null },
-    // Reached: the description always, the rubric once a version is approved.
+    // Reached: the description always, the rubric once a version is approved, and "Bring in candidates" and "Assess
+    // evidence" once every application is assessed (AIV-P1-165 §7 "Job stages tick").
     stages: JOB_PAGES.map((page) => ({
       page,
       line: lines[page],
-      done: page === 'description' || (page === 'rubric' && approved !== null),
+      done:
+        page === 'description' ||
+        (page === 'rubric' && approved !== null) ||
+        ((page === 'import' || page === 'candidates') && approved !== null && imported > 0 && assessed >= imported),
     })),
   };
 }

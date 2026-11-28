@@ -8,6 +8,9 @@ const TYPES: Record<string, string> = {
   pdf: 'application/pdf',
   png: 'image/png',
   exe: 'application/vnd.microsoft.portable-executable',
+  csv: 'text/csv',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  numbers: 'application/x-iwork-numbers-sffnumbers',
 };
 const result = (purpose: Purpose, type: string, sizeMb: number) => {
   const refused = checkUpload({
@@ -26,6 +29,11 @@ describe('Scenario Outline: Size and type limits are enforced before upload', ()
     ['portal', 'png', 19, 'allowed'],
     ['portal', 'exe', 1, 'PDF, image or document, up to 20 MB.'],
     ['portal', 'pdf', 21, 'PDF, image or document, up to 20 MB.'],
+    // AIV-P1-103 "Too large or the wrong type".
+    ['candidate_sheet', 'csv', 1, 'allowed'],
+    ['candidate_sheet', 'xlsx', 2, 'allowed'],
+    ['candidate_sheet', 'csv', 5, 'Use a CSV or Excel file up to 2 MB.'],
+    ['candidate_sheet', 'numbers', 1, 'Use a CSV or Excel file up to 2 MB.'],
   ] as const)('purpose %s, type %s, %i MB: %s', (purpose, type, size, expected) => {
     expect(result(purpose, type, size)).toBe(expected);
   });

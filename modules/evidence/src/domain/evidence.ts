@@ -131,6 +131,8 @@ const MESSAGES = {
   comparison_not_found: 'No such contradiction',
   level_reason: 'Give the reason for this level',
   standing: 'Choose one of the two sources, or both',
+  cv_not_found: 'No such CV',
+  not_retryable: 'Only a CV that could not be read or assessed can be tried again',
 } as const;
 
 export type EvidenceErrorCode = keyof typeof MESSAGES;

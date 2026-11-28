@@ -1,6 +1,7 @@
 # Sara Al Qahtani (AIV-P1-080): her write-up names her and carries her email and phone. The model reads
-# "[CANDIDATE] eval harness ... [CANDIDATE] wrote the scorer", [EMAIL_1] and [PHONE_1], never the values. Recorded
-# quotes never span a placeholder, so they read the same before and after the replacement.
+# "Written by [CANDIDATE]", "[CANDIDATE]'s contact", [EMAIL_1] and [PHONE_1], never the values. Her name and contact
+# details sit on their own closing lines, apart from the work (AIV-P1-156), so no quotable passage runs through a
+# placeholder and a recorded quote reads the same before and after the replacement.
 id: sara-identifiers
 people: [Sara Al Qahtani]
 input:
@@ -14,9 +15,12 @@ input:
 sources:
   - id: S1
     kind: document
-    text: >-
-      Sara's eval harness replays 460 golden cases; Al Qahtani wrote the scorer. Questions about the harness:
-      sara.al.qahtani@example.com or +44 7700 900123.
+    text: |-
+      Write-up: the eval harness
+      The eval harness replays 460 golden cases before every release.
+      The scorer blocks a release when answer accuracy drops below 92%.
+      Written by Sara Al Qahtani.
+      Sara's contact for questions: sara.al.qahtani@example.com or +44 7700 900123.
 expected:
   match:
     links[*].competencyId: [c-retrieval]
@@ -24,21 +28,26 @@ expected:
   safety:
     forbidden: ['sara.al.qahtani@example.com', '900123', 'qahtani']
 recorded:
-  promptVersion: evidence.mapToCompetency@3
-  promptHash: 85cf112d687b
+  promptVersion: evidence.mapToCompetency@4
+  promptHash: 75339925a7de
   output:
     links:
       - competencyId: c-retrieval
         strength: medium
         label: submitted
-        level: 3
-        limit: This evidence does not show the scale or impact of the eval harness in production or its integration in a
-          regression gate.
+        level: 4
+        limit: This evidence does not show the scale or user impact of the eval harness.
         citations:
           - sourceId: S1
-            quote: eval harness replays 460 golden cases
-    changes:
+            quote: The eval harness replays 460 golden cases before every release
       - competencyId: c-retrieval
-        text: Provide evidence of the eval harness being used in a regression gate or with retrieval metrics in production.
+        strength: medium
+        label: submitted
+        level: 4
+        limit: This evidence does not show the scale or user impact of the eval harness.
+        citations:
+          - sourceId: S1
+            quote: The scorer blocks a release when answer accuracy drops below 92%
+    changes:
       - competencyId: c-llm
-        text: Show an LLM system or assistant feature built and monitored for real users.
+        text: Provide evidence of an LLM system or assistant running for real users with monitoring.

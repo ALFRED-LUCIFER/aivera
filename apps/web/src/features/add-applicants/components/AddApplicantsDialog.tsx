@@ -54,6 +54,8 @@ export type AddApplicantsDialogProps = {
   onSubmit: () => void;
   /** Set once a save added CVs and nothing new waits: "Go to ranking" becomes the primary button. */
   rankingHref: string | null;
+  /** The job's spreadsheet import (AIV-P1-103), offered from here: "Add CVs" is the action's one entry (AIV-P1-165). */
+  sheetHref: string;
   /** The button that opens the dialog; by default "Add CVs" with the Rubric artboard's upload arrow. */
   trigger?: ReactNode;
 };
@@ -139,6 +141,11 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
             onSelect={props.onSelectCvs}
             disabled={props.pending}
           />
+          <p className="text-meta text-text-2">
+            <Link href={props.sheetHref as Route} className="text-text underline underline-offset-3">
+              {t('fromSheet')}
+            </Link>
+          </p>
           {rows.length > 0 && (
             <>
               {/* <output> carries the status role: the count is announced, not every percent of every row. */}

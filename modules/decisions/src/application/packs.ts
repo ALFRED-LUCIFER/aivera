@@ -63,22 +63,25 @@ export type Ports = {
   ): Promise<{ id: string; rubricVersionId: string; backedScore: number; upperBound: number } | null>;
   /** Writes `decision.recorded` to the audit log in `ctx.tx`: the last statements before commit (AGENTS.md 3.6). */
   auditDecision(ctx: WorkspaceContext, jobId: string, decision: Decision): Promise<void>;
-  /** Writes `pack.created` to the audit log in `ctx.tx`, after the pack's other writes (AGENTS.md 3.6). */
-  auditPackCreated(ctx: WorkspaceContext, pack: DecisionPack): Promise<void>;
-  /** Writes `pack.member_added` for one member to the audit log in `ctx.tx`, after the pack's other writes. */
-  auditMemberAdded(ctx: WorkspaceContext, jobId: string, member: PackMember): Promise<void>;
+  /** Writes `pack.created` with the reason to the audit log in `ctx.tx`, after the pack's other writes (AGENTS.md 3.6). */
+  auditPackCreated(ctx: WorkspaceContext, pack: DecisionPack, reason: string): Promise<void>;
+  /** Writes `pack.member_added` for one member, with the reason, to the audit log in `ctx.tx`, after the pack's other writes. */
+  auditMemberAdded(ctx: WorkspaceContext, jobId: string, member: PackMember, reason: string): Promise<void>;
   newId(): string;
   now(): Date;
 };
 
 const memberInput = z.strictObject({ candidateId: z.uuid() });
 const membersInput = z.array(memberInput).min(1).max(50);
+/** Why the candidates join a pack: audited as the note of each addition (AIV-P1-165, AGENTS.md 1.5: who, when, why). */
+const reasonInput = z.string().trim().min(1).max(NOTE_MAX);
 
 /** Validated in the use case, whatever the caller checked (AGENTS.md 3.7). */
 export const createPackInputSchema = z.strictObject({
   jobId: z.uuid(),
   name: z.string().trim().min(1).max(NAME_MAX),
   members: membersInput,
+  reason: reasonInput,
 });
 export type CreatePackInput = z.input<typeof createPackInputSchema>;
 export type MemberInput = z.input<typeof memberInput>;
@@ -179,13 +182,19 @@ export function packUseCases(ports: Ports) {
       await store.insertPack(pack);
       await store.insertMembers(members);
       await ports.publishPackReady(ctx.tx, pack);
-      await ports.auditPackCreated(ctx, pack);
-      for (const member of members) await ports.auditMemberAdded(ctx, pack.jobId, member);
+      await ports.auditPackCreated(ctx, pack, input.reason);
+      for (const member of members) await ports.auditMemberAdded(ctx, pack.jobId, member, input.reason);
       return { packId: pack.id };
     },
 
-    async addMembers(ctx: WorkspaceContext, packId: string, raw: MemberInput[]): Promise<{ added: number }> {
+    async addMembers(
+      ctx: WorkspaceContext,
+      packId: string,
+      raw: MemberInput[],
+      rawReason: string,
+    ): Promise<{ added: number }> {
       const adding = membersInput.parse(raw);
+      const reason = reasonInput.parse(rawReason);
       const found = z.uuid().safeParse(packId).success ? await visible(ctx, packId, true) : null;
       if (!found) throw new PackError('pack_not_found');
       const { pack, job } = found;
@@ -205,7 +214,7 @@ export function packUseCases(ports: Ports) {
       const members = await snapshot(ctx, pack, ranked, fresh, inPack.length, addedAt);
       await store.insertMembers(members);
       await ports.publishMembersAdded(ctx.tx, pack, inPack.length, addedAt);
-      for (const member of members) await ports.auditMemberAdded(ctx, pack.jobId, member);
+      for (const member of members) await ports.auditMemberAdded(ctx, pack.jobId, member, reason);
       return { added: fresh.length };
     },
 

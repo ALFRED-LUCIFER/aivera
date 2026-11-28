@@ -45,6 +45,11 @@ export type MappingRun = {
   changes: StoredChange[];
   /** Sources not sent to the model, too long to read automatically (AIV-P2-062): the profile says so. */
   tooLongSourceIds: string[];
+  /**
+   * Links the model gave whose quote is not in their source, dropped by the citation contract (AIV-P1-156): the profile
+   * says lines could not be cited. A count only; the dropped quote is never stored.
+   */
+  uncitedLinkCount: number;
   /** When the run was claimed (under its lock), so the run claimed last is the newest. */
   createdAt: Date;
 };
@@ -73,6 +78,12 @@ export type MappingStore = {
   /** `pairKey`s of every pair the AI comparison flagged in the candidate's earlier runs for the job (AIV-P1-078). */
   aiFlags(workspaceId: string, candidateId: string, jobId: string): Promise<Set<string>>;
   newest(workspaceId: string, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;
+  /** Records that the candidate's mapping for the job failed for good (AIV-P1-165); a later run that maps ends it. */
+  fail(workspaceId: string, candidateId: string, jobId: string, at: Date): Promise<void>;
+  /** Ends a recorded failure; false when there was none (another retry, or a run that mapped since). */
+  clearFailure(workspaceId: string, candidateId: string, jobId: string): Promise<boolean>;
+  /** Of `candidateIds`, those whose mapping for the job failed for good. */
+  failed(workspaceId: string, jobId: string, candidateIds: string[]): Promise<string[]>;
 };
 
 /** The source kinds as the citation contract names them (@credalent/ai). */
@@ -90,12 +101,15 @@ export type MappingPorts = Pick<Ports, 'storeFor' | 'newId' | 'now'> & {
   readStoreFor(tx: Tx): RepositoryReadStore;
   mappingStoreFor(tx: Tx): MappingStore;
   approvedRubric: ApprovedRubricPort;
-  /** The `evidence.mapToCompetency` call through `@credalent/ai`; quotes are checked by its citation contract. */
+  /**
+   * The `evidence.mapToCompetency` call through `@credalent/ai`; quotes are checked by its citation contract, which
+   * drops a link whose quote is not in its source and counts it (`uncited`).
+   */
   mapToCompetencies(
     workspaceId: string,
     competencies: { id: string; name: string; evidenceExpected: string }[],
     sources: { id: string; kind: (typeof AI_KIND)[SourceKind]; text: string }[],
-  ): Promise<{ links: ModelLink[]; changes: { competencyId: string; text: string }[] }>;
+  ): Promise<{ links: ModelLink[]; changes: { competencyId: string; text: string }[]; uncited: number }>;
   /**
    * The `evidence.compareExcerpts` call through `@credalent/ai` (AIV-P1-078): the indexes into `pairs` the model flags
    * as contradicting, each citing both excerpts; null when its answer was rejected by the citation contract or schema.
@@ -117,6 +131,8 @@ export type MappingPorts = Pick<Ports, 'storeFor' | 'newId' | 'now'> & {
     contradictions: number;
     discarded: Partial<Record<DiscardReason, number>>;
     uncitedChanges: number;
+    /** Links the citation contract dropped for a quote not in their source. */
+    uncitedLinks: number;
     /** Sources left out as too long to read automatically. */
     tooLong: number;
     /** Pairs sent to the AI comparison, flagged by it, and left uncompared because its answer was rejected. */
@@ -218,8 +234,6 @@ export class MappingBusy extends Error {
  * answer is rescheduled or dead-lettered by the handler, and a run already in flight for the candidate and job
  * reschedules it (`MappingBusy`).
  */
-// shortcut: an invented quote rejects the whole answer (citation contract), so a model repeating it dead-letters the
-// candidate's mapping; drop only that link if pilot telemetry shows it happening.
 // shortcut: the model call runs inside the consumer's workspace transaction, as the GitHub reads do; call it before
 // opening the write transaction if pilot mappings hold connections too long.
 export async function mapEvidence(
@@ -284,7 +298,7 @@ export async function mapEvidence(
   const { sent, tooLong } = fitSources(aiSources);
   const answer = sent.length
     ? await ports.mapToCompetencies(workspaceId, rubric.competencies, sent)
-    : { links: [], changes: [] };
+    : { links: [], changes: [], uncited: 0 };
   const competencyIds = rubric.competencies.map((c) => c.id);
   const mapGrades: MapGrade[] = grades.map((g) => ({ ...g, sourceId: g.repositorySourceId }));
   const guarded = guardLinks({
@@ -394,6 +408,7 @@ export async function mapEvidence(
       text,
     })),
     tooLongSourceIds: tooLong,
+    uncitedLinkCount: answer.uncited,
     createdAt,
   };
   await ports.mappingStoreFor(tx).insert(
@@ -404,6 +419,9 @@ export async function mapEvidence(
     comparisons,
   );
   await ports.publishMapped(tx, run);
+  // A run that maps ends an earlier failure (AIV-P1-165). Last: a throw after this delete that is not a database error
+  // (one of those aborts the transaction, freeing its locks) would hold the row the handler's own transaction records.
+  await ports.mappingStoreFor(tx).clearFailure(workspaceId, candidateId, jobId);
   const counts: Partial<Record<DiscardReason, number>> = {};
   for (const d of discarded) counts[d.reason] = (counts[d.reason] ?? 0) + 1;
   ports.logMapped({
@@ -413,6 +431,7 @@ export async function mapEvidence(
     contradictions: comparisons.filter((c) => c.outcome === 'contradiction').length,
     discarded: counts,
     uncitedChanges: ranked.uncited,
+    uncitedLinks: answer.uncited,
     tooLong: tooLong.length,
     compared: comparedCounts,
   });

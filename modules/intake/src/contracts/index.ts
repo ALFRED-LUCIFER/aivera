@@ -11,6 +11,8 @@ import type {
   ReceiveApplicationResult,
   ReceiveBatchInput,
 } from '../application/applications.ts';
+import type { SheetImportView } from '../application/sheetImports.ts';
+import type { SheetMapping } from '../domain/sheet.ts';
 
 export {
   CHOICE_REASON_MAX,
@@ -22,6 +24,9 @@ export {
   STAGES,
 } from '../domain/application.ts';
 export type { Source, Stage } from '../domain/application.ts';
+export { MAX_SHEET_ROWS, SHEET_FIELDS } from '../domain/sheet.ts';
+export type { SheetField, SheetMapping, SheetStatus, SheetUnreadable } from '../domain/sheet.ts';
+export type { SheetImportView, SheetRowView } from '../application/sheetImports.ts';
 export type {
   ApplicationListItem,
   ChooseForInterviewInput,
@@ -41,6 +46,15 @@ export const ApplicationReceivedV1 = {
   type: 'ApplicationReceived.v1',
   payload: z.strictObject({ applicationId: z.uuid(), sourceId: z.uuid() }),
 } satisfies EventDefinition<{ applicationId: string; sourceId: string }>;
+
+/**
+ * Written to `intake.outbox` when a recruiter starts a sheet import and when they confirm its mapping (AIV-P1-103); the
+ * worker reads the sheet, or its rows and CV links. Strict and opaque ids only: no sheet value in the payload.
+ */
+export const SheetImportRequestedV1 = {
+  type: 'SheetImportRequested.v1',
+  payload: z.strictObject({ sheetImportId: z.uuid() }),
+} satisfies EventDefinition<{ sheetImportId: string }>;
 
 /** Every call takes the request context from `WorkspacesContract.withWorkspace` and runs in its scoped transaction. */
 export interface IntakeContract {
@@ -98,6 +112,33 @@ export interface IntakeContract {
    * only check: applications carry no synthetic mark of their own, so it deletes every one in a flagged workspace.
    */
   purgeSyntheticApplications(ctx: WorkspaceContext): Promise<void>;
+  /**
+   * Starts importing a CSV or Excel file of candidates into a job (AIV-P1-103): the worker reads its header row next
+   * (`SheetImportRequested.v1`). The caller has checked that `fileId` is the member's own clean `candidate_sheet`
+   * upload. Admins and recruiters. Throws `IntakeError('job_not_found')`, writing nothing.
+   */
+  startSheetImport(ctx: WorkspaceContext, input: { jobId: string; fileId: string }): Promise<{ sheetImportId: string }>;
+  /**
+   * The member's own sheet import: its status, header row, the mapping (proposed until confirmed) and, once checked,
+   * its rows (a person, or a row number and its problem with no value). Another member's, or another workspace's, is
+   * `IntakeError('sheet_not_found')`.
+   */
+  getSheetImport(ctx: WorkspaceContext, sheetImportId: string): Promise<SheetImportView>;
+  /**
+   * The recruiter's mapping; the worker then reads the rows and fetches their CV links. Nobody is added. Throws
+   * `IntakeError` `invalid_mapping` (a column outside the header row, used twice, or Name or Email unset) or
+   * `sheet_not_ready` (not waiting for a mapping).
+   */
+  confirmSheetMapping(ctx: WorkspaceContext, input: { sheetImportId: string; mapping: SheetMapping }): Promise<void>;
+  /**
+   * "Add N people to this job": every row with a name and a valid email, with source `spreadsheet`, under one batch and
+   * its confirmation (`receiveBatch`, audited last). Throws `IntakeError` `sheet_not_ready` (not checked yet, already
+   * added, or nobody to add) and `receiveBatch`'s refusals, writing nothing.
+   */
+  addSheetImport(
+    ctx: WorkspaceContext,
+    input: { sheetImportId: string; rightToProcessConfirmed: true; wordingKey: string },
+  ): Promise<{ batchId: string }>;
 }
 
 /**

@@ -77,6 +77,7 @@ const page = (members: PackPage['members']): PackPage => ({
   members,
   others: 4,
   mayDecide: false,
+  mayNameSelf: false,
   decided: null,
 });
 const show = (pack: PackPage) =>

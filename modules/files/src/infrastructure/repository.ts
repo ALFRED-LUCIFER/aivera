@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import type { FileRecord, FileStore } from '../application/files.ts';
 import type { Owner } from '../domain/files.ts';
 import { file } from './schema.ts';
@@ -13,6 +13,14 @@ const ownedBy = (owner: Owner) =>
 export function fileStore(tx: Tx): FileStore {
   return {
     insert: async (record) => void (await tx.insert(file).values(record)),
+    async names(owner, ids) {
+      if (!ids.length) return new Map();
+      const rows = await tx
+        .select({ id: file.id, fileName: file.fileName })
+        .from(file)
+        .where(and(ownedBy(owner), inArray(file.id, ids), isNotNull(file.fileName)));
+      return new Map(rows.flatMap((r) => (r.fileName ? [[r.id, r.fileName] as const] : [])));
+    },
     async find(owner, id, forUpdate = false) {
       const query = tx
         .select()

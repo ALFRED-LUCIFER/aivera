@@ -8,11 +8,15 @@ import { withCandidateAccount, withWorkspace } from '@credalent/db/with-workspac
 import type { WorkspacesContract } from '@credalent/workspaces';
 import { filesUseCases, readCleanFile, type BlobStore } from './application/files.ts';
 import { FileCleanV1, FileRejectedV1, type FilesContract } from './contracts/index.ts';
+import { createCvFetcher, type Resolve } from './infrastructure/cvFetch.ts';
+import { cvContentType } from './domain/fetchGuard.ts';
 import { fileStore } from './infrastructure/repository.ts';
 import { parseScanResult } from './infrastructure/scanResult.ts';
 import { outbox } from './infrastructure/schema.ts';
 
 export { createBlobStore, type BlobStoreConfig } from './infrastructure/blobs.ts';
+// The guarded fetch alone, for its tests (tests/integration/src/cv-link-fetch.test.ts).
+export { createCvFetcher, type Resolve } from './infrastructure/cvFetch.ts';
 export type { BlobStore } from './application/files.ts';
 
 /** The Service Bus queue Event Grid delivers Defender's scan results to (infra/modules/storage.bicep). */
@@ -31,9 +35,20 @@ export function createFiles(config: {
   malwareScanning: boolean;
   now?: () => Date;
 }): FilesContract {
+  const useCases = buildUseCases(config);
+  return {
+    ...useCases,
+    async handleScanResult(body) {
+      const result = parseScanResult(body);
+      if (result) await useCases.applyScanResult(result.target, result.verdict);
+    },
+  };
+}
+
+function buildUseCases(config: Parameters<typeof createFiles>[0]) {
   const { db, workspaces, audit, blobs, malwareScanning } = config;
   const now = config.now ?? (() => new Date());
-  const useCases = filesUseCases({
+  return filesUseCases({
     storeFor: fileStore,
     blobs,
     inScope: (owner, work) =>
@@ -53,12 +68,32 @@ export function createFiles(config: {
     newId: uuidv7,
     now,
   });
-  return {
-    ...useCases,
-    async handleScanResult(body) {
-      const result = parseScanResult(body);
-      if (result) await useCases.applyScanResult(result.target, result.verdict);
-    },
+}
+
+/**
+ * The worker's fetch of a CV link from an imported sheet (AIV-P1-103): the SSRF-guarded GET, then the file stored as a
+ * pending `cv` in quarantine for Defender's scan (settled at once where scanning is off, dev only), as if `uploadedBy`
+ * had uploaded it. The file id, or null when the link was refused, unreadable, or not a PDF or Word file within the CV
+ * limits. `resolve` is for tests only.
+ */
+export function createCvLinkFetcher(config: {
+  db: Db;
+  blobs: BlobStore;
+  malwareScanning: boolean;
+  now?: () => Date;
+  resolve?: Resolve;
+}) {
+  const fetchCv = createCvFetcher(config.resolve ? { resolve: config.resolve } : {});
+  const files = buildUseCases({
+    ...config,
+    // A fetch has no member: every request-context call is refused, and nothing here audits.
+    workspaces: { authorize: () => Promise.reject(new Error('no request context in the worker')) },
+    audit: { record: () => Promise.reject(new Error('no request context in the worker')) },
+  });
+  return async (workspaceId: string, uploadedBy: string, url: string): Promise<string | null> => {
+    const fetched = await fetchCv(url);
+    const contentType = fetched && cvContentType(fetched.contentType, fetched.data);
+    return fetched && contentType ? files.storeFetchedCv(workspaceId, uploadedBy, fetched.data, contentType) : null;
   };
 }
 

@@ -37,6 +37,7 @@ const upload: Extract<ImportSourcesProps, { view: ImportView }>['upload'] = {
   over: 0,
   readyCount: 0,
   rankingHref: null,
+  sheetHref: '/app/jobs/j1/import/sheet',
   jobTitle: 'Senior AI Engineer',
   confirmed: false,
   onConfirmedChange: () => {},

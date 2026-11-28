@@ -134,6 +134,7 @@ test.beforeAll(async () => {
         members.push({ candidateId: personId });
       }
       const { packId } = await decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
         jobId: job.id,
         name: 'Round 2 shortlist',
         members,

@@ -309,7 +309,17 @@
       "pending": "Reading the CV…",
       "unreadable": "Could not be read automatically",
       "failed": "We could not read this CV. Try again.",
-      "waiting": "Waiting for tomorrow's AI allowance"
+      "waiting": "Waiting for tomorrow's AI allowance",
+      "assessing": "Assessing the evidence…",
+      "couldNotAssess": "We could not assess this CV. Try again.",
+      "noCv": "Not started: no CV was added",
+      "afterApproval": "Starts after rubric approval",
+      "retry": "Try again",
+      "retryFor": "Try again for {name}",
+      "retryProblem": {
+        "refused": "This CV is no longer waiting for a retry.",
+        "failed": "That did not work. Try again in a moment."
+      }
     },
     "linkStatus": {
       "pending": "Reading the link…",
@@ -1707,7 +1717,8 @@
     "uploadCv": "Upload CV",
     "limits": {
       "cv": "PDF or Word, up to 10 MB.",
-      "evidence": "PDF, image or document, up to 20 MB."
+      "evidence": "PDF, image or document, up to 20 MB.",
+      "sheet": "Use a CSV or Excel file up to 2 MB."
     },
     "uploading": "Uploading… {percent}%",
     "notAccepted": "We cannot use this file. Try a different file.",
@@ -1721,6 +1732,7 @@
     "close": "Close",
     "choose": "Choose CV files",
     "limits": "PDF or Word, up to 10 MB each, 200 per save.",
+    "fromSheet": "From a CSV or Excel file",
     "source": "Where did they come from?",
     "sources": {
       "linkedin": "LinkedIn",
@@ -1728,7 +1740,8 @@
       "email": "Email",
       "whatsapp": "WhatsApp",
       "careers_page": "Careers page",
-      "recruiter": "Recruiter"
+      "recruiter": "Recruiter",
+      "spreadsheet": "Spreadsheet"
     },
     "ready": "{count, plural, one {# CV ready} other {# CVs ready}}",
     "files": "{count, plural, one {# file} other {# files}}",
@@ -1778,6 +1791,72 @@
     "loading": "Loading Add CVs…",
     "failed": "We could not load this page. Try again.",
     "retry": "Try again"
+  },
+  "sheetImport": {
+    "title": "Import from a CSV or Excel file",
+    "intro": "A CSV or Excel file with a name, email and CV link per row. Credalent maps the columns for you.",
+    "choose": "Import file",
+    "hint": "CSV or Excel, up to 2 MB and 1,000 rows.",
+    "checking": "Checking the file…",
+    "reading": "Reading the file…",
+    "fetching": "Checking each row and reading the CV links…",
+    "unreadable": "We could not read this file. Save it as CSV or Excel (.xlsx) with the column names in the first row, and try again.",
+    "tooManyRows": "This file has more than 1,000 rows. Split it into smaller files and import each one.",
+    "another": "Choose another file",
+    "spreadsheet": "Spreadsheet",
+    "added": "{count, plural, one {# person added to {title}.} other {# people added to {title}.}} Credalent reads each CV next.",
+    "toCandidates": "See the candidates",
+    "mapping": {
+      "title": "Match the columns",
+      "intro": "Credalent proposed these from the first row of your file. Change any that are wrong. Nothing is added yet.",
+      "fields": {
+        "name": "Name",
+        "email": "Email",
+        "cvLink": "CV link",
+        "phone": "Phone"
+      },
+      "choose": "Choose a column",
+      "none": "Not in this file",
+      "unnamed": "Column {column}",
+      "confirm": "Use these columns",
+      "another": "Choose another file"
+    },
+    "check": {
+      "title": "Check before adding",
+      "caption": "{count, plural, one {# person to add} other {# people to add}}",
+      "row": "Row",
+      "name": "Name",
+      "email": "Email",
+      "source": "Source",
+      "cv": "CV",
+      "cvState": {
+        "attached": "CV attached",
+        "unreadable": "No CV yet",
+        "none": "No CV link"
+      },
+      "nobody": "No row has a name and a valid email, so nobody can be added from this file.",
+      "notes": "Rows to look at",
+      "noteRow": "Row {row}:",
+      "previewTitle": "{count, plural, one {Add # person to {title}?} other {Add # people to {title}?}}",
+      "submit": "{count, plural, one {Add # person to this job} other {Add # people to this job}}",
+      "adding": "Adding…",
+      "footer": "Nothing changes until you confirm.",
+      "error": "That did not go through. Nothing was changed."
+    },
+    "problems": {
+      "missing_name": "Not added: missing name",
+      "missing_email": "Not added: missing email",
+      "invalid_email": "Not added: email not valid",
+      "cv_unreadable": "CV link could not be read"
+    },
+    "errors": {
+      "notAccepted": "We cannot use this file. Try a different file.",
+      "jobNotFound": "This job was not found.",
+      "invalidMapping": "Choose a different column for each field, with Name and Email set.",
+      "notReady": "This import has moved on. Reload the page.",
+      "confirmationRequired": "Confirm you are responsible for the right to process these CVs.",
+      "failed": "That did not go through. Try again."
+    }
   },
   "decisionPack": {
     "title": "{name}: {job}",
@@ -1835,6 +1914,20 @@
       "choose": "Choose a decision for {name}",
       "submit": "Record decisions",
       "onlyOwner": "Only the hiring owner can record decisions.",
+      "noOwner": "This job has no hiring owner yet. Only the job's hiring owner records decisions, and as an admin you can name yourself.",
+      "nameSelf": {
+        "open": "Record decisions yourself",
+        "title": "Preview: become this job's hiring owner",
+        "consequence": "You become this job's hiring owner and can record the decisions on its packs. Nobody is contacted.",
+        "reason": "Reason, recorded in the audit log",
+        "reasonRequired": "Give a reason",
+        "confirm": "Become hiring owner",
+        "pending": "Saving…",
+        "cancel": "Cancel",
+        "footer": "Nothing changes until you confirm.",
+        "taken": "This job already has a hiring owner. Nothing was changed.",
+        "failed": "That did not go through. Nothing was changed. Try again."
+      },
       "done": "Decisions recorded by you on {date, date, ::d MMM yyyy} and added to the audit trail.",
       "recorded": "Decisions recorded by {name} on {date, date, ::d MMM yyyy} and added to the audit trail.",
       "recordedUnknown": "Decisions recorded on {date, date, ::d MMM yyyy} and added to the audit trail.",
@@ -1891,6 +1984,11 @@
       }
     },
     "intro": "Ranked by backed score: only evidence that can be inspected counts. The hatched range shows what still rests on claims.",
+    "allZero": {
+      "tag": "Not verified",
+      "banner": "No one has inspected work yet. Ordered by what their CVs claim, which is not verified.",
+      "order": "Ordered by the \"up to\" score, which rests on claims, then by who was assessed first. Every candidate stays in the list."
+    },
     "caption": "Ranked candidates",
     "basis": "Backed scores and needs met are observed from inspected evidence.",
     "observed": "Observed",
@@ -1953,7 +2051,8 @@
     "notYetAvailable": "Not yet available",
     "awaitingRubric": "Starts after rubric approval",
     "sendRubric": "Send rubric for approval",
-    "footer": "{filtered, select, true {{assessed, plural, =0 {None of these is assessed yet.} other {Showing {shown} of # assessed that match.}}} other {{assessed, plural, =0 {No one is assessed yet.} other {Showing {shown} of # assessed.}}}} Ranking orders your attention. Nobody is rejected automatically.",
+    "footer": "{filtered, select, true {{assessed, plural, =0 {None of these is assessed yet.} other {# of {total} that match are assessed.}}} other {{assessed, plural, =0 {No one is assessed yet.} other {# of {total} assessed.}}}} Ranking orders your attention. Nobody is rejected automatically.",
+    "assessing": "Assessing {count, plural, one {# CV} other {# CVs}}",
     "showAll": "Show all {count}",
     "empty": "No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.",
     "emptyFiltered": "No candidates match these filters.",
@@ -1990,6 +2089,9 @@
       "existing": "{name} ({count, plural, one {# candidate} other {# candidates}})",
       "new": "New pack",
       "name": "Pack name",
+      "reason": "Reason, recorded in the audit log",
+      "defaultReason": "Shortlist for the hiring decision",
+      "reasonRequired": "Give a reason for adding them",
       "consequence": "The hiring owner decides from the pack. Nobody is contacted, and everyone else stays in the ranking unchanged.",
       "confirm": "{count, plural, =0 {Nobody to add} one {Add # to the pack} other {Add # to the pack}}",
       "pending": "Adding…",
@@ -2040,7 +2142,8 @@
     "claimLimit": "Claim only. Counts as zero in the backed score.",
     "noteHidden": "{citation} · Some text is not visible on the page ({count, plural, one {# place} other {# places}})",
     "loading": "Loading the candidate profile…",
-    "error": "We could not load this candidate. Try again."
+    "error": "We could not load this candidate. Try again.",
+    "uncited": "{count, plural, =1 {One line from this CV could not be cited, so it was not mapped.} other {# lines from this CV could not be cited, so they were not mapped.}} The CV is unchanged. Read it in full for them."
   },
   "suggestedQuestions": {
     "title": "Needs live verification",

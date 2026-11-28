@@ -6,11 +6,13 @@ import * as actions from '../services/addToDecisionPack.ts';
 
 /**
  * "Add to decision pack" on the ranking (AIV-P2-010): the preview of the people selected when it opened, the pack to
- * add them to (the newest undecided one, or a new one with a name), and Confirm, the only thing that writes. A refused
- * or failed save keeps the preview so the person can try again; a confirmed one clears the selection.
+ * add them to (the newest undecided one, or a new one with a name), a required reason (prefilled `defaultReason`,
+ * AIV-P1-165), and Confirm, the only thing that writes. A refused or failed save keeps the preview so the person can
+ * try again; a confirmed one clears the selection.
  */
 export function usePackController(
   { jobId, rows, packs = [] }: Pick<RankingData, 'jobId' | 'rows' | 'packs'>,
+  defaultReason: string,
   clearSelection: () => void,
   services: Pick<typeof actions, 'addToDecisionPack'> = actions,
 ): PackView {
@@ -19,6 +21,7 @@ export function usePackController(
   const [opened, setOpened] = useState(0);
   const [target, setTarget] = useState(NEW_PACK);
   const [name, setName] = useState('');
+  const [reason, setReason] = useState(defaultReason);
   const [error, setError] = useState<PackView['error']>(null);
   const [done, setDone] = useState<PackView['done']>(null);
   const existing = packs.find((p) => p.id === target);
@@ -27,6 +30,7 @@ export function usePackController(
     jobId,
     applicationIds: preview?.toAdd ?? [],
     pack: existing ? { packId: existing.id } : { name },
+    reason,
   };
 
   return {
@@ -38,6 +42,7 @@ export function usePackController(
       setOpened((n) => n + 1);
       setTarget(packs[0]?.id ?? NEW_PACK);
       setName('');
+      setReason(defaultReason);
       setError(null);
       setDone(null);
     },
@@ -45,6 +50,9 @@ export function usePackController(
     onTargetChange: setTarget,
     name,
     onNameChange: setName,
+    reason,
+    onReasonChange: setReason,
+    reasonValid: addToPackSchema.shape.reason.safeParse(reason).success,
     canConfirm: addToPackSchema.safeParse(input).success,
     error,
     done,

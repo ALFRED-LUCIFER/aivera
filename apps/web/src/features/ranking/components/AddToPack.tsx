@@ -1,9 +1,9 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
-import { Input, Label, PreviewBanner, RadioGroup } from '@credalent/ui';
+import { Input, Label, PreviewBanner, RadioGroup, Textarea } from '@credalent/ui';
 import { useId } from 'react';
-import { NAME_MAX, NEW_PACK, type PackView } from '../domain/pack.ts';
+import { NAME_MAX, NEW_PACK, NOTE_MAX, type PackView } from '../domain/pack.ts';
 import { focusOnOpen } from './ChooseForInterview.tsx';
 import { ScoreCell } from './ScoreCell.tsx';
 
@@ -19,6 +19,8 @@ export function AddToPack({ view }: { view: PackView }) {
   const t = useTranslations('ranking.pack');
   const unnamed = useTranslations('ranking')('unnamed');
   const nameId = useId();
+  const reasonId = useId();
+  const errorId = useId();
   const { preview } = view;
   if (!preview) return null;
   return (
@@ -70,6 +72,24 @@ export function AddToPack({ view }: { view: PackView }) {
           />
         </div>
       )}
+      <div className="mt-3 flex flex-col gap-1.5">
+        <Label htmlFor={reasonId}>{t('reason')}</Label>
+        <Textarea
+          id={reasonId}
+          required
+          rows={2}
+          maxLength={NOTE_MAX}
+          aria-invalid={!view.reasonValid || undefined}
+          aria-describedby={view.reasonValid ? undefined : errorId}
+          value={view.reason}
+          onChange={(event) => view.onReasonChange(event.target.value)}
+        />
+        {!view.reasonValid && (
+          <span id={errorId} className="text-meta text-err-text">
+            {t('reasonRequired')}
+          </span>
+        )}
+      </div>
     </PreviewBanner>
   );
 }

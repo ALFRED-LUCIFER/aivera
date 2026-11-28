@@ -39,8 +39,13 @@ export type PackPage = {
   }[];
   /** The job's other applicants: they stay in the ranking and can be added to a later pack. */
   others: number;
-  /** Whether the reader is the job's hiring owner, who alone records the decisions (AIV-P2-012). */
+  /** Whether the reader is the member named as the job's hiring owner, who alone records the decisions (AIV-P2-012). */
   mayDecide: boolean;
+  /**
+   * An admin on a job with no hiring owner, who may name themselves and then decide (owner decision (b), AIV-P1-165):
+   * a solo recruiter records decisions without a second account. Never offered over a hiring owner already named.
+   */
+  mayNameSelf: boolean;
   /** Who recorded the decisions and when; null while undecided. `by` is null once that account is gone. */
   decided: { by: string | null; at: Date } | null;
 };
@@ -82,6 +87,25 @@ export const recordDecisionsSchema = z.strictObject({
 
 export type RecordDecisionsResult =
   { ok: true; decidedAt: Date } | { ok: false; error: 'invalid' | 'decided' | 'failed' };
+
+/** An admin naming themselves the job's hiring owner, with the reason audited (AIV-P1-165, owner decision (b)). */
+export const nameSelfSchema = z.strictObject({ jobId: z.uuid(), reason: z.string().trim().min(1).max(NOTE_MAX) });
+
+export type NameSelfResult = { ok: true } | { ok: false; error: 'invalid' | 'taken' | 'failed' };
+
+/** What "Record decisions yourself" shows and does; its controller hook builds it. */
+export type NameSelfView = {
+  /** True while the preview is open. */
+  previewing: boolean;
+  onOpen: () => void;
+  onCancel: () => void;
+  reason: string;
+  onReasonChange: (reason: string) => void;
+  reasonValid: boolean;
+  error: 'taken' | 'failed' | null;
+  /** Rejects when nothing was saved, so the card shows "Nothing was changed". */
+  onConfirm: () => Promise<void>;
+};
 
 /** The members with no decision chosen, in pack order: "Choose a decision for Huda Al Mansoori". */
 export const undecided = (

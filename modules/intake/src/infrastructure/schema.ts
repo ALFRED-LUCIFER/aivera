@@ -1,8 +1,9 @@
 import { inboxTable, outboxTable } from '@credalent/db/outbox';
 import { tenantPolicy } from '@credalent/db/tenant-policy';
 import { sql } from 'drizzle-orm';
-import { check, foreignKey, index, integer, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { check, foreignKey, index, integer, jsonb, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { SOURCES, STAGES } from '../domain/application.ts';
+import { SHEET_STATUSES, type SheetMapping, type SheetRow, type SheetUnreadable } from '../domain/sheet.ts';
 
 export const intake = pgSchema('intake');
 
@@ -89,9 +90,38 @@ export const applicationSource = intake
       // Must list exactly SOURCES (domain/application.ts); changing it needs a new migration.
       check(
         'application_source_source_check',
-        sql`${t.source} in ('linkedin', 'careers_page', 'referral', 'email', 'whatsapp', 'recruiter')`,
+        sql`${t.source} in ('linkedin', 'careers_page', 'referral', 'email', 'whatsapp', 'recruiter', 'spreadsheet')`,
       ),
       tenantPolicy('application_source_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A CSV or Excel import in progress (AIV-P1-103), owned by the member who started it. file_id, job_id and created_by are
+// opaque ids of other modules. headers and rows are candidate personal data (the sheet's values): never log a row.
+export const sheetImport = intake
+  .table(
+    'sheet_imports',
+    {
+      id: uuid().primaryKey(),
+      workspaceId: uuid('workspace_id').notNull(),
+      jobId: uuid('job_id').notNull(),
+      fileId: uuid('file_id').notNull(),
+      createdBy: uuid('created_by').notNull(),
+      createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+      status: text({ enum: SHEET_STATUSES }).notNull(),
+      problem: text().$type<SheetUnreadable>(),
+      headers: text().array(),
+      mapping: jsonb().$type<SheetMapping>(),
+      rows: jsonb().$type<SheetRow[]>(),
+    },
+    (t) => [
+      // Must list exactly SHEET_STATUSES (domain/sheet.ts); changing it needs a new migration.
+      check(
+        'sheet_imports_status_check',
+        sql`${t.status} in ('reading', 'mapping', 'fetching', 'ready', 'unreadable', 'added')`,
+      ),
+      tenantPolicy('sheet_imports_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();

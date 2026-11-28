@@ -9,7 +9,7 @@ import {
 } from '@credalent/ai';
 import type { Tx } from '@credalent/db';
 import { log } from '@credalent/observability';
-import type { WorkspaceContext } from '@credalent/workspaces';
+import { JOB_SCOPED_ROLES, type WorkspaceContext } from '@credalent/workspaces';
 import {
   CV_LABEL,
   cvClaims,
@@ -23,10 +23,12 @@ import {
   type CvExtraction,
   type CvLayout,
   type CvParseStatus,
+  PARSE_GIVE_UP_MS,
   type SourceNote,
 } from '../domain/cv.ts';
-import type { EvidenceItem, EvidenceSource } from '../domain/evidence.ts';
+import { EvidenceError, type EvidenceItem, type EvidenceSource } from '../domain/evidence.ts';
 import type { Ports } from './evidence.ts';
+import type { MappingStore } from './mapping.ts';
 import type { queueProfileExpansion } from './profileExpansion.ts';
 import type { RequestRepositoryReadInput } from './repositoryRead.ts';
 
@@ -66,14 +68,40 @@ export type CvParseStore = {
   pendingForFile(workspaceId: string, fileId: string): Promise<string[]>;
   /** Sets the status only while pending, waiting or failed; false when another delivery finished it first. */
   finish(workspaceId: string, sourceId: string, status: Exclude<CvParseStatus, 'pending'>): Promise<boolean>;
+  /**
+   * Sets a `failed` parse, or one still `pending` from before `staleBefore`, back to pending as asked for `at`; null when
+   * it is neither (or not this workspace's).
+   */
+  retry(workspaceId: string, sourceId: string, at: Date, staleBefore: Date): Promise<{ candidateId: string } | null>;
+  /** Each candidate's newest CV source, with its file id, parse status and when the parse was last asked for. */
+  newestPerCandidate(
+    workspaceId: string,
+    candidateIds: string[],
+  ): Promise<
+    { candidateId: string; sourceId: string; fileId: string | null; status: CvParseStatus; requestedAt: Date }[]
+  >;
   insertItems(items: EvidenceItem[], notes: SourceNote[]): Promise<void>;
   notes(workspaceId: string, sourceId: string): Promise<SourceNote[]>;
 };
 
 export type CvPorts = Pick<Ports, 'authorize' | 'newId' | 'now'> & {
   cvStoreFor(tx: Tx): CvParseStore;
-  /** Writes `CvParseRequested.v1` to the outbox in `tx`. */
-  publishParseRequested(tx: Tx, source: EvidenceSource): Promise<void>;
+  /** Writes `CvParseRequested.v1` to the outbox in `tx`; `dedupeKey` defaults to the source id, a retry passes its own. */
+  publishParseRequested(
+    tx: Tx,
+    source: Pick<EvidenceSource, 'id' | 'workspaceId' | 'candidateId' | 'createdAt'>,
+    dedupeKey?: string,
+  ): Promise<void>;
+};
+
+/**
+ * A candidate's CV for a job, as the ranking and the profile show it (AIV-P1-165): the newest CV's parse status, and
+ * whether mapping the candidate's evidence to the job failed for good. `cv` is null when no CV was added.
+ */
+export type CvStatusView = {
+  candidateId: string;
+  cv: { sourceId: string; fileId: string | null; status: CvParseStatus } | null;
+  mappingFailed: boolean;
 };
 
 export type RequestCvParseInput = {
@@ -123,8 +151,11 @@ export async function queueCvParse(
   return { sourceId: source.id, queued: true };
 }
 
-export function cvParseUseCases(ports: CvPorts) {
-  const { cvStoreFor, authorize } = ports;
+export function cvParseUseCases(
+  ports: CvPorts &
+    Pick<Ports, 'audit' | 'candidateJob' | 'publishMappingRequested'> & { mappingStoreFor(tx: Tx): MappingStore },
+) {
+  const { cvStoreFor, authorize, audit, candidateJob, mappingStoreFor, publishMappingRequested, newId, now } = ports;
   return {
     /** Stores a pending `cv` source for the file and asks the worker to parse it (`evidence.cv.parse`). */
     // shortcut: a member's call is not checked to pass the candidate's own file (files carry no owner link); the
@@ -134,6 +165,73 @@ export function cvParseUseCases(ports: CvPorts) {
       await authorize(ctx, 'candidate.create');
       const { sourceId } = await queueCvParse(ports, ctx.tx, ctx.workspaceId, input);
       return { sourceId };
+    },
+
+    /**
+     * A person asks for a CV that could not be read to be read again (AIV-P1-134): only a `failed` parse, or one pending
+     * past PARSE_GIVE_UP_MS (shown as failed), set back to pending, with `CvParseRequested.v1` for the same source; never
+     * a new source. Audited as the last statement.
+     */
+    async retryCvParse(ctx: WorkspaceContext, sourceId: string): Promise<void> {
+      await authorize(ctx, 'candidate.create');
+      const store = cvStoreFor(ctx.tx);
+      const at = now();
+      const retried = await store.retry(ctx.workspaceId, sourceId, at, new Date(at.getTime() - PARSE_GIVE_UP_MS));
+      if (!retried)
+        throw new EvidenceError((await store.find(ctx.workspaceId, sourceId)) ? 'not_retryable' : 'cv_not_found');
+      await ports.publishParseRequested(
+        ctx.tx,
+        { id: sourceId, workspaceId: ctx.workspaceId, candidateId: retried.candidateId, createdAt: at },
+        `cv-parse:${sourceId}:retry:${newId()}`,
+      );
+      await audit(ctx, {
+        action: 'evidence.retried',
+        subject: { type: 'source', id: sourceId },
+        before: { status: 'failed' },
+        after: { status: 'pending' },
+      });
+    },
+
+    /**
+     * A person asks for a candidate's evidence to be assessed again for the job after mapping failed for good
+     * (AIV-P1-165): ends the failure and queues `EvidenceMappingRequested.v1` for that candidate and job only. Audited
+     * as the last statement.
+     */
+    async retryMapping(ctx: WorkspaceContext, candidateId: string, jobId: string): Promise<void> {
+      await authorize(ctx, 'candidate.create', (await candidateJob(ctx, candidateId, jobId)) ?? undefined);
+      if (!(await mappingStoreFor(ctx.tx).clearFailure(ctx.workspaceId, candidateId, jobId)))
+        throw new EvidenceError('not_retryable');
+      await publishMappingRequested(ctx.tx, { workspaceId: ctx.workspaceId, candidateId, jobId }, now());
+      await audit(ctx, {
+        action: 'evidence.retried',
+        subject: { type: 'candidate', id: candidateId },
+        before: { status: 'mapping_failed' },
+        after: { status: 'pending', jobId },
+      });
+    },
+
+    /** Each of the job's candidates' CV status (AIV-P1-165); a job-scoped member is checked on each candidate's job. */
+    async listCvStatuses(ctx: WorkspaceContext, jobId: string, candidateIds: string[]): Promise<CvStatusView[]> {
+      if (JOB_SCOPED_ROLES.includes(ctx.role))
+        for (const id of candidateIds)
+          await authorize(ctx, 'candidate.view', (await candidateJob(ctx, id, jobId)) ?? undefined);
+      else await authorize(ctx, 'candidate.view');
+      const failed = new Set(await mappingStoreFor(ctx.tx).failed(ctx.workspaceId, jobId, candidateIds));
+      const staleBefore = now().getTime() - PARSE_GIVE_UP_MS;
+      // A parse whose last delivery never reached the handler stays pending for good: past the limit it reads as failed.
+      const cvs = new Map(
+        (await cvStoreFor(ctx.tx).newestPerCandidate(ctx.workspaceId, candidateIds)).map(
+          ({ candidateId, requestedAt, ...cv }) => [
+            candidateId,
+            cv.status === 'pending' && requestedAt.getTime() < staleBefore ? { ...cv, status: 'failed' as const } : cv,
+          ],
+        ),
+      );
+      return candidateIds.map((candidateId) => ({
+        candidateId,
+        cv: cvs.get(candidateId) ?? null,
+        mappingFailed: failed.has(candidateId),
+      }));
     },
 
     async getCvParse(ctx: WorkspaceContext, sourceId: string): Promise<CvParseView | null> {

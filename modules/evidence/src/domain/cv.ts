@@ -10,6 +10,11 @@ import { isGitHubLogin, parseRepositoryUrl } from './repository.ts';
 /** `waiting`: the workspace's daily AI budget is spent and the parse is scheduled for the next UTC day (AIV-P1-089). */
 export const CV_PARSE_STATUSES = ['pending', 'waiting', 'parsed', 'unreadable', 'failed'] as const;
 export type CvParseStatus = (typeof CV_PARSE_STATUSES)[number];
+/**
+ * A parse still `pending` this long after it was asked for lost its last delivery (only the last one writes `failed`),
+ * so it is shown as failed and may be retried (AIV-P1-165). Well past a scan's wait and a delivery's ten tries.
+ */
+export const PARSE_GIVE_UP_MS = 30 * 60_000;
 
 const NOT_A_NAME =
   /\b(curriculum|vitae|resume|résumé|cv|profile|summary|contact|about|personal|experience|education|skills|objective|engineer|developer|manager|designer|analyst|scientist|consultant|architect|director|lead|senior|junior|intern|specialist|officer|united|emirates|arab|saudi|kingdom|dubai|riyadh|abu|dhabi)\b/iu;

@@ -201,14 +201,15 @@ export interface JobsContract {
    * Admins (AIV-P1-056, AIV-P1-097): sets the job's hiring owner (null: none). The new owner gets a grant on the job,
    * the previous one loses theirs (a client grant stays). `reason` goes into the audit entries; `alongside` runs in the
    * transaction before the final `job.hiring_owner_changed` audit write and receives the job with its new owner. Throws
-   * `ForbiddenError`, `JobError('not_found')`, or the workspaces module's `WorkspaceError('owner_role')` when the owner
-   * is not an active hiring owner.
+   * `ForbiddenError`, `JobError('not_found')`, the workspaces module's `WorkspaceError('owner_role')` when the owner
+   * is not an active hiring owner or admin, or, with `onlyIfNone`, `JobError('owner_taken')` when the job already has
+   * one, read under the job's row lock (AIV-P1-165).
    */
   changeHiringOwner(
     ctx: WorkspaceContext,
     jobId: string,
     ownerId: string | null,
-    options?: { reason?: string; alongside?: (changed: Job) => Promise<void> },
+    options?: { reason?: string; alongside?: (changed: Job) => Promise<void>; onlyIfNone?: boolean },
   ): Promise<void>;
   /**
    * Admins and recruiters (AIV-P1-067): moves the job to `stage`; the same stage does nothing. Any stage past "defining

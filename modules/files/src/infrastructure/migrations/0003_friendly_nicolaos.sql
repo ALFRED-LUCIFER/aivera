@@ -1,0 +1,1 @@
+ALTER TABLE "files"."file" ADD COLUMN "file_name" text;

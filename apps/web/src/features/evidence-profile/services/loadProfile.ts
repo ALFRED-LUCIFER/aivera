@@ -1,3 +1,4 @@
+import { UNNAMED_APPLICANT } from '@credalent/candidates';
 import type { EvidenceItemView } from '@credalent/evidence';
 import { JOB_SCOPED_ROLES, type WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
@@ -7,6 +8,7 @@ import { getFiles } from '@/server/files';
 import { getIntake } from '@/server/intake';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
+import { cvView } from '../domain/cvStatus.ts';
 import { evidenceCards, sourceNotes, type SourceNoteView } from '../domain/evidenceCards.ts';
 import { needRows } from '../domain/needs.ts';
 import type { Fit, ProfileData } from '../domain/profile.ts';
@@ -55,12 +57,29 @@ export async function loadProfile(
     const applicant = (await getIntake().listApplicationsForJob(ctx, job)).find((a) => a.personId === candidateId);
     // Not an applicant of this job (or another workspace's person): nothing about them is read.
     if (!applicant) return 'notFound';
-    const base = { jobId: job, jobTitle: found.title, name: applicant.displayName, stage: applicant.stage };
-    const none = { explanation: null, competencies: [], needs: [], notes: [] };
     const ranking = await getAssessment().listRanking(ctx, job);
-    if (ranking.status === 'awaiting_rubric') return { ...base, fit: { status: 'awaiting_rubric' }, ...none };
+    // SAFETY: raw candidate files and the quotes of unusual content are for admins and recruiters (AGENTS.md 1.9); the
+    // evidence and files modules refuse a job-scoped member too.
+    const seesFiles = !JOB_SCOPED_ROLES.includes(ctx.role);
+    // Where the CV is (AIV-P1-165 §7), and its file name while no name is read from it; on screen only (AGENTS.md 1.2).
+    const [status] = await getEvidence().listCvStatuses(ctx, job, [candidateId]);
+    const fileId = applicant.displayName === UNNAMED_APPLICANT && seesFiles ? status?.cv?.fileId : null;
+    const fileName = (fileId && (await getFiles()?.files.fileNames(ctx, [fileId]))?.get(fileId)) || null;
+    const uncitedLinkCount = (await getEvidence().getEvidenceMapping(ctx, candidateId, job))?.uncitedLinkCount ?? 0;
+    const base = {
+      jobId: job,
+      jobTitle: found.title,
+      name: applicant.displayName,
+      stage: applicant.stage,
+      fileName,
+      uncitedLinkCount,
+    };
+    const none = { explanation: null, competencies: [], needs: [], notes: [] };
+    const cv = (rubricApproved: boolean) => (status ? cvView(status, { jobId: job, rubricApproved }, seesFiles) : null);
+    if (ranking.status === 'awaiting_rubric')
+      return { ...base, fit: { status: 'awaiting_rubric' }, ...none, cv: cv(false) };
     const row = ranking.rows.find((r) => r.candidateId === candidateId);
-    if (!row) return { ...base, fit: { status: 'not_scored' }, ...none };
+    if (!row) return { ...base, fit: { status: 'not_scored' }, ...none, cv: cv(true) };
     const latest = await getAssessment().getLatestAssessment(ctx, candidateId, job);
     const explanation = await getAssessment().explainRanking(ctx, candidateId, job);
     // The ranking row is the latest result on the approved version; a result on another version names no claims and
@@ -72,9 +91,6 @@ export async function loadProfile(
       rubric?.id === ranking.rubricVersionId ? rubric.competencies.map((c) => [c.id, c.name] as const) : [],
     );
     const evidence = await getEvidence().listEvidenceForCandidate(ctx, candidateId, job);
-    // SAFETY: raw candidate files and the quotes of unusual content are for admins and recruiters (AGENTS.md 1.9); the
-    // evidence and files modules refuse a job-scoped member too.
-    const seesFiles = !JOB_SCOPED_ROLES.includes(ctx.role);
     const fit: Fit = {
       status: 'scored',
       rank: row.rank,
@@ -93,6 +109,7 @@ export async function loadProfile(
       competencies: evidenceCards(results, names, evidence, seesFiles && getFiles() !== null),
       needs: needRows(results, names),
       notes: seesFiles ? await notesOf(ctx, evidence) : [],
+      cv: null,
     };
   });
   return result && result.value;

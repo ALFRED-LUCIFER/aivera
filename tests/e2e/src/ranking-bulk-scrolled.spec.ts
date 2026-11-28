@@ -258,7 +258,7 @@ for (const action of ['Choose for interview', 'Add to decision pack']) {
     await expect(box(page, ROW_25)).toBeChecked();
     for (const name of [ROW_25, ROW_26, 'Synthetic applicant 27']) {
       const row = table(page).getByRole('row').filter({ hasText: name });
-      await expect(row).toContainText('Not yet scored');
+      await expect(row).toContainText('Not started: no CV was added');
       await expect(row).not.toContainText('Round 1');
       await expect(row).not.toContainText('In shortlist pack');
     }

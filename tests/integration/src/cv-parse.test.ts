@@ -20,7 +20,7 @@ import { createFileReadHandlers, createEvidence, EVIDENCE_QUEUE } from '@credale
 import { FileCleanV1, FileRejectedV1, type FilesContract } from '@credalent/files';
 import { createCleanFileReader, createFiles, type BlobStore } from '@credalent/files/composition';
 import { log } from '@credalent/observability';
-import type { WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
+import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createAiTokenBudget, createWorkspaces } from '@credalent/workspaces/composition';
 import { context, trace } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
@@ -384,7 +384,7 @@ describe("Sara Al Qahtani's synthetic CV, parsed once it passed the malware scan
     expect(record?.emails).toContain('sara.alqahtani@example.com');
     expect(record?.phones).toEqual(['+971500000001']);
     // The run's telemetry and logs carry no contact detail (Sara's CV has both).
-    expect(JSON.stringify(saraTelemetry)).not.toMatch(/@example\.com|\+?971|000 0001|sara|qahtani/i);
+    expect(JSON.stringify(saraTelemetry)).not.toMatch(/@example\.com|\+?971 ?50 ?000|000 0001|sara|qahtani/i);
   });
 
   it('a repository the CV links is queued for a read, with no login and no emails from the CV', async () => {
@@ -470,7 +470,11 @@ describe('Scenario: Extraction that cites text not in the CV is rejected', () =>
     expect(view?.status).toBe('parsed');
     expect(items.map((i) => i.excerpt)).toEqual(['Built a customer support assistant on a retrieval pipeline']);
     expect(warn).toHaveBeenCalledWith(
-      { 'credalent.ai.task': 'evidence.parseCv', 'credalent.ai.citation_failures': 1 },
+      {
+        'credalent.ai.task': 'evidence.parseCv',
+        'credalent.ai.template_version': expect.stringMatching(/^evidence\.parseCv@/),
+        'credalent.ai.citation_failures': 1,
+      },
       'ai citation failure',
     );
     warn.mockRestore();
@@ -541,14 +545,18 @@ describe('A CV whose file was rejected before the parse was asked for', () => {
 
 describe('Scenario: Transient failures retry and then fail visibly', () => {
   // SAFETY: mutation check: removed the own-transaction write of 'failed' in createFileReadHandlers -> this test failed (pending)
+  // SAFETY: mutation check: wrote 'failed' on every failed delivery again (ignored `last`) -> this test failed (AIV-P1-134:
+  // "No retry while a delivery is still due")
   it('Document Intelligence timing out is retried by the worker, then dead-lettered, and the source shows "We could not read this CV. Try again."', async () => {
     const { candidateId, sourceId, view, settled } = await parse('Mark Reyes', 'unavailable', answer({}));
-    // The first delivery backs off for a redelivery; the parse already shows the failure.
+    // The first delivery backs off for a redelivery; while one is still due the parse reads "Reading the CV…" and
+    // offers no retry (AIV-P1-134).
     expect(settled).toContain('abandon');
-    expect(view?.status).toBe('failed');
+    expect(view?.status).toBe('pending');
     expect(en.evidence.cvStatus['failed']).toBe('We could not read this CV. Try again.');
     const parseRequest = lastSent.filter((e) => e.type === CvParseRequestedV1.type);
     expect(await consume(parseRequest, answer({}), 2)).toEqual(['abandon']);
+    expect((await read(candidateId, sourceId)).view?.status).toBe('pending');
     // The consumer's last delivery (AIV-P0-015 table) is dead-lettered; the source still shows the failure.
     expect(await consume(parseRequest, answer({}), MAX_DELIVERIES)).toEqual(['deadLetter: max deliveries']);
     // One call per delivery; the file's FileClean.v1, relayed in the same pass, may run the failed parse once more.
@@ -564,7 +572,7 @@ describe('Scenario: Transient failures retry and then fail visibly', () => {
     const { candidateId, fileId, sourceId } = await parse('Imran Qureshi', 'unavailable', statement, { clean: false });
     expect(await as(w1, (ctx) => files.markCleanWithoutScan(ctx, fileId))).toBe('clean');
     expect(await relayAndConsume(statement)).toContain('abandon');
-    expect((await read(candidateId, sourceId)).view?.status).toBe('failed');
+    expect((await read(candidateId, sourceId)).view?.status).toBe('pending');
     const fileClean = lastSent.filter((e) => e.type === FileCleanV1.type);
     expect(await consume(fileClean, statement, 2)).toEqual(['abandon']);
     const marker = [...layouts.entries()].findLast(([, v]) => v === 'unavailable')?.[0] ?? '';
@@ -575,13 +583,13 @@ describe('Scenario: Transient failures retry and then fail visibly', () => {
     expect(after.items.map((i) => i.excerpt)).toEqual(['Built the KYC document reader']);
   });
 
-  it('a failed parse runs again on a redelivery once the service answers', async () => {
+  it('a parse that failed on a delivery runs again on the redelivery once the service answers', async () => {
     const { candidateId, sourceId, view } = await parse(
       'Hala Saleh',
       'unavailable',
       answer({ statements: ['Built the claims triage model'] }),
     );
-    expect(view?.status).toBe('failed');
+    expect(view?.status).toBe('pending');
     const marker = [...layouts.entries()].findLast(([, v]) => v === 'unavailable')?.[0] ?? '';
     layouts.set(marker, layoutOf([['Hala Saleh', 'Built the claims triage model.']]));
     const parseRequest = lastSent.filter((e) => e.type === CvParseRequestedV1.type);
@@ -591,6 +599,133 @@ describe('Scenario: Transient failures retry and then fail visibly', () => {
     const after = await read(candidateId, sourceId);
     expect(after.view?.status).toBe('parsed');
     expect(after.items.map((i) => i.excerpt)).toEqual(['Built the claims triage model']);
+  });
+});
+
+const HASSAN = '0190d4a2-0000-7000-8000-0000000004a5';
+const LINA = '0190d4a2-0000-7000-8000-0000000011aa';
+const asUser = <T>(userId: string, workspaceId: string, fn: (ctx: WorkspaceContext) => Promise<T>) =>
+  workspaces.withWorkspace({ userId }, workspaceId, fn);
+const parseRequests = (sourceId: string) =>
+  withWorkspace(app, w1, async (tx) => [
+    ...(await tx.execute(
+      sql`select id, payload from evidence.outbox where type = 'CvParseRequested.v1' and payload->>'sourceId' = ${sourceId}`,
+    )),
+  ]);
+const cvSources = (candidateId: string) =>
+  withWorkspace(app, w1, async (tx) => [
+    ...(await tx.execute(sql`select id from evidence.source where kind = 'cv' and candidate_id = ${candidateId}`)),
+  ]);
+describe('Feature: Retry a CV that failed to parse (AIV-P1-134)', () => {
+  /** Maria's CV, failed on every delivery and dead-lettered: what "Try again" is offered for. */
+  let maria: { candidateId: string; sourceId: string };
+
+  beforeAll(async () => {
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`insert into workspaces.member (workspace_id, user_id, role, status)
+        values (${w1}, ${HASSAN}, 'hiring_owner', 'active'), (${w1}, ${LINA}, 'interviewer', 'active')`),
+    );
+    const parsed = await parse('Maria Santos', 'unavailable', answer({ statements: ['Built a document assistant'] }));
+    const parseRequest = lastSent.filter((e) => e.type === CvParseRequestedV1.type);
+    expect(await consume(parseRequest, answer({}), MAX_DELIVERIES)).toEqual(['deadLetter: max deliveries']);
+    expect((await read(parsed.candidateId, parsed.sourceId)).view?.status).toBe('failed');
+    maria = parsed;
+  });
+
+  // SAFETY: mutation check: removed authorize from retryCvParse -> both rows failed (resolved)
+  it.each([
+    ['Hassan Barakat, the hiring owner', HASSAN],
+    ['an interviewer', LINA],
+  ])('Scenario: %s cannot retry, and nothing is queued', async (_who, userId) => {
+    const before = await parseRequests(maria.sourceId);
+    await expect(asUser(userId, w1, (ctx) => evidence.retryCvParse(ctx, maria.sourceId))).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    expect(await parseRequests(maria.sourceId)).toHaveLength(before.length);
+  });
+
+  it('Scenario: an admin of another workspace gets not found, and nothing is queued', async () => {
+    const before = await parseRequests(maria.sourceId);
+    await expect(as(w2, (ctx) => evidence.retryCvParse(ctx, maria.sourceId))).rejects.toMatchObject({
+      code: 'cv_not_found',
+    });
+    expect(await parseRequests(maria.sourceId)).toHaveLength(before.length);
+  });
+
+  // SAFETY: mutation check: set the cv_parse row-level security policy to true -> this test failed (w2 reset w1's parse)
+  it("Scenario: another workspace's CV is out of reach in the database too", async () => {
+    const reset = await withWorkspace(app, w2, async (tx) => [
+      ...(await tx.execute(
+        sql`update evidence.cv_parse set status = 'pending' where source_id = ${maria.sourceId} and status = 'failed' returning source_id`,
+      )),
+    ]);
+    expect(reset).toEqual([]);
+    expect((await read(maria.candidateId, maria.sourceId)).view?.status).toBe('failed');
+  });
+
+  // SAFETY: mutation check: published the retry with the source's first dedupe key -> this test failed (no new message)
+  // SAFETY: mutation check: dropped the status guard from cvParseStore.retry -> this test failed (the second retry queued)
+  it('Scenario: Retrying reads the same source again, audited; a second retry queues nothing; the parse then succeeds', async () => {
+    const before = await parseRequests(maria.sourceId);
+    await as(w1, (ctx) => evidence.retryCvParse(ctx, maria.sourceId));
+    expect((await read(maria.candidateId, maria.sourceId)).view?.status).toBe('pending');
+    const after = await parseRequests(maria.sourceId);
+    expect(after).toHaveLength(before.length + 1);
+    // Opaque ids only in the message, and the same source: no new CV source.
+    expect(after.at(-1)?.['payload']).toEqual({ candidateId: maria.candidateId, sourceId: maria.sourceId });
+    expect(await cvSources(maria.candidateId)).toHaveLength(1);
+    const [entry] = await withWorkspace(app, w1, async (tx) => [
+      ...(await tx.execute(
+        sql`select actor_id, after from audit.entry where action = 'evidence.retried' and subject_id = ${maria.sourceId}`,
+      )),
+    ]);
+    expect(entry).toMatchObject({ actor_id: ALEX, after: { status: 'pending' } });
+
+    await expect(as(w1, (ctx) => evidence.retryCvParse(ctx, maria.sourceId))).rejects.toMatchObject({
+      code: 'not_retryable',
+    });
+    expect(await parseRequests(maria.sourceId)).toHaveLength(before.length + 1);
+
+    // The service answers now: the retried parse stores her statement as a claim citing the CV.
+    const marker = [...layouts.entries()].findLast(([, v]) => v === 'unavailable')?.[0] ?? '';
+    layouts.set(marker, layoutOf([['Maria Santos', 'Built a document assistant.']]));
+    expect(await relayAndConsume(answer({ statements: ['Built a document assistant'] }))).toContain('complete');
+    const done = await read(maria.candidateId, maria.sourceId);
+    expect(done.view?.status).toBe('parsed');
+    expect(done.items.map((i) => [i.excerpt, i.provenance])).toEqual([['Built a document assistant', 'claim']]);
+    // Only a failed CV is retried: a parsed one is refused, and nothing is queued.
+    await expect(as(w1, (ctx) => evidence.retryCvParse(ctx, maria.sourceId))).rejects.toMatchObject({
+      code: 'not_retryable',
+    });
+  });
+
+  // SAFETY: mutation check: listCvStatuses returned the stored status again -> this test failed (pending, not failed)
+  // SAFETY: mutation check: cvParseStore.retry accepted only 'failed' again -> this test failed (not_retryable)
+  it('Scenario: a parse whose last delivery never arrived reads as failed after 30 minutes, and "Try again" works', async () => {
+    // Never scanned, so nothing ever runs it: the shape a lost last delivery leaves.
+    const { candidateId, sourceId } = await parse('Omar Haddad', [['Omar Haddad']], answer({}), { clean: false });
+    const status = async () => (await as(w1, (ctx) => evidence.listCvStatuses(ctx, JOB, [candidateId])))[0]?.cv?.status;
+    const askedAgo = (minutes: number) =>
+      withWorkspace(app, w1, (tx) =>
+        tx.execute(sql`update evidence.cv_parse set requested_at = ${new Date(NOW.getTime() - minutes * 60_000).toISOString()}
+          where source_id = ${sourceId}`),
+      );
+    await askedAgo(29);
+    expect(await status()).toBe('pending');
+    await expect(as(w1, (ctx) => evidence.retryCvParse(ctx, sourceId))).rejects.toMatchObject({
+      code: 'not_retryable',
+    });
+
+    await askedAgo(31);
+    expect(await status()).toBe('failed');
+    const before = await parseRequests(sourceId);
+    await as(w1, (ctx) => evidence.retryCvParse(ctx, sourceId));
+    expect(await parseRequests(sourceId)).toHaveLength(before.length + 1);
+    // Asked for again now, so it reads "Reading the CV…" for another 30 minutes, and a second retry queues nothing.
+    expect(await status()).toBe('pending');
+    await expect(as(w1, (ctx) => evidence.retryCvParse(ctx, sourceId))).rejects.toMatchObject({
+      code: 'not_retryable',
+    });
   });
 });
 

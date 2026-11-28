@@ -5,9 +5,9 @@ import { assistantAnswerSchema } from './assistant.answer.ts';
 import { compareTradeoffsSchema } from './assessment.compareTradeoffs.ts';
 import { explainRankingSchema } from './assessment.explainRanking.ts';
 import { asksProtectedTrait, suggestQuestionsSchema } from './assessment.suggestQuestions.ts';
-import { schemaRules } from '../citations.ts';
+import { checkOutput, SchemaMismatch, schemaRules } from '../citations.ts';
 import { compareExcerptsSchema } from './evidence.compareExcerpts.ts';
-import { MAP_TO_COMPETENCY_SYSTEM, mapToCompetencySchema } from './evidence.mapToCompetency.ts';
+import { MAP_TO_COMPETENCY_SYSTEM, mapToCompetencyRequest, mapToCompetencySchema } from './evidence.mapToCompetency.ts';
 import { parseCvSchema } from './evidence.parseCv.ts';
 import { mapSummarySchema } from './interviews.mapSummary.ts';
 import { summariseMemberSchema } from './decisions.summariseMember.ts';
@@ -99,6 +99,42 @@ describe('evidence.mapToCompetency prompt (AIV-P2-080)', () => {
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('a portal submission): "medium", label "submitted"');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('its name alone is never evidence of a competency');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('A quote never contains a placeholder');
+  });
+});
+
+// AIV-P1-156: one link quoting text not in its source no longer rejects every other link of the answer.
+const linkOf = (quote: string, level = 2) => ({
+  competencyId: 'c-qa',
+  strength: 'supporting',
+  label: 'claim',
+  level,
+  limit: 'On the CV only.',
+  citations: [{ sourceId: 'S1', quote }],
+});
+describe('evidence.mapToCompetency drops an uncited link only (AIV-P1-156)', () => {
+  const cv = { id: 'cv-1', kind: 'cv' as const, text: 'Wrote the Playwright suite.\nRan it in CI on every merge.' };
+  const check = (links: object[]) => {
+    let dropped = 0;
+    const out = checkOutput(
+      'evidence.mapToCompetency',
+      JSON.stringify({ links, changes: [] }),
+      mapToCompetencySchema,
+      [cv],
+      mapToCompetencyRequest([], [cv]).dropInvalidCitations ? () => dropped++ : undefined,
+    );
+    return { quotes: out.links.map((l) => l.citations[0]?.quote), dropped };
+  };
+
+  // SAFETY: mutation check: set dropInvalidCitations false in mapToCompetencyRequest -> this test failed
+  it('keeps the links whose quotes are in the CV and counts the one joined from two places, never re-quoting it', () => {
+    expect(check([linkOf('Wrote the Playwright suite'), linkOf('Wrote the Playwright suite in CI')])).toEqual({
+      quotes: ['Wrote the Playwright suite'],
+      dropped: 1,
+    });
+  });
+
+  it('a schema failure still rejects the whole answer', () => {
+    expect(() => check([linkOf('Wrote the Playwright suite'), linkOf('Ran it in CI', 7)])).toThrow(SchemaMismatch);
   });
 });
 

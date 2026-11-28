@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from '@credalent/i18n/react';
+import { useCvRetryController } from '@/features/evidence-profile';
 import { RankingTable } from '@/features/ranking/components/RankingTable.tsx';
 import type { RankingData } from '@/features/ranking/domain/ranking.ts';
 import { useChooseController } from '@/features/ranking/hooks/useChooseController.ts';
@@ -9,11 +10,12 @@ import { usePackController } from '@/features/ranking/hooks/usePackController.ts
 import { useRankingController } from '@/features/ranking/hooks/useRankingController.ts';
 
 export function Ranking(data: RankingData) {
-  const t = useTranslations('ranking.choose');
+  const t = useTranslations('ranking');
   const view = useRankingController(data);
   const clearSelection = () => view.selection?.onSelectedIdsChange([]);
-  const choose = useChooseController(data, t('defaultReason'), clearSelection);
-  const pack = usePackController(data, clearSelection);
+  const choose = useChooseController(data, t('choose.defaultReason'), clearSelection);
+  const pack = usePackController(data, t('pack.defaultReason'), clearSelection);
+  const retry = useCvRetryController();
   return (
     <RankingTable
       view={view}
@@ -21,6 +23,8 @@ export function Ranking(data: RankingData) {
       // Each offered only when the server gave this member the action (admins and recruiters, AGENTS.md 1.3).
       choose={data.bulkActions.includes('chooseForInterview') ? choose : undefined}
       pack={data.bulkActions.includes('addToPack') ? pack : undefined}
+      // A row offers "Try again" only where the server put a retry on its CV (admins and recruiters).
+      retry={retry}
     />
   );
 }

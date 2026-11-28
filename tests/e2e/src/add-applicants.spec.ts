@@ -78,8 +78,10 @@ test('Scenario: The add button waits for the confirmation: an unticked box, with
   await expect(add).toHaveAccessibleDescription('Choose where they came from to add them.');
   await dialog.getByRole('radio', { name: 'Referral' }).check();
   await expect(add).toHaveAccessibleDescription('Confirm the line above to add these CVs.');
-  // Source radios, Choose CV files, then the box: Space ticks it and the hint goes.
+  // Source radios, Choose CV files, "From a CSV or Excel file" (AIV-P1-165), then the box: Space ticks it and the hint goes.
   await dialog.getByRole('button', { name: 'Choose CV files' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('link', { name: 'From a CSV or Excel file' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(box).toBeFocused();
   await page.keyboard.press('Space');
@@ -130,7 +132,7 @@ test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
     /^Select Arjun Menon2Arjun MenonRound 2 on \d{1,2} \w{3}64up to 76 if claims hold3 of 6HighRetrieval and evaluation/,
   );
   await expect(rows.nth(2)).toHaveText(/^Select Tarek Mansour3Tarek MansourNew63up to 80 if claims hold/);
-  await expect(page.getByText(`Showing 7 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
+  await expect(page.getByText(`8 of 9 assessed. ${FAIRNESS}`)).toBeVisible();
 });
 
 test('Scenario: Exact duplicates merge automatically: the row shows "1 duplicate merged", and undo previews first', async ({
@@ -160,8 +162,8 @@ test('Scenario: Show all', async ({ page }) => {
   await expect(rows).toHaveCount(9);
   await expect(rows.nth(7)).toHaveText(/^Select Maria Santos8Maria SantosNew31up to 69 if claims hold/);
   // Not assessed yet and still listed: nobody drops out of the ranking (AGENTS.md 1.5).
-  await expect(rows.nth(8)).toHaveText(/^Select Youssef AzizYoussef AzizNewNot yet scoredNot yet available/);
-  await expect(page.getByText(`Showing 8 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
+  await expect(rows.nth(8)).toHaveText(/^Select Youssef AzizYoussef AzizNewNot started: no CV was added/);
+  await expect(page.getByText(`8 of 9 assessed. ${FAIRNESS}`)).toBeVisible();
 });
 
 test('Scenario: Filter by missing evidence', async ({ page }) => {
@@ -276,3 +278,14 @@ for (const theme of themes) {
     await expectAccessible(page);
   });
 }
+
+// AIV-P1-165 §6: Add CVs is the one entry; the spreadsheet import (AIV-P1-103) is offered from it, and email is not.
+test('Scenario: CSV or Excel import is reachable from Add CVs', async ({ page }) => {
+  await signIn(page, { email: AP });
+  const dialog = await openDialog(page);
+  await expect(dialog.getByRole('link', { name: /email/i })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: /email/i })).toHaveCount(0);
+  await dialog.getByRole('link', { name: 'From a CSV or Excel file' }).click();
+  await expect(page).toHaveURL(/\/app\/jobs\/[0-9a-f-]{36}\/import\/sheet$/);
+  await expect(page.getByRole('heading', { name: 'Import from a CSV or Excel file' })).toBeVisible();
+});

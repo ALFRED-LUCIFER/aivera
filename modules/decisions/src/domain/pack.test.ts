@@ -17,6 +17,15 @@ describe('mayDecide: only the authorised hiring owner decides', () => {
 
   it('a named owner who no longer holds the hiring owner role may not', () => {
     expect(mayDecide({ ...faisal, role: 'recruiter' }, { hiringOwnerUserId: FAISAL })).toBe(false);
+    expect(mayDecide({ ...faisal, role: 'interviewer' }, { hiringOwnerUserId: FAISAL })).toBe(false);
+  });
+
+  // SAFETY: mutation check: dropped `job.hiringOwnerUserId === user.userId` -> the unnamed admin case failed (true)
+  it('an admin named as the hiring owner may (owner decision (b)); an admin not named on the job may not', () => {
+    const ayesha = { userId: 'u-ayesha', role: 'admin' };
+    expect(mayDecide(ayesha, { hiringOwnerUserId: 'u-ayesha' })).toBe(true);
+    expect(mayDecide(ayesha, { hiringOwnerUserId: FAISAL })).toBe(false);
+    expect(mayDecide(ayesha, { hiringOwnerUserId: null })).toBe(false);
   });
 });
 

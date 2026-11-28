@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadProfile } from './loadProfile.ts';
 
 // AIV-P1-043, AIV-P1-045: the profile's read, with the workspace context, jobs, intake, assessment, evidence and files
@@ -18,6 +18,9 @@ const fake = vi.hoisted(() => ({
   rubric: vi.fn(),
   evidence: vi.fn(),
   cvParse: vi.fn(),
+  statuses: vi.fn(),
+  mapping: vi.fn(),
+  fileNames: vi.fn(),
   storage: true,
 }));
 vi.mock('@/server/workspace', () => ({
@@ -28,9 +31,14 @@ vi.mock('@/server/jobs', () => ({
   getApprovedRubricReads: () => ({ approvedRubric: fake.rubric }),
 }));
 vi.mock('@/server/evidence', () => ({
-  getEvidence: () => ({ listEvidenceForCandidate: fake.evidence, getCvParse: fake.cvParse }),
+  getEvidence: () => ({
+    listEvidenceForCandidate: fake.evidence,
+    getCvParse: fake.cvParse,
+    listCvStatuses: fake.statuses,
+    getEvidenceMapping: fake.mapping,
+  }),
 }));
-vi.mock('@/server/files', () => ({ getFiles: () => (fake.storage ? {} : null) }));
+vi.mock('@/server/files', () => ({ getFiles: () => (fake.storage ? { files: { fileNames: fake.fileNames } } : null) }));
 vi.mock('@/server/intake', () => ({ getIntake: () => ({ listApplicationsForJob: fake.list }) }));
 vi.mock('@/server/assessment', () => ({
   getAssessment: () => ({ listRanking: fake.ranking, getLatestAssessment: fake.latest, explainRanking: fake.explain }),
@@ -92,10 +100,72 @@ const assessed = () => {
   fake.explain.mockResolvedValue({ resultId: 'r1', source: 'template', statements });
 };
 
+beforeEach(() => {
+  fake.statuses.mockResolvedValue([]);
+  fake.mapping.mockResolvedValue(null);
+  fake.fileNames.mockResolvedValue(new Map());
+});
 afterEach(() => {
   vi.resetAllMocks();
   ctx.role = 'recruiter';
   fake.storage = true;
+});
+
+describe('loadProfile: the CV while it is read (AIV-P1-165 §7, §11)', () => {
+  const UNNAMED = { ...sara, displayName: 'Unnamed applicant' };
+  const reading = {
+    candidateId: SARA,
+    cv: { sourceId: 's-cv', fileId: FILE, status: 'pending' },
+    mappingFailed: false,
+  };
+  const unscored = () => {
+    fake.job.mockResolvedValue({ id: JOB, title: 'Senior AI Engineer' });
+    fake.list.mockResolvedValue([UNNAMED]);
+    fake.ranking.mockResolvedValue({ status: 'ranked', rubricVersionId: VERSION, rows: [] });
+    fake.statuses.mockResolvedValue([reading]);
+    fake.fileNames.mockResolvedValue(new Map([[FILE, 'cv-0142.pdf']]));
+  };
+
+  it('an unnamed applicant shows the CV file name and "Reading the CV…", never "Unnamed applicant"', async () => {
+    unscored();
+    expect(await loadProfile(SARA, JOB)).toMatchObject({
+      name: 'Unnamed applicant',
+      fileName: 'cv-0142.pdf',
+      fit: { status: 'not_scored' },
+      cv: { state: 'reading', retry: null },
+    });
+    expect(fake.statuses).toHaveBeenCalledWith(ctx, JOB, [SARA]);
+    expect(fake.fileNames).toHaveBeenCalledWith(ctx, [FILE]);
+  });
+
+  it('a failed CV offers "Try again" on its source to a recruiter', async () => {
+    unscored();
+    fake.statuses.mockResolvedValue([{ ...reading, cv: { ...reading.cv, status: 'failed' } }]);
+    expect(await loadProfile(SARA, JOB)).toMatchObject({
+      cv: { state: 'failed', retry: { kind: 'cv', sourceId: 's-cv' } },
+    });
+  });
+
+  it.each(['hiring_owner', 'interviewer'])(
+    'a %s sees the status, with no retry and no file name read',
+    async (role) => {
+      unscored();
+      ctx.role = role;
+      fake.statuses.mockResolvedValue([{ ...reading, mappingFailed: true }]);
+      expect(await loadProfile(SARA, JOB)).toMatchObject({
+        fileName: null,
+        cv: { state: 'couldNotAssess', retry: null },
+      });
+      expect(fake.fileNames).not.toHaveBeenCalled();
+    },
+  );
+
+  it("the newest mapping run's uncited line count reaches the page (AIV-P1-156)", async () => {
+    unscored();
+    fake.mapping.mockResolvedValue({ uncitedLinkCount: 2 });
+    expect(await loadProfile(SARA, JOB)).toMatchObject({ uncitedLinkCount: 2 });
+    expect(fake.mapping).toHaveBeenCalledWith(ctx, SARA, JOB);
+  });
 });
 
 describe('loadProfile', () => {
@@ -121,6 +191,9 @@ describe('loadProfile', () => {
       // AIV-P1-044: a row only for the competency the approved rubric names.
       needs: [{ competencyId: 'llm', name: 'LLM systems in production', proven: 5, claimed: 5, needed: 3 }],
       notes: [{ key: 's-cv:0', citation: 'CV, page 1', excerpt: NOTE, hidden: 0 }],
+      cv: null,
+      fileName: null,
+      uncitedLinkCount: 0,
     });
     expect(fake.explain).toHaveBeenCalledWith(ctx, SARA, JOB);
     expect(fake.evidence).toHaveBeenCalledWith(ctx, SARA, JOB);

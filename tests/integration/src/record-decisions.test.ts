@@ -234,6 +234,7 @@ beforeAll(async () => {
   huda = await applyAndAssess('Huda Al Mansoori');
   ({ packId } = await as(ZAID, w1, (ctx) =>
     decisions.createPack(ctx, {
+      reason: 'Shortlist for the hiring decision',
       jobId,
       name: 'Round 2 shortlist: Senior AI Engineer',
       members: [{ candidateId: sara }, { candidateId: arjun }, { candidateId: huda }],
@@ -262,6 +263,8 @@ describe('Scenario: Only the authorised hiring owner', () => {
   it('a recruiter and an interviewer get 403, a hiring owner not granted the job and another workspace find no pack; nothing is stored', async () => {
     const input = { packId, decisions: choices.decisions };
     await expect(as(ZAID, w1, (ctx) => decisions.recordDecisions(ctx, input))).rejects.toThrow(ForbiddenError);
+    // Owner decision (b), AIV-P1-165: an admin may decide only when named as the job's hiring owner; Alex is not.
+    await expect(as(ALEX, w1, (ctx) => decisions.recordDecisions(ctx, input))).rejects.toThrow(ForbiddenError);
     await expect(as(LINA, w1, (ctx) => decisions.recordDecisions(ctx, input))).rejects.toThrow(ForbiddenError);
     await expect(as(FAISAL, w1, (ctx) => decisions.recordDecisions(ctx, input))).rejects.toMatchObject({
       code: 'pack_not_found',
@@ -275,6 +278,7 @@ describe('Scenario: Only the authorised hiring owner', () => {
     ]).toEqual([0, 0]);
     // The page's read-only controls: only the hiring owner named on the job may decide.
     expect((await as(ZAID, w1, (ctx) => decisions.getPack(ctx, packId)))?.mayDecide).toBe(false);
+    expect((await as(ALEX, w1, (ctx) => decisions.getPack(ctx, packId)))?.mayDecide).toBe(false);
     expect((await as(HASSAN, w1, (ctx) => decisions.getPack(ctx, packId)))?.mayDecide).toBe(true);
   });
 });
@@ -341,7 +345,12 @@ describe('Scenario: Not advanced candidates stay visible', () => {
     expect(ranking.status === 'ranked' && ranking.rows.map((r) => r.candidateId)).toContain(arjun);
     expect(await stageOf(arjun)).toBe('not_advanced');
     const later = await as(ZAID, w1, (ctx) =>
-      decisions.createPack(ctx, { jobId, name: 'Round 2 reserve', members: [{ candidateId: arjun }] }),
+      decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
+        jobId,
+        name: 'Round 2 reserve',
+        members: [{ candidateId: arjun }],
+      }),
     );
     expect(
       (await as(ZAID, w1, (ctx) => decisions.getPack(ctx, later.packId)))?.members.map((m) => m.candidateId),

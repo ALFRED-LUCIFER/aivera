@@ -49,6 +49,8 @@ export const ACTIONS = [
   'application.stage_changed',
   'pack.created',
   'pack.member_added',
+  // AIV-P1-165: a person asked for a failed CV read or evidence mapping to run again.
+  'evidence.retried',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

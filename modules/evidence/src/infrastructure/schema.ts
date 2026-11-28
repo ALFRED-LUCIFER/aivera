@@ -108,13 +108,36 @@ export const mapping = evidence
         .array()
         .notNull()
         .default(sql`'{}'`),
+      // Links dropped because their quote is not in their source (AIV-P1-156); a count, never the quote.
+      uncitedLinkCount: integer('uncited_link_count').notNull().default(0),
       createdAt: timestamp('created_at', tz).notNull(),
     },
     (t) => [
       unique('mapping_workspace_id_key').on(t.workspaceId, t.id),
       index('mapping_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId, t.createdAt),
       check('mapping_changes_check', sql`jsonb_array_length(${t.changes}) <= 3`),
+      check('mapping_uncited_link_count_check', sql`${t.uncitedLinkCount} >= 0`),
       tenantPolicy('mapping_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
+// A candidate's evidence mapping for a job that failed for good (AIV-P1-165): an answer no redelivery can fix, or the
+// last delivery. Written in its own transaction, since the delivery's rolls back; a later run's success deletes it, and
+// so does a person's "Try again". The recruiter sees "Could not assess" until then.
+export const mappingFailure = evidence
+  .table(
+    'mapping_failure',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      // The jobs module's job id: opaque, no foreign key across modules.
+      jobId: uuid('job_id').notNull(),
+      failedAt: timestamp('failed_at', tz).notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'mapping_failure_pkey', columns: [t.workspaceId, t.candidateId, t.jobId] }),
+      tenantPolicy('mapping_failure_tenant_isolation', t.workspaceId),
     ],
   )
   .enableRLS();
@@ -565,6 +588,8 @@ export const cvParse = evidence
       sourceId: uuid('source_id').notNull(),
       candidateId: uuid('candidate_id').notNull(),
       status: text({ enum: CV_PARSE_STATUSES }).notNull(),
+      // When the parse was last asked for (its source's creation or a retry); pending past PARSE_GIVE_UP_MS reads failed.
+      requestedAt: timestamp('requested_at', tz).notNull().defaultNow(),
     },
     (t) => [
       primaryKey({ name: 'cv_parse_pkey', columns: [t.workspaceId, t.sourceId] }),

@@ -1,3 +1,4 @@
+import { SpanKind } from '@opentelemetry/api';
 import type { LogRecordProcessor, SdkLogRecord } from '@opentelemetry/sdk-logs';
 import type { ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base';
 
@@ -50,6 +51,8 @@ const ALLOWED = [
   // The prompt template's id and version, pattern-checked by the client (`jobs.draftCompetencies@1+citations@2+untrusted@1`); not
   // named prompt_*, which the personal-data words redact (AIV-P0-028).
   'credalent.ai.template_version',
+  // Statements an extraction or mapping answer lost because their quote is not in their source (AIV-P1-156): a count.
+  'credalent.ai.citation_failures',
   // Which schema rules a rejected answer broke (AIV-P1-082): `path:code` pairs, pattern-checked by packages/ai
   // citations.ts `schemaRules`; trusted only because of that check.
   'credalent.ai.schema_rules',
@@ -64,6 +67,8 @@ const ALLOWED = [
   'credalent.evidence.links',
   'credalent.evidence.gaps',
   'credalent.evidence.uncited_changes',
+  // Links the citation contract dropped from the run's answer (AIV-P1-156): a count, never the quote.
+  'credalent.evidence.uncited_links',
   // Contradictions the numeric pre-check found in the run (AIV-P1-029).
   'credalent.evidence.contradictions',
   // Pairs sent to the AI comparison, flagged by it, and left uncompared by a rejected answer (AIV-P1-078).
@@ -188,6 +193,17 @@ export function redact(record: Record<string, unknown>, parent = ''): void {
   }
 }
 
+// An outbound call goes to someone else's URL, whose path can name a person (a CV link from an imported sheet,
+// AIV-P1-103, or a candidate's portfolio page): a client span keeps the origin only. Inbound paths carry opaque ids.
+const originOnly = (attributes: Record<string, unknown>) => {
+  for (const key of ['url.full', 'http.url']) {
+    const value = attributes[key];
+    if (typeof value !== 'string') continue;
+    attributes[key] = URL.canParse(value) ? new URL(value).origin : REDACTED;
+  }
+  for (const key of ['url.path', 'url.template', 'http.target', 'http.route']) delete attributes[key];
+};
+
 const done = async () => {};
 // Names are read-only in the SDK's types but plain properties on the ended span; the exporter reads them as is.
 const rename = (named: { name: string }) => ((named as { name: string }).name = stripQuery(named.name));
@@ -197,6 +213,7 @@ export const redactingSpanProcessor: SpanProcessor = {
   onStart: () => {},
   onEnd: (span: ReadableSpan) => {
     rename(span);
+    if (span.kind === SpanKind.CLIENT) originOnly(span.attributes as Record<string, unknown>);
     redact(span.attributes as Record<string, unknown>);
     for (const event of span.events) {
       rename(event);

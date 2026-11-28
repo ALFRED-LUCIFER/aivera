@@ -193,7 +193,8 @@ beforeAll(async () => {
   execFileSync(process.execPath, [dbCli, 'migrate'], {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
-  app = createDb(urlFor('aivera_app'), { max: 1 });
+  // Two: a mapping that fails for good is recorded on its own connection while the delivery holds one (AIV-P1-165).
+  app = createDb(urlFor('aivera_app'), { max: 2 });
   audit = createAudit(app);
   workspaces = createWorkspaces(app, audit);
   candidates = createCandidates(workspaces, () => NOW);
@@ -212,6 +213,7 @@ beforeAll(async () => {
   );
   const fake = fakeProvider();
   handlers = createEvidenceMappingHandlers({
+    db: app,
     ai: createAiClient({
       provider: {
         ...fake,

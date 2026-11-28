@@ -15,6 +15,20 @@
       "when": 1795163034828,
       "tag": "0001_force_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795839969250,
+      "tag": "0002_odd_starjammers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795843812400,
+      "tag": "0003_friendly_nicolaos",
+      "breakpoints": true
     }
   ]
 }

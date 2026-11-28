@@ -7,7 +7,7 @@ import { AiUnavailable, createAiClient, fakeProvider, MAP_TO_COMPETENCY_VERSION,
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates, readPersonAsSystem } from '@credalent/candidates/composition';
-import { createDb, withWorkspace, type Db } from '@credalent/db';
+import { createDb, withWorkspace, type Db, type Tx } from '@credalent/db';
 import { newEnvelope, type Envelope } from '@credalent/db/outbox';
 import { PermanentFailure, type Handler } from '@credalent/db/consumer';
 import {
@@ -21,7 +21,7 @@ import { RubricApprovedV1 } from '@credalent/jobs';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import type { MockLanguageModelV4 } from 'ai/test';
-import { sql } from 'drizzle-orm';
+import { getTableName, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P1-027 acceptance scenarios: the worker job `evidence.mapping` against real PostgreSQL as aivera_app, with the
@@ -115,7 +115,8 @@ beforeAll(async () => {
   execFileSync(process.execPath, [dbCli, 'migrate'], {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
-  app = createDb(urlFor('aivera_app'), { max: 1 });
+  // Two: a mapping that fails for good is recorded on its own connection while the delivery holds one (AIV-P1-165).
+  app = createDb(urlFor('aivera_app'), { max: 2 });
   const audit = createAudit(app);
   workspaces = createWorkspaces(app, audit);
   candidates = createCandidates(workspaces, () => NOW);
@@ -128,6 +129,7 @@ beforeAll(async () => {
     );
   const fake = fakeProvider();
   handlers = createEvidenceMappingHandlers({
+    db: app,
     ai: createAiClient({
       // Read per call, so each test's answer and failures apply.
       provider: { ...fake, languageModel: (d) => fakeProvider({ completion, failures }).languageModel(d) },
@@ -552,6 +554,7 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
     const rescheduled: Envelope[] = [];
     const delays: number[] = [];
     const ordered = createEvidenceMappingHandlers({
+      db: app,
       ai: createAiClient({
         provider: gated,
         budget: { spentToday: async () => ({ spent: 0, limit: 10_000_000 }), add: async () => {} },
@@ -632,6 +635,224 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
     );
     expect(cited.map((i) => i.sourceId)).not.toContain(long);
     expect(cited).toHaveLength(1);
+  });
+});
+
+const linkTo = (competencyId: string, quote: string) => ({
+  competencyId,
+  strength: 'supporting',
+  label: 'claim',
+  level: 2,
+  limit: 'On the CV only.',
+  citations: cite('S1', quote),
+});
+// One CV laid out one short fragment per line, as a PDF extraction gives it.
+const recordFragments = (candidateId: string) =>
+  as(ALEX, w1, (ctx) =>
+    evidence.recordEvidence(ctx, {
+      candidateId,
+      source: {
+        kind: 'cv',
+        label: 'CV',
+        url: null,
+        blobFileId: null,
+        capturedAt: NOW,
+        checkedAt: null,
+        checkMethod: null,
+      },
+      items: ['QA Automation Engineer', 'Wrote the Playwright suite', 'Ran it in CI'].map((excerpt) => ({
+        excerpt,
+        excerptSpan: null,
+        provenance: 'claim' as const,
+        strength: 'supporting' as const,
+        limit: CLAIM_LIMIT,
+      })),
+      synthetic: true,
+    }),
+  );
+describe("Feature: One uncited link no longer wipes out a candidate's mapped evidence (AIV-P1-156)", () => {
+  // SAFETY: mutation check: stored uncitedLinkCount 0 in mapEvidence -> this test failed
+  it('Scenario: A link whose quote is not in the CV is dropped and the others are kept', async () => {
+    approved = { [JOB]: V2 };
+    const imran = await newCandidate('Imran Qureshi', 'imran.qureshi@example.com');
+    await recordFragments(imran);
+    completion = JSON.stringify({
+      links: [
+        linkTo(RETRIEVAL, 'Wrote the Playwright suite'),
+        linkTo(PYTHON, 'Ran it in CI'),
+        // Joined from two separate lines: not in the source, so dropped, never re-quoted.
+        linkTo(COST, 'Wrote the Playwright suite in CI'),
+      ],
+      changes: [],
+    });
+    await mapNow(w1, imran, JOB);
+
+    const mapping = await as(ALEX, w1, (ctx) => evidence.getEvidenceMapping(ctx, imran, JOB));
+    expect(mapping?.uncitedLinkCount).toBe(1);
+    const linked = (await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, imran, JOB))).filter(
+      (i) => i.competencies.length,
+    );
+    expect(linked.map((i) => [i.excerpt, i.competencies[0]?.competencyId]).toSorted()).toEqual(
+      [
+        ['Ran it in CI', PYTHON],
+        ['Wrote the Playwright suite', RETRIEVAL],
+      ].toSorted(),
+    );
+    // The run and its event carry no quote: the count is the only trace of the dropped link.
+    const [run] = await rows(w1, sql`select * from evidence.mapping where id = ${mapping?.id ?? ''}`);
+    const [event] = await rows(
+      w1,
+      sql`select payload from evidence.outbox where payload->>'mappingId' = ${mapping?.id ?? ''}`,
+    );
+    expect(JSON.stringify([run, event])).not.toMatch(/Playwright suite in CI|Imran|Qureshi/);
+  });
+
+  it('Scenario: Every link dropped still stores the run, with its count and no link', async () => {
+    approved = { [JOB]: V2 };
+    const noura = await newCandidate('Noura Al Ketbi', 'noura.al.ketbi@example.com');
+    await recordFragments(noura);
+    completion = JSON.stringify({
+      links: [linkTo(RETRIEVAL, 'Wrote the Playwright suite in CI'), linkTo(PYTHON, 'Led a team of 12')],
+      changes: [],
+    });
+    await mapNow(w1, noura, JOB);
+
+    expect((await as(ALEX, w1, (ctx) => evidence.getEvidenceMapping(ctx, noura, JOB)))?.uncitedLinkCount).toBe(2);
+    const listed = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, noura, JOB));
+    expect(listed.filter((i) => i.competencies.length)).toEqual([]);
+    // The recorded CV lines stay, unlinked: nothing about her is hidden.
+    expect(listed).toHaveLength(3);
+  });
+});
+
+const failedFor = (workspaceId: string, candidateId: string) =>
+  as(ALEX, workspaceId, (ctx) => evidence.listCvStatuses(ctx, JOB, [candidateId]));
+const mappingRequests = (candidateId: string) =>
+  rows(
+    w1,
+    sql`select id from evidence.outbox where type = 'EvidenceMappingRequested.v1'
+      and payload->>'candidateId' = ${candidateId} and payload->>'jobId' = ${JOB}`,
+  );
+
+const failuresCounted = (workspaceId: string) =>
+  rows(workspaceId, sql`select count(*)::int as n from evidence.mapping_failure`).then((r) => r[0]?.['n']);
+
+// A publish that throws before any query, so the transaction is not aborted and keeps every lock it took (a database
+// error would abort it and free them).
+const refusingPublish = (tx: Tx): Tx =>
+  new Proxy(tx, {
+    get: (target, key) =>
+      key === 'insert'
+        ? (table: Parameters<Tx['insert']>[0]) => {
+            if (getTableName(table) === 'outbox') throw new Error('publish refused');
+            return target.insert(table);
+          }
+        : Reflect.get(target, key),
+  });
+
+describe('Feature: A mapping that fails permanently shows "could not assess" with retry (AIV-P1-165)', () => {
+  // SAFETY: mutation check: removed the own-transaction write of the failure in createEvidenceMappingHandlers -> this
+  // test failed (mappingFailed false)
+  it('Scenario: the failed state is written outside the rolled-back transaction, so it is never lost', async () => {
+    approved = { [JOB]: V2 };
+    const hala = await newCandidate('Hala Saleh', 'hala.saleh@example.com');
+    await recordFragments(hala);
+    completion = '{}';
+    try {
+      await expect(mapNow(w1, hala, JOB)).rejects.toBeInstanceOf(PermanentFailure);
+    } finally {
+      completion = '{}';
+    }
+    // The delivery rolled back: no run. The failure is there all the same.
+    expect(await rows(w1, sql`select id from evidence.mapping where candidate_id = ${hala}`)).toEqual([]);
+    expect((await failedFor(w1, hala))[0]?.mappingFailed).toBe(true);
+  });
+
+  // SAFETY: mutation check: moved clearFailure back before publishMapped in mapEvidence -> this test failed (the failure
+  // write waited out lock_timeout on the uncommitted delete and threw 55P03; failed_at kept the old time)
+  it('Scenario: a run that maps but fails to publish still records its failure, with the real error', async () => {
+    approved = { [JOB]: V2 };
+    const rania = await newCandidate('Rania Mansour', 'rania.mansour@example.com');
+    await recordFragments(rania);
+    await admin.execute(sql`insert into evidence.mapping_failure (workspace_id, candidate_id, job_id, failed_at)
+      values (${w1}, ${rania}, ${JOB}, '2026-01-01T00:00:00Z')`);
+    completion = JSON.stringify({ links: [linkTo(RETRIEVAL, 'Wrote the Playwright suite')], changes: [] });
+    const envelope = newEnvelope(EvidenceMappingRequestedV1, {
+      workspaceId: w1,
+      payload: { candidateId: rania, jobId: JOB },
+      occurredAt: NOW,
+    });
+    try {
+      await expect(
+        withWorkspace(app, w1, (tx) =>
+          handlerFor(EvidenceMappingRequestedV1.type).handle(refusingPublish(tx), envelope.payload, envelope),
+        ),
+      ).rejects.toThrow('publish refused');
+    } finally {
+      completion = '{}';
+    }
+    expect(await rows(w1, sql`select id from evidence.mapping where candidate_id = ${rania}`)).toEqual([]);
+    const [failure] = await rows(
+      w1,
+      sql`select failed_at from evidence.mapping_failure where candidate_id = ${rania} and job_id = ${JOB}`,
+    );
+    expect(new Date(String(failure?.['failed_at']))).toEqual(NOW);
+  });
+
+  // SAFETY: mutation check: dropped the audit call from retryMapping -> this test failed (no evidence.retried entry)
+  // SAFETY: mutation check: made clearFailure always return true -> this test failed (a second retry queued again)
+  it('Scenario: "Try again" re-runs the assessment for that candidate and job only, audited; a second retry writes nothing', async () => {
+    approved = { [JOB]: V2 };
+    const omar = await newCandidate('Omar Al Suwaidi', 'omar.al.suwaidi@example.com');
+    await recordFragments(omar);
+    completion = '{}';
+    await expect(mapNow(w1, omar, JOB)).rejects.toBeInstanceOf(PermanentFailure);
+    const before = (await mappingRequests(omar)).length;
+
+    await as(ALEX, w1, (ctx) => evidence.retryMapping(ctx, omar, JOB));
+    expect(await mappingRequests(omar)).toHaveLength(before + 1);
+    expect((await failedFor(w1, omar))[0]?.mappingFailed).toBe(false);
+    const [entry] = await rows(
+      w1,
+      sql`select actor_id, after from audit.entry where action = 'evidence.retried' and subject_id = ${omar}`,
+    );
+    expect(entry).toMatchObject({ actor_id: ALEX, after: { status: 'pending', jobId: JOB } });
+
+    await expect(as(ALEX, w1, (ctx) => evidence.retryMapping(ctx, omar, JOB))).rejects.toMatchObject({
+      code: 'not_retryable',
+    });
+    expect(await mappingRequests(omar)).toHaveLength(before + 1);
+
+    // The queued run maps, which ends the failure for good.
+    completion = JSON.stringify({ links: [linkTo(RETRIEVAL, 'Wrote the Playwright suite')], changes: [] });
+    await mapNow(w1, omar, JOB);
+    expect((await failedFor(w1, omar))[0]?.mappingFailed).toBe(false);
+  });
+
+  // SAFETY: mutation check: authorized retryMapping with 'candidate.view' -> this test failed (the interviewer retried)
+  it('Scenario: an interviewer granted the job cannot retry, and nothing is queued', async () => {
+    approved = { [JOB]: V2 };
+    const priya = await newCandidate('Priya Nair', 'priya.nair@example.com');
+    await recordFragments(priya);
+    completion = '{}';
+    await expect(mapNow(w1, priya, JOB)).rejects.toBeInstanceOf(PermanentFailure);
+    const before = (await mappingRequests(priya)).length;
+    // Granted the job, so she may read the candidate: only retrying is refused.
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`insert into workspaces.job_grant (id, workspace_id, user_id, job_id, granted_by)
+        select gen_random_uuid(), ${w1}, ${LINA}, ${JOB}, ${ALEX}
+        where not exists (select 1 from workspaces.job_grant where user_id = ${LINA} and job_id = ${JOB})`),
+    );
+    expect((await as(LINA, w1, (ctx) => evidence.listCvStatuses(ctx, JOB, [priya])))[0]?.mappingFailed).toBe(true);
+    await expect(as(LINA, w1, (ctx) => evidence.retryMapping(ctx, priya, JOB))).rejects.toThrow(ForbiddenError);
+    expect(await mappingRequests(priya)).toHaveLength(before);
+    expect((await failedFor(w1, priya))[0]?.mappingFailed).toBe(true);
+  });
+
+  // SAFETY: mutation check: set the mapping_failure policy to true -> this test failed (w2 counted w1's failures)
+  it('another workspace reads none of the failures with no repository filter (row-level security)', async () => {
+    expect(await failuresCounted(w1)).toBeGreaterThan(0);
+    expect(await failuresCounted(w2)).toBe(0);
   });
 });
 

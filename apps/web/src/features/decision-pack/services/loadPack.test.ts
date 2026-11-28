@@ -10,6 +10,7 @@ const at = new Date('2026-11-17T08:00:00.000Z');
 const AYESHA = id(6);
 const fake = vi.hoisted(() => ({
   workspace: true,
+  ctx: {} as object,
   getPack: vi.fn(),
   listPacks: vi.fn(),
   header: vi.fn(),
@@ -20,7 +21,8 @@ const fake = vi.hoisted(() => ({
   snapshot: vi.fn(),
 }));
 vi.mock('@/server/workspace', () => ({
-  inActiveWorkspace: async (fn: (c: object) => Promise<unknown>) => (fake.workspace ? { value: await fn({}) } : null),
+  inActiveWorkspace: async (fn: (c: object) => Promise<unknown>) =>
+    fake.workspace ? { value: await fn(fake.ctx) } : null,
   getWorkspaces: () => ({ getWorkspace: fake.getWorkspace }),
 }));
 vi.mock('@/server/decisions', () => ({ getDecisions: () => ({ getPack: fake.getPack, listPacks: fake.listPacks }) }));
@@ -73,6 +75,14 @@ beforeEach(() => {
   fake.approvedRubric.mockResolvedValue(RUBRIC);
 });
 
+/** Whether `loadPack` offers "Record decisions yourself" to a member of `role` on a job with this hiring owner. */
+const mayNameSelf = async (role: string, hiringOwnerUserId: string | null) => {
+  fake.ctx = { role };
+  fake.header.mockResolvedValue({ job: { title: 'Senior AI Engineer', hiringOwnerUserId }, approved: null });
+  const page = await loadPack(JOB, PACK);
+  return page !== 'notFound' && page?.mayNameSelf;
+};
+
 describe('loadPack', () => {
   it('the pack with the job, its rubric version, each member by name, and how many others stay in the ranking', async () => {
     expect(await loadPack(JOB, PACK)).toEqual({
@@ -102,9 +112,21 @@ describe('loadPack', () => {
       ],
       others: 1,
       mayDecide: false,
+      mayNameSelf: false,
       decided: null,
     });
     expect(fake.getUser).toHaveBeenCalledWith(AYESHA);
+  });
+
+  // AIV-P1-165, owner decision (b): only an admin, only on a job with no hiring owner, may name themselves to decide.
+  it('offers "Record decisions yourself" to an admin while the job has no hiring owner, and to nobody else', async () => {
+    try {
+      expect(await mayNameSelf('admin', null)).toBe(true);
+      expect(await mayNameSelf('admin', id(8))).toBe(false);
+      expect(await mayNameSelf('recruiter', null)).toBe(false);
+    } finally {
+      fake.ctx = {};
+    }
   });
 
   // AIV-P2-012: "Already decided": the decisions are shown read-only with who recorded them and when.

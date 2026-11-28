@@ -1,7 +1,18 @@
 // An application links one person to one job and records every way it arrived (AIV-P1-017).
 
-/** Where an application came from, as the Inbox shows it; `recruiter` is a link a member added (AIV-P1-076). */
-export const SOURCES = ['linkedin', 'careers_page', 'referral', 'email', 'whatsapp', 'recruiter'] as const;
+/**
+ * Where an application came from, as the Inbox shows it; `recruiter` is a link a member added (AIV-P1-076),
+ * `spreadsheet` a row of an imported CSV or Excel file (AIV-P1-103).
+ */
+export const SOURCES = [
+  'linkedin',
+  'careers_page',
+  'referral',
+  'email',
+  'whatsapp',
+  'recruiter',
+  'spreadsheet',
+] as const;
 export type Source = (typeof SOURCES)[number];
 
 /**
@@ -114,6 +125,9 @@ const MESSAGES = {
   not_on_job: 'This candidate has not applied to this job',
   reason_required: 'Give a reason for this choice',
   batch_too_large: 'Too many CVs in one save',
+  sheet_not_found: 'Sheet import not found',
+  sheet_not_ready: 'This sheet import is not at that step',
+  invalid_mapping: 'Choose a different column for each field, with Name and Email set',
 } as const;
 
 export type IntakeErrorCode = keyof typeof MESSAGES;
