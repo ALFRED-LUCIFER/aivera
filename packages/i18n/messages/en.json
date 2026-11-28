@@ -1729,7 +1729,8 @@
       "email": "Email",
       "whatsapp": "WhatsApp",
       "careers_page": "Careers page",
-      "recruiter": "Recruiter"
+      "recruiter": "Recruiter",
+      "spreadsheet": "Spreadsheet"
     },
     "ready": "{count, plural, one {# CV ready} other {# CVs ready}}",
     "files": "{count, plural, one {# file} other {# files}}",
@@ -1779,6 +1780,72 @@
     "loading": "Loading Add CVs…",
     "failed": "We could not load this page. Try again.",
     "retry": "Try again"
+  },
+  "sheetImport": {
+    "title": "Import from a CSV or Excel file",
+    "intro": "A CSV or Excel file with a name, email and CV link per row. Credalent maps the columns for you.",
+    "choose": "Import file",
+    "hint": "CSV or Excel, up to 2 MB and 1,000 rows.",
+    "checking": "Checking the file…",
+    "reading": "Reading the file…",
+    "fetching": "Checking each row and reading the CV links…",
+    "unreadable": "We could not read this file. Save it as CSV or Excel (.xlsx) with the column names in the first row, and try again.",
+    "tooManyRows": "This file has more than 1,000 rows. Split it into smaller files and import each one.",
+    "another": "Choose another file",
+    "spreadsheet": "Spreadsheet",
+    "added": "{count, plural, one {# person added to {title}.} other {# people added to {title}.}} Credalent reads each CV next.",
+    "toCandidates": "See the candidates",
+    "mapping": {
+      "title": "Match the columns",
+      "intro": "Credalent proposed these from the first row of your file. Change any that are wrong. Nothing is added yet.",
+      "fields": {
+        "name": "Name",
+        "email": "Email",
+        "cvLink": "CV link",
+        "phone": "Phone"
+      },
+      "choose": "Choose a column",
+      "none": "Not in this file",
+      "unnamed": "Column {column}",
+      "confirm": "Use these columns",
+      "another": "Choose another file"
+    },
+    "check": {
+      "title": "Check before adding",
+      "caption": "{count, plural, one {# person to add} other {# people to add}}",
+      "row": "Row",
+      "name": "Name",
+      "email": "Email",
+      "source": "Source",
+      "cv": "CV",
+      "cvState": {
+        "attached": "CV attached",
+        "unreadable": "No CV yet",
+        "none": "No CV link"
+      },
+      "nobody": "No row has a name and a valid email, so nobody can be added from this file.",
+      "notes": "Rows to look at",
+      "noteRow": "Row {row}:",
+      "previewTitle": "{count, plural, one {Add # person to {title}?} other {Add # people to {title}?}}",
+      "submit": "{count, plural, one {Add # person to this job} other {Add # people to this job}}",
+      "adding": "Adding…",
+      "footer": "Nothing changes until you confirm.",
+      "error": "That did not go through. Nothing was changed."
+    },
+    "problems": {
+      "missing_name": "Not added: missing name",
+      "missing_email": "Not added: missing email",
+      "invalid_email": "Not added: email not valid",
+      "cv_unreadable": "CV link could not be read"
+    },
+    "errors": {
+      "notAccepted": "We cannot use this file. Try a different file.",
+      "jobNotFound": "This job was not found.",
+      "invalidMapping": "Choose a different column for each field, with Name and Email set.",
+      "notReady": "This import has moved on. Reload the page.",
+      "confirmationRequired": "Confirm you are responsible for the right to process these CVs.",
+      "failed": "That did not go through. Try again."
+    }
   },
   "decisionPack": {
     "title": "{name}: {job}",
