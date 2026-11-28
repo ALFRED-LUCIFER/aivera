@@ -204,6 +204,30 @@ describe('Scenario: Job without an approved rubric', () => {
   });
 });
 
+describe('Scenario: When every backed score is 0, one plain banner says so (AIV-P1-165 §9)', () => {
+  it('shows the banner and the claims order, and lists every candidate, none hidden', () => {
+    showRanking([
+      scoredRow(1, 'Daniel Novak', 0, 78, []),
+      scoredRow(2, 'Priya Nair', 0, 77, []),
+      { id: 'a9', personId: 'p9', name: 'Maria Santos', stage: 'new', score: null },
+    ]);
+    expect(
+      screen.getAllByText('No one has inspected work yet. Ordered by what their CVs claim, which is not verified.'),
+    ).toHaveLength(1);
+    expect(screen.getByText('Not verified')).toBeTruthy();
+    expect(screen.getByText(/^Ordered by the "up to" score, which rests on claims/)).toBeTruthy();
+    expect(screen.queryByText(/^Ranked by backed score/)).toBeNull();
+    const names = ['Daniel Novak', 'Priya Nair', 'Maria Santos'];
+    expect(bodyRows().map((row) => names.find((name) => row.textContent?.includes(name)))).toEqual(names);
+  });
+
+  it('shows no banner once anyone has a backed score', () => {
+    showRanking([scoredRow(1, 'Daniel Novak', 55, 78, []), scoredRow(2, 'Priya Nair', 0, 77, [])]);
+    expect(screen.queryByText(/^No one has inspected work yet/)).toBeNull();
+    expect(screen.getByText(/^Ranked by backed score/)).toBeTruthy();
+  });
+});
+
 describe('Scenario: Empty, loading and error', () => {
   it('a job with no applicants says how ranking starts, with no filters or footer', () => {
     showRanking([]);

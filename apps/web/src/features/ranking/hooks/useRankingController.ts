@@ -1,6 +1,7 @@
 import type { Route } from 'next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { orderBasis } from '../domain/order.ts';
 import {
   FIRST_ROWS,
   NO_FILTERS,
@@ -37,6 +38,8 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
     jobId,
     awaitingRubric,
     total: rows.length,
+    // Of every row, not the filtered ones: the banner is about how the whole ranking was ordered (AIV-P1-165 §9).
+    orderBasis: orderBasis(rows),
     matching: matching.length,
     assessed: matching.filter((row) => row.score).length,
     shown: shown.filter((row) => row.score).length,

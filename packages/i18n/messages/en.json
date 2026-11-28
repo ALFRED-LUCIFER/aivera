@@ -1891,6 +1891,11 @@
       }
     },
     "intro": "Ranked by backed score: only evidence that can be inspected counts. The hatched range shows what still rests on claims.",
+    "allZero": {
+      "tag": "Not verified",
+      "banner": "No one has inspected work yet. Ordered by what their CVs claim, which is not verified.",
+      "order": "Ordered by the \"up to\" score, which rests on claims, then by who was assessed first. Every candidate stays in the list."
+    },
     "caption": "Ranked candidates",
     "basis": "Backed scores and needs met are observed from inspected evidence.",
     "observed": "Observed",

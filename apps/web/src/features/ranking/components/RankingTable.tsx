@@ -12,6 +12,7 @@ import {
   Label,
   LevelMeter,
   Select,
+  StatusBadge,
   SuccessBanner,
   ValueBasis,
   buttonClassName,
@@ -84,6 +85,8 @@ export type RankingTableView =
       awaitingRubric: boolean;
       /** Every applicant, before filters. */
       total: number;
+      /** The rule that really ordered the rows: 'claims' when every backed score is 0 (AIV-P1-165 §9). */
+      orderBasis: 'backed' | 'claims' | 'none';
       /** Rows matching the filters, how many of them are assessed, and how many of those are shown. */
       matching: number;
       assessed: number;
@@ -164,7 +167,15 @@ export function RankingTable({
 
   return (
     <div className="flex flex-col gap-4 self-stretch">
-      <p className="max-w-[72ch] text-body text-text-2">{t('intro')}</p>
+      {ready?.orderBasis === 'claims' && (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-border bg-surface-subtle px-3.5 py-3 text-body text-text">
+          <StatusBadge status="informational" label={t('allZero.tag')} />
+          <span className="font-semibold">{t('allZero.banner')}</span>
+        </p>
+      )}
+      <p className="max-w-[72ch] text-body text-text-2">
+        {t(ready?.orderBasis === 'claims' ? 'allZero.order' : 'intro')}
+      </p>
       {ready?.awaitingRubric && (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-border bg-surface-subtle px-3.5 py-3 text-body text-text">
           <span className="font-semibold">{t('awaitingRubric')}</span>
