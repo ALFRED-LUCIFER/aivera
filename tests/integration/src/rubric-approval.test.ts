@@ -345,6 +345,40 @@ describe('Scenario: A recruiter approves a draft rubric directly', () => {
     await as(ALEX, (ctx) => jobs.approveRubric(ctx, v3.id, v3.revision));
     expect((await versions(solo)).at(-1)).toMatchObject({ version: 3, status: 'approved' });
   });
+
+  // AIV-P1-165 "Approving is confirmed and audited". Cancelling the confirm card calls nothing, so the draft of the
+  // first assertion has no approval entry.
+  // SAFETY: mutation check: removed the note from approveRubric's audit entry -> this test failed (note: null)
+  it('an approval confirmed with a reason is audited last, with who, when and the reason', async () => {
+    const v4 = await as(RANA, (ctx) =>
+      jobs.saveRubric(ctx, solo, { successStatement: 'Tests all.', competencies: competencies([70, 30]) }),
+    );
+    const before = await audit.listFor(demo, { type: 'rubric_version', id: v4.id });
+    expect(before.map((e) => e.action)).not.toContain('rubric.approved');
+    let statusAlongside: string | undefined;
+    await as(ALEX, (ctx) =>
+      jobs.approveRubric(
+        ctx,
+        v4.id,
+        v4.revision,
+        // Runs just before the audit write: every other write of the approval is already made.
+        async () => {
+          statusAlongside = (await jobs.listRubricVersions(ctx, solo))?.find((v) => v.id === v4.id)?.status;
+        },
+        ' Matches the job description ',
+      ),
+    );
+    expect(statusAlongside).toBe('approved');
+    const entries = await audit.listFor(demo, { type: 'rubric_version', id: v4.id });
+    expect(entries).toHaveLength(before.length + 1);
+    expect(entries.at(-1)).toMatchObject({
+      action: 'rubric.approved',
+      actor: { type: 'user', id: ALEX },
+      note: 'Matches the job description',
+      after: { status: 'approved', version: 4 },
+    });
+    expect(entries.at(-1)?.occurredAt).toBeInstanceOf(Date);
+  });
 });
 
 // AIV-P2-060: removing a hiring owner takes him off his jobs in the removal's transaction, as the members page does

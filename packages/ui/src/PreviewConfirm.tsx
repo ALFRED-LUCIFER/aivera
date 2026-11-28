@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Children, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Button } from './Button.tsx';
 import { Dialog, type DialogProps } from './Dialog.tsx';
 
@@ -215,15 +215,17 @@ export type SuccessBannerProps = { children?: ReactNode };
  * the confirm: a status region that mounts with its text already in it is often not announced.
  */
 export function SuccessBanner({ children }: SuccessBannerProps) {
+  // `{a && x}{b && y}` arrives as [false, false], which is truthy: only children that render count (AIV-P1-165).
+  const filled = Children.toArray(children).some((child) => child !== '');
   return (
     <output
       className={
-        children
+        filled
           ? 'flex items-start gap-2 rounded-card border border-ok-border bg-ok-bg p-4 text-body text-ok-text'
           : undefined
       }
     >
-      {children && (
+      {filled && (
         <>
           <CheckIcon />
           <span>{children}</span>

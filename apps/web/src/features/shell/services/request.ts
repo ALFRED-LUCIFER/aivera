@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { enabledFlags } from '@/server/flags';
 import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
-import { currentMembership, rejectionReason } from '@/server/workspace';
+import { currentMembership, getWorkspaces, inActiveWorkspace, rejectionReason } from '@/server/workspace';
 import { canOpen, navigation, type ScreenId } from '../domain/navigation.ts';
 import { parseTheme, shellMember, themeCookie, type Member } from '../domain/shell.ts';
 
@@ -31,6 +31,22 @@ export async function requireScreen(id: ScreenId): Promise<Member> {
 export async function mayOpen(id: ScreenId): Promise<boolean> {
   const member = await currentMember();
   return !!member && opens(member, id);
+}
+
+/**
+ * An agency's active clients for the sidebar's Clients entry (AIV-P1-165), by name. Null for an in-house team and for
+ * the roles that may not list clients (hiring owners and interviewers; `listClients` refuses them).
+ */
+export async function sidebarClients(): Promise<{ id: string; name: string }[] | null> {
+  const result = await inActiveWorkspace(async (ctx) => {
+    if (ctx.role !== 'admin' && ctx.role !== 'recruiter') return null;
+    if ((await getWorkspaces().getWorkspace(ctx))?.type !== 'agency') return null;
+    return (await getWorkspaces().listClients(ctx))
+      .filter((client) => !client.archivedAt)
+      .map(({ id, name }) => ({ id, name }))
+      .toSorted((a, b) => a.name.localeCompare(b.name));
+  });
+  return result?.value ?? null;
 }
 
 export async function readTheme() {

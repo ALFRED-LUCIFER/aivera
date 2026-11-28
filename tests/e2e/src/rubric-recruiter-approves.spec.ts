@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectAccessible, themes } from './gallery.ts';
+import { expectAccessible, primaryButtons, themes } from './gallery.ts';
 import { approvedWorkspace } from './workspaces.ts';
 
 // AIV-P1-083 (ADR-014): the recruiter on a job approves its rubric. A recruiter alone in a fresh workspace with no
@@ -52,16 +52,68 @@ for (const theme of themes) {
     // Her own draft: approve it, nothing to return it to, and no "on behalf of the hiring owner" note.
     await expect(page.getByRole('button', { name: 'Return with a note' })).toHaveCount(0);
     await expect(page.getByText(/on their behalf/)).toHaveCount(0);
+    // AIV-P1-165 "No empty success box": before any decision the panel's status region is empty and draws nothing.
+    const status = page
+      .getByRole('heading', { name: 'Version 1 is ready for you to approve' })
+      .locator('..')
+      .locator('output');
+    // (The empty live region has no box, so it is found by its element, not its role.)
+    await expect(status).toBeEmpty();
+    await expect(status).toHaveClass('');
+    expect((await status.boundingBox())?.height ?? 0).toBe(0);
+    // AIV-P1-165 "Levels and Mandatory are explained where they appear".
+    await expect(page.getByText('Mandatory never rejects anyone automatically.', { exact: false })).toBeVisible();
+    const levels = page
+      .getByRole('table', { name: 'Agreed competencies' })
+      .getByRole('cell', { name: /^Level \d of 5/ });
+    await expect(levels).toHaveCount(6);
+    for (const level of await levels.all()) await expect(level).toHaveText(/^Level \d of 5\S.+\.$/);
+    // AIV-P1-165 "Scoring definitions are behind a toggle": collapsed, and Enter on the toggle expands them.
+    const claim = page.getByText('Stated, with nothing to inspect. Counts as zero.');
+    await expect(claim).toBeHidden();
+    await page.getByText('Show scoring definitions').focus();
+    await page.keyboard.press('Enter');
+    await expect(claim).toBeVisible();
     await expectAccessible(page);
+    await expect(primaryButtons(page)).toHaveText(['Approve rubric']);
 
     // SAFETY: mutation check: hid the panel for 'recruiter' approvers (RubricEditable review = rubric.review only) -> this
     // test failed (no "ready for you to approve" heading)
-    await page.getByRole('button', { name: 'Approve version 1' }).focus();
+    // AIV-P1-165 "Approving is confirmed and audited": the shared preview-confirm card, from the keyboard.
+    const approve = page.getByRole('button', { name: 'Approve rubric' });
+    await approve.focus();
+    await page.keyboard.press('Enter');
+    const card = page.getByRole('dialog', { name: 'Preview: approve rubric version 1' });
+    await expect(card.getByRole('listitem')).toHaveCount(6);
+    await expect(card.getByRole('listitem').first()).toHaveText(/\d+% · Level \d of 5 · (Mandatory|Desirable)$/);
+    await expect(card).toContainText('Nothing changes until you confirm.');
+    await expect(card.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await expect(card.getByRole('button', { name: 'Confirm approval' })).toBeDisabled();
+    await expectAccessible(page);
+    // Cancel: the rubric stays a draft (what cancelling writes, nothing, is the controller's unit test).
+    await page.keyboard.press('Enter');
+    await expect(card).toBeHidden();
+    await expect(approve).toBeFocused();
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Version 1 is ready for you to approve' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Competencies and rubric/ })).toContainText('Draft, version 1');
+
+    // Confirm with a reason.
+    await approve.focus();
+    await page.keyboard.press('Enter');
+    await card.getByRole('textbox', { name: 'Reason, recorded in the audit log' }).focus();
+    await page.keyboard.type('Matches the job description');
+    await card.getByRole('button', { name: 'Confirm approval' }).focus();
     await page.keyboard.press('Enter');
     await expect(
       page.getByRole('status').filter({ hasText: 'Version 1 is approved. Assessment can now start for this job.' }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Approve version 1' })).toHaveCount(0);
+    await expect(card).toBeHidden();
+    await expect(approve).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Competencies and rubric/ })).toContainText('Approved, version 1');
+    // AIV-P1-165 "After approval, one next step": "Add CVs" is the page's one primary button.
+    await expect(primaryButtons(page)).toHaveText(['Add CVs']);
+    await expectAccessible(page);
   });
 }
 
@@ -88,7 +140,7 @@ for (const theme of themes)
     ).toBeVisible();
     // Sent, it waits for the hiring owner; the recruiter may still approve it but never returns it to themselves.
     await expect(page.getByRole('heading', { name: 'Version 1 is with the hiring owner' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Approve version 1' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Approve rubric' })).toBeVisible();
     await expectAccessible(page);
     await expect(page.getByRole('button', { name: 'Return with a note' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Send to the hiring owner' })).toHaveCount(0);

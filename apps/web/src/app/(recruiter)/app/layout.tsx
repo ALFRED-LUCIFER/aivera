@@ -6,12 +6,12 @@ import type { ReactNode } from 'react';
 import { countOngoingInterviews } from '@/features/interviews/services/loadInterviews.ts';
 import { AccessMessage } from '@/features/shell/components/AccessMessage.tsx';
 import { canOpen, navigation } from '@/features/shell/domain/navigation.ts';
-import { currentMember, readTheme, workspaceGate } from '@/features/shell/services/request.ts';
+import { currentMember, readTheme, sidebarClients, workspaceGate } from '@/features/shell/services/request.ts';
 import { AuthPage, inkMark } from '@/features/sign-in/components/AuthPage.tsx';
 import { signOut } from '@/features/sign-in/services/signOut.ts';
 import { offeredJobTypes } from '@credalent/jobs';
-import { CATCH_ALL_FOCUS } from '@/features/workspace-signup/domain/signup.ts';
-import { getSessionUserId } from '@/server/auth';
+import { CATCH_ALL_FOCUS, companyFromEmail } from '@/features/workspace-signup/domain/signup.ts';
+import { getIdentity, getSessionUserId } from '@/server/auth';
 import { isPlatformOperator } from '@/server/operator';
 import { getCatalogue } from '@/server/jobs';
 import { enabledFlags } from '@/server/flags';
@@ -34,26 +34,27 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
   if (!member) {
     // A platform operator who belongs to no workspace runs Credalent, not a team: the console, not "create one".
     if (await isPlatformOperator(userId)) redirect('/ops');
-    const [t, catalogue] = await Promise.all([
+    const [t, catalogue, user] = await Promise.all([
       getTranslations(defaultLocale, defaultTimeZone),
       getCatalogue().getPublishedCatalogue(),
+      getIdentity().getUser(userId),
     ]);
-    // AIV-P1-001: or they create their own, and become its admin.
+    // AIV-P1-001, AIV-P1-165: they create their own and become its admin (the primary action), or ask an admin to add them.
     return (
       <AuthPage
         wordmark={t('shell.wordmark')}
         headline={t.rich('signIn.headline', { mark: inkMark })}
         points={[t('signup.points.define'), t('signup.points.rank'), t('signup.points.decide')]}
         title={t('access.noWorkspaceTitle')}
-        lead={t('access.noWorkspace')}
+        lead={t('access.noWorkspaceLead')}
       >
         <CreateWorkspace
+          company={user ? companyFromEmail(user.email) : ''}
           focusOptions={[
             ...offeredJobTypes(catalogue).map((j) => ({ value: j.key, label: j.label.en })),
             ...CATCH_ALL_FOCUS.map((value) => ({ value, label: t(`signup.focus.${value}`) })),
           ]}
           labels={{
-            title: t('signup.title'),
             company: t('signup.company'),
             optional: t('signup.optional'),
             companyHint: t('signup.companyHint'),
@@ -63,6 +64,7 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
             failed: t('signup.errors.failed'),
           }}
         />
+        <p className="text-body text-text-2">{t('access.noWorkspace')}</p>
       </AuthPage>
     );
   }
@@ -72,7 +74,7 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
     const [gate, t] = await Promise.all([workspaceGate(), getTranslations(defaultLocale, defaultTimeZone)]);
     return (
       <AccessMessage title={gate?.title ?? t('access.waitingTitle')} body={gate?.body ?? t('access.waiting')}>
-        <form action={signOut}>
+        <form action={signOut} className="mt-2">
           <Button type="submit">{t('access.signOut')}</Button>
         </form>
       </AccessMessage>
@@ -80,10 +82,11 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
   }
   // shortcut: counted when the shell renders, so it is stale until the next full load; refresh it from the action
   // that changes an interview (AIV-P2-004's scorecard submit) when one exists.
-  const [theme, intl, ongoing] = await Promise.all([
+  const [theme, intl, ongoing, clients] = await Promise.all([
     readTheme(),
     intlConfig(defaultLocale, defaultTimeZone),
     countOngoingInterviews(),
+    sidebarClients(),
   ]);
   return (
     <RecruiterShell
@@ -92,6 +95,7 @@ export default async function RecruiterLayout({ children }: { children: ReactNod
       theme={theme}
       screens={navigation.filter((screen) => canOpen(screen, member.capabilities, enabledFlags))}
       counts={ongoing ? { interviews: ongoing } : {}}
+      clients={clients}
     >
       {children}
     </RecruiterShell>

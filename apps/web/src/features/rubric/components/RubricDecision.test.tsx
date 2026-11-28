@@ -21,7 +21,16 @@ const review: ReviewView = {
   changeNote: 'Product judgement raised from 10% to 15%.',
   approvedVersion: 1,
   successStatement: '',
-  competencies: [],
+  competencies: [
+    {
+      name: 'LLM systems in production',
+      evidenceExpected: 'A shipped assistant',
+      weightPercent: 100,
+      levelNeeded: 4,
+      type: 'mandatory',
+      origin: 'from_description',
+    },
+  ],
 };
 const decision = (more: Partial<RubricDecisionView> = {}): RubricDecisionView => ({
   returning: false,
@@ -29,7 +38,11 @@ const decision = (more: Partial<RubricDecisionView> = {}): RubricDecisionView =>
   pending: false,
   status: 'idle',
   decided: null,
-  onApprove: vi.fn(),
+  approving: false,
+  onApprovingChange: vi.fn(),
+  reason: '',
+  onReason: vi.fn(),
+  onApprove: vi.fn(async () => {}),
   onStartReturn: vi.fn(),
   onCancelReturn: vi.fn(),
   onNote: vi.fn(),
@@ -53,13 +66,47 @@ const show = (props: Partial<Parameters<typeof RubricDecision>[0]> = {}) =>
   );
 
 describe('Scenario: Approve (AIV-P1-014)', () => {
-  it('shows what changed and "Approve version 2"; only the button applies it', async () => {
+  // SAFETY: mutation check: called decision.onApprove when the preview opens -> this test failed (approved on open)
+  it('shows what changed and "Approve rubric", which only opens the preview', async () => {
     const d = decision();
     show({ decision: d });
     expect(screen.getByText('What changed since version 1')).toBeTruthy();
     expect(screen.getByText('Product judgement raised from 10% to 15%.')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Approve version 2' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Approve rubric' }));
+    expect(d.onApprovingChange).toHaveBeenCalledWith(true);
+    expect(d.onApprove).not.toHaveBeenCalled();
+  });
+
+  // AIV-P1-165 "Approving is confirmed and audited": the shared preview-confirm card.
+  it('the preview shows the version, its competencies and a reason field; Confirm waits for the reason', async () => {
+    const d = decision({ approving: true });
+    show({ decision: d });
+    const card = screen.getByRole('dialog', { name: 'Preview: approve rubric version 2' });
+    expect(card.textContent).toContain('LLM systems in production');
+    expect(card.textContent).toContain('100% · Level 4 of 5 · Mandatory');
+    expect(card.textContent).toContain('Nothing changes until you confirm.');
+    expect(screen.getByRole('button', { name: 'Confirm approval' }).hasAttribute('disabled')).toBe(true);
+    await userEvent.type(screen.getByRole('textbox', { name: 'Reason, recorded in the audit log' }), 'M');
+    expect(d.onReason).toHaveBeenCalledWith('M');
+    expect(d.onApprove).not.toHaveBeenCalled();
+  });
+
+  it('only Confirm approves; Cancel closes the preview and approves nothing', async () => {
+    const d = decision({ approving: true, reason: 'Matches the job description' });
+    show({ decision: d });
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(d.onApprovingChange).toHaveBeenCalledWith(false);
+    expect(d.onApprove).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm approval' }));
     expect(d.onApprove).toHaveBeenCalledOnce();
+  });
+
+  // AIV-P1-165 "No empty success box".
+  it('before any decision the status region is empty and draws no box', () => {
+    show();
+    const status = screen.getByRole('status');
+    expect(status.textContent).toBe('');
+    expect(status.className).toBe('');
   });
 
   it('after approving, says assessment has started', () => {
@@ -101,19 +148,18 @@ describe('Scenario: Approving an outdated version is refused', () => {
   ] as const)('a decision that threw (%s) says "%s" and keeps the panel', (status, text) => {
     show({ decision: decision({ status }) });
     expect(screen.getByRole('alert').textContent).toBe(text);
-    expect(screen.getByRole('button', { name: 'Approve version 2' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Approve rubric' })).toBeTruthy();
   });
 });
 
 describe('Scenario: A recruiter approves their own draft (ADR-014)', () => {
-  it('offers "Approve version 2" and no "Return with a note", with no on-behalf note', async () => {
+  it('offers "Approve rubric" and no "Return with a note", with no on-behalf note', async () => {
     const d = decision();
     show({ decision: d, canReturn: false });
     expect(screen.getByText('Version 2 is ready for you to approve')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Return with a note' })).toBeNull();
     expect(screen.queryByText(/on their behalf/)).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Approve version 2' }));
-    expect(d.onApprove).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Approve rubric' })).toBeTruthy();
   });
 
   it('a version sent to the hiring owner can be returned by them', () => {
@@ -132,7 +178,7 @@ describe('Scenario: A recruiter approves their own draft (ADR-014)', () => {
   it('a version the recruiter sent is "with the hiring owner", still approvable by them, not returnable', () => {
     show({ canReturn: false, withOwner: true });
     expect(screen.getByText('Version 2 is with the hiring owner')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Approve version 2' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Approve rubric' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Return with a note' })).toBeNull();
   });
 

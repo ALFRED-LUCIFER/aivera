@@ -9,7 +9,7 @@ import { SearchPalette } from '@/features/search/components/SearchPalette.tsx';
 import { useSearchController } from '@/features/search/hooks/useSearchController.ts';
 import { signOut } from '@/features/sign-in/services/signOut.ts';
 
-type Props = Pick<AppShellProps, 'member' | 'screens' | 'counts' | 'children'> & {
+type Props = Pick<AppShellProps, 'member' | 'screens' | 'counts' | 'clients' | 'children'> & {
   intl: Omit<ComponentProps<typeof IntlProvider>, 'children'>;
   theme: Theme;
 };

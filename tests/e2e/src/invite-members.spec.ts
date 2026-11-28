@@ -171,7 +171,7 @@ test('removing a member asks first, then takes them off the list and out of the 
   await expect(row(page, 'lina@example.com', 'Active')).toHaveCount(0);
 
   await lina.goto('/app/jobs');
-  await expect(lina.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
+  await expect(lina.getByRole('heading', { level: 1, name: 'Create your workspace' })).toBeVisible();
   await expect(lina.getByRole('heading', { level: 1, name: 'Jobs' })).toHaveCount(0);
   await lina.close();
 });

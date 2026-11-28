@@ -7,7 +7,7 @@ import { forbidden, unstable_rethrow } from 'next/navigation';
 import { z } from 'zod';
 import { getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
-import type { DecisionResult } from '../domain/rubric.ts';
+import { APPROVAL_REASON_MAX, type DecisionResult } from '../domain/rubric.ts';
 import { queueDecisionEmail } from './rubricEmails.ts';
 
 const input = z.object({
@@ -16,10 +16,12 @@ const input = z.object({
   revision: z.int().min(0),
   // Present only for a return; the jobs module trims and checks it again.
   note: z.string().max(RETURN_NOTE_MAX).optional(),
+  // Present only for an approval: why, from the confirm step, for the audit log (AIV-P1-165).
+  reason: z.string().trim().min(1).max(APPROVAL_REASON_MAX).optional(),
 });
 
 /**
- * "Approve version N" and "Return with a note" (AIV-P1-014, ADR-014), each in one transaction with the email to
+ * "Approve rubric", confirmed with a reason (AIV-P1-165), and "Return with a note" (AIV-P1-014, ADR-014), each in one transaction with the email to
  * whoever sent the version (none for a draft approved directly). The jobs module allows an admin or recruiter on the job
  * to approve, and the job's hiring owner to approve or return a version sent to them (anyone else gets the 403 page),
  * refuses a decision on an older copy (`stale`), and on approval writes RubricApproved.v1, which starts assessment.
@@ -27,13 +29,15 @@ const input = z.object({
 export async function decideRubric(raw: z.input<typeof input>): Promise<DecisionResult> {
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { error: 'failed' };
-  const { jobId, versionId, revision, note } = parsed.data;
+  const { jobId, versionId, revision, note, reason } = parsed.data;
+  // An approval is confirmed with its reason (AGENTS.md 3.6); the page never sends one without.
+  if (note === undefined && !reason) return { error: 'failed' };
   let result;
   try {
     result = await inActiveWorkspace(async (ctx) => {
       // The email is queued before the module's audit write, which stays last (AGENTS.md 3.6).
       const email = () => queueDecisionEmail(ctx, jobId, versionId);
-      if (note === undefined) await getJobs().approveRubric(ctx, versionId, revision, email);
+      if (note === undefined) await getJobs().approveRubric(ctx, versionId, revision, email, reason);
       else await getJobs().returnRubric(ctx, versionId, note, revision, email);
     });
   } catch (error) {

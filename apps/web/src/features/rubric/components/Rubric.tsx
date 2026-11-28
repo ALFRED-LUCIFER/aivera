@@ -26,6 +26,9 @@ type Props = {
  * The job's rubric (AIV-P1-012): agreed competencies, what success means, scoring definitions and approval history.
  * In edit mode (AIV-P1-013) weights, levels and types change locally, and competencies can be added or removed;
  * nothing changes until the recruiter saves the draft or sends it for approval.
+ * Deviations from the Rubric artboard, each asked for by AIV-P1-165: every "Level N of 5" carries a one-line meaning;
+ * the intro adds "Mandatory never rejects anyone automatically."; the scoring definitions sit under a "Show scoring
+ * definitions" toggle; approving goes through the preview-confirm card with a reason (RubricDecision).
  */
 export function Rubric({ state, editor, hiringOwner = null, aside }: Props) {
   const t = useTranslations('rubric');
@@ -59,6 +62,7 @@ export function Rubric({ state, editor, hiringOwner = null, aside }: Props) {
           <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-0.5">
             <h2 className="text-section">{t('competencies')}</h2>
             <p className="text-meta text-text-2">{t('intro')}</p>
+            <p className="text-meta text-text-2">{t('mandatoryNote')}</p>
           </div>
           {editor && !editing && rubric?.edit && <Button onClick={editor.onStart}>{t('edit.start')}</Button>}
         </div>
@@ -125,16 +129,22 @@ export function Rubric({ state, editor, hiringOwner = null, aside }: Props) {
             )}
           </Card>
           <Card title={t('scoring')} level={2}>
-            <dl className="flex flex-col gap-3">
-              {STRENGTHS.map((s) => (
-                <div key={s} className="flex flex-col gap-0.5">
-                  <dt>
-                    <StrengthMeter strength={s} label={t(`strength.${s}`)} />
-                  </dt>
-                  <dd className="text-meta text-text-2">{t(`strengthMeaning.${s}`)}</dd>
-                </div>
-              ))}
-            </dl>
+            {/* Collapsed until asked for (AIV-P1-165); the summary takes focus and opens with Enter or Space. */}
+            <details>
+              <summary className="min-h-10 cursor-pointer py-2 font-semibold pointer-coarse:min-h-11">
+                {t('showScoring')}
+              </summary>
+              <dl className="mt-2 flex flex-col gap-3">
+                {STRENGTHS.map((s) => (
+                  <div key={s} className="flex flex-col gap-0.5">
+                    <dt>
+                      <StrengthMeter strength={s} label={t(`strength.${s}`)} />
+                    </dt>
+                    <dd className="text-meta text-text-2">{t(`strengthMeaning.${s}`)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
           </Card>
           <Card title={t('approval')} level={2}>
             <ol className="flex flex-col">

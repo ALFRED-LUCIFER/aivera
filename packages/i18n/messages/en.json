@@ -386,7 +386,8 @@
       "interviews": "Interviews",
       "packs": "Decision packs",
       "value": "Value dashboard",
-      "settings": "Settings"
+      "settings": "Settings",
+      "clients": "Clients"
     },
     "synthetic": "Synthetic demo data",
     "theme": {
@@ -425,12 +426,13 @@
   "access": {
     "forbiddenTitle": "No access",
     "forbidden": "You do not have access to this. Ask your workspace admin.",
-    "noWorkspaceTitle": "You are not in a workspace yet",
-    "noWorkspace": "Ask your workspace admin to add you to their workspace.",
+    "noWorkspaceTitle": "Create your workspace",
+    "noWorkspaceLead": "You are signed in and not in a workspace yet. Create yours to add your first job.",
+    "noWorkspace": "Joining a team instead? Ask your workspace admin to add you to their workspace.",
     "pausedTitle": "This workspace is paused.",
     "paused": "You can read everything. New work is paused until Credalent reactivates the workspace.",
     "waitingTitle": "Waiting for approval",
-    "waiting": "Your workspace is waiting for approval. We will email you when it is ready, usually within one working day.",
+    "waiting": "A Credalent operator reviews every new workspace before it opens. You can sign out and come back once it is approved: your desk opens when you sign in.",
     "rejectedTitle": "Your workspace was not approved",
     "rejected": "Your workspace was not approved. Reason: {reason}",
     "signOut": "Sign out",
@@ -447,13 +449,12 @@
       "rank": "See candidates ranked by work you can inspect.",
       "decide": "Keep every hiring decision with a person."
     },
-    "title": "Or create your own workspace",
     "company": "Company",
     "optional": "Optional",
     "companyHint": "Leave it empty if you hire for yourself: the workspace is then named after you.",
     "hiringFocus": "What do you hire for most?",
-    "choose": "Choose one",
-    "submit": "Create workspace",
+    "choose": "Not chosen",
+    "submit": "Create your workspace",
     "errors": {
       "failed": "We could not create your workspace. Try again."
     },
@@ -504,6 +505,7 @@
       "footer": "Nothing changes until you confirm."
     },
     "close": "Close",
+    "savedTitle": "Job saved",
     "saved": "Job saved. These competencies are now version 1 of this job's own rubric, marked as a draft. Other jobs keep their own rubrics.",
     "savedNext": "Next: approve the rubric on its page. Candidates are assessed only after that.",
     "backToJobs": "Back to Jobs",
@@ -1411,6 +1413,15 @@
     },
     "weight": "{weight}%",
     "level": "{level} of 5",
+    "levelOf": "Level {level} of 5",
+    "levelMeaning": {
+      "1": "Has used it with guidance.",
+      "2": "Does routine tasks alone.",
+      "3": "Does the job's usual work alone, with results to show.",
+      "4": "Handles the hard cases and guides others.",
+      "5": "Designs the approach others follow, proven in real use."
+    },
+    "mandatoryNote": "Mandatory never rejects anyone automatically. Every candidate stays in the ranking and a person decides.",
     "type": {
       "mandatory": "Mandatory",
       "desirable": "Desirable"
@@ -1421,6 +1432,7 @@
     "success": "What success means",
     "successEmpty": "Not written yet.",
     "scoring": "Scoring definitions",
+    "showScoring": "Show scoring definitions",
     "strength": {
       "strong": "Strong",
       "medium": "Medium",
@@ -1481,7 +1493,14 @@
       "introSent": "The hiring owner can approve it or return it with a note. You can still approve it yourself.",
       "changed": "What changed since version {version}",
       "changedNone": "What changed",
-      "approve": "Approve version {version}",
+      "approve": "Approve rubric",
+      "previewTitle": "Preview: approve rubric version {version}",
+      "previewConsequence": "Assessment starts for this job once you confirm.",
+      "reason": "Reason, recorded in the audit log",
+      "confirmApprove": "Confirm approval",
+      "approving": "Approving…",
+      "previewFooter": "Nothing changes until you confirm.",
+      "close": "Close",
       "return": "Return with a note",
       "send": "Send to the hiring owner",
       "noteLabel": "Note for the recruiter",
@@ -1711,7 +1730,8 @@
     "openLabel": "Open the {job} rubric",
     "loading": "Loading what is waiting…",
     "error": "We could not load your desk. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "addJob": "Add a job"
   },
   "files": {
     "upload": "Upload a file",

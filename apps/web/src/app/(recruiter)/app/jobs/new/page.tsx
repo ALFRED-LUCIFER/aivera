@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { defaultJobType, jobTypeOptions } from '@/features/job-new/domain/jobNew.ts';
 import { newJobOptions } from '@/features/job-new/services/newJobOptions.ts';
-import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { requireScreen } from '@/features/shell/services/request.ts';
 import { getCatalogue } from '@/server/jobs';
 import { outboundOn } from '@/server/notifications';
@@ -30,7 +29,7 @@ export default async function NewJobPage() {
   const t = await getTranslations(defaultLocale, defaultTimeZone);
   return (
     <>
-      <PageHeader
+      <NewJob
         breadcrumb={
           <nav aria-label={t('jobNew.breadcrumb')} className="text-meta text-text-2">
             <Link href="/app/jobs" className="underline underline-offset-2 hover:text-text">
@@ -38,9 +37,8 @@ export default async function NewJobPage() {
             </Link>
           </nav>
         }
-        title={t('jobNew.title')}
-      />
-      <NewJob
+        // The heading follows the state: "Add a job", then "Job saved" once it is (AIV-P1-165).
+        titles={{ form: t('jobNew.title'), saved: t('jobNew.savedTitle') }}
         catalogue={catalogue}
         defaultJobType={defaultJobType(hiringFocus, catalogue)}
         jobTypes={jobTypeOptions(catalogue)}

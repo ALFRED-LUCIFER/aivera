@@ -14,6 +14,15 @@ export const parseJobPage = (segment: string | null): JobPage | null =>
 
 export const jobPageHref = (jobId: string, page: JobPage) => `/app/jobs/${jobId}/${page}`;
 
+/**
+ * On the rubric page of an approved rubric with nothing newer open, "Add CVs" is the one next step, so the page's one
+ * primary button (AIV-P1-165).
+ * shortcut: it stays primary beside "Save draft" while that rubric is edited, since edit mode lives in the page and not
+ * the header; lift edit mode up if two primaries there confuse a pilot recruiter.
+ */
+export const addCvsIsNext = (rubric: RubricState, current: JobPage | null) =>
+  current === 'rubric' && rubric.approved && rubric.latest === 'approved';
+
 /** A stage's status line as a `jobHeader.status` key and its values. */
 export type StageLine =
   | { key: 'saved'; values: { date: Date } }

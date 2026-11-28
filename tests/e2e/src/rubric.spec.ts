@@ -32,12 +32,18 @@ test('Scenario: Approved rubric version 2', async ({ page }) => {
   for (const name of ['Arabic and bilingual NLP', 'Product judgement'])
     await expect(rows.filter({ hasText: name })).toContainText('Suggested by Credalent, accepted');
   await expect(rows.filter({ hasText: 'LLM systems in production' })).not.toContainText('Suggested by Credalent');
-  await expect(rows.filter({ hasText: 'Cost and reliability' })).toContainText('2 of 5Desirable');
+  // AIV-P1-165: each level carries its one-line meaning.
+  await expect(rows.filter({ hasText: 'Cost and reliability' })).toContainText(
+    'Level 2 of 5Does routine tasks alone.Desirable',
+  );
 });
 
 test('Scenario: Scoring definitions say claims count zero', async ({ page }) => {
   await signIn(page, { email: AP });
   await openRubric(page);
+  // AIV-P1-165: the definitions are collapsed under their toggle.
+  await expect(page.getByRole('definition').last()).toBeHidden();
+  await page.getByText('Show scoring definitions').click();
   await expect(page.getByRole('definition').last()).toHaveText('Stated, with nothing to inspect. Counts as zero.');
   await expect(page.getByRole('term').last()).toHaveText('Claim only');
 });

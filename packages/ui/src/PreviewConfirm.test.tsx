@@ -301,6 +301,20 @@ describe('SuccessBanner', () => {
     expect(status.textContent).toBe('3 evidence requests sent.');
     expect(status.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
   });
+
+  // AIV-P1-165 "No empty success box": two `{condition && message}` children arrive as [false, false].
+  it('draws no box while every child is a condition that did not hold', () => {
+    const done = false as boolean;
+    render(
+      <SuccessBanner>
+        {done && 'Approved.'}
+        {done && 'Sent.'}
+      </SuccessBanner>,
+    );
+    const status = screen.getByRole('status');
+    expect(status.className).toBe('');
+    expect(status.childElementCount).toBe(0);
+  });
 });
 
 function Drawer({ onAsk = () => {} }: { onAsk?: (q: string) => void }) {

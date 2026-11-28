@@ -10,6 +10,8 @@ export type JobRow = Pick<
   assessed: number;
   /** The agency client's name; null for the team's own job (AIV-P1-056). */
   client: string | null;
+  /** That client's opaque id, which the filter and its URL use; null with `client`. */
+  clientId: string | null;
 };
 
 export const toJobRow = (
@@ -29,6 +31,7 @@ export const toJobRow = (
   nextAction: job.nextAction,
   hiringOwner,
   client,
+  clientId: client === null ? null : job.clientId,
 });
 
 export const JOB_FILTERS = ['all', 'needsAction', 'rubricNotApproved'] as const;
@@ -47,11 +50,27 @@ const matches: Record<JobFilter, (row: JobRow) => boolean> = {
 
 export const filterJobs = (rows: JobRow[], filter: JobFilter) => rows.filter(matches[filter]);
 
-/** The agency's client filter: every client named on a job, by name; '' is every job. */
-export const clientNames = (rows: JobRow[]) =>
-  [...new Set(rows.flatMap((row) => row.client ?? []))].toSorted((a, b) => a.localeCompare(b));
-export const filterByClient = (rows: JobRow[], client: string) =>
-  client ? rows.filter((row) => row.client === client) : rows;
+/** A client the agency's filter offers. The id is what the URL carries, never the name (AIV-P1-165). */
+export type ClientOption = { id: string; name: string };
+
+/** The `?client=` value when it is one of the workspace's clients, else '' (every job). */
+export const parseClient = (value: string | null, clients: readonly ClientOption[] | null) =>
+  clients?.find((client) => client.id === value)?.id ?? '';
+
+/** The agency's client filter, by client id; '' is every job. */
+export const filterByClient = (rows: JobRow[], clientId: string) =>
+  clientId ? rows.filter((row) => row.clientId === clientId) : rows;
+
+/**
+ * The row's one button for an admin or recruiter (AIV-P1-165): where the job's next action is done. A rubric to approve
+ * opens the rubric; an approved job with nothing else known to do takes CVs. Null: the next action is read, not done here.
+ */
+export const rowButton = (row: Pick<JobRow, 'rubric' | 'nextAction'>): 'rubric' | 'import' | null =>
+  row.nextAction?.kind === 'approve_rubric'
+    ? 'rubric'
+    : row.nextAction === null && row.rubric.approved
+      ? 'import'
+      : null;
 
 export const filterCounts = (rows: JobRow[]) =>
   Object.fromEntries(JOB_FILTERS.map((filter) => [filter, filterJobs(rows, filter).length])) as Record<

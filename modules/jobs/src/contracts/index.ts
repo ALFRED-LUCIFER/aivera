@@ -256,12 +256,14 @@ export interface JobsContract {
    * `ForbiddenError`. `revision` is the copy the approver read: an older one throws `JobError('stale')`; a version that
    * cannot be approved (already approved, superseded) `version_status`.
    * `alongside` runs in the same transaction before the audit write: the caller queues the decision email there.
+   * `reason` is the approver's own words from the confirm step (AIV-P1-165), recorded as the audit entry's note.
    */
   approveRubric(
     ctx: WorkspaceContext,
     rubricVersionId: string,
     revision?: number,
     alongside?: () => Promise<void>,
+    reason?: string,
   ): Promise<void>;
   /**
    * As `approveRubric`, but returns the version with a note of 1 to 1,000 characters (`JobError('return_note')`); the
