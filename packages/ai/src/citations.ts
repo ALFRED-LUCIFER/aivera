@@ -123,14 +123,15 @@ export const formatSources = (sources: readonly Source[]) =>
 
 // What a PDF's layout leaves in extracted text and a model does not copy: list markers, and a dash standing alone
 // between two spaces (a list dash or a date-range dash; never one between two figures, where it is a range of numbers).
-// One that opens a line starts a list item: a boundary a quote cannot cross (AIV-P1-156), since two items read together
-// can say what neither says alone; a quote may still start or end on one. Inside a line ("Python \u2022 SQL",
-// "2018 - Present") it reads as a space on both sides of the comparison.
-// shortcut: an item opened by a letter or an arrow ("o", "\u2192") is not told from text, so a quote may still run into
-// it; add such openers if pilot telemetry or an eval shows a quote joining those items.
+// A list marker that opens a line starts a list item: a boundary a quote cannot cross (AIV-P1-156), since two items
+// read together can say what neither says alone; a quote may still start or end on one. Inside a line
+// ("Python \u2022 SQL") a marker, and a lone dash anywhere, read as a space on both sides of the comparison.
+// shortcut: an item opened by a dash, a letter or an arrow ("-", "o", "\u2192") is not told from a date or sentence
+// the PDF broke before its dash ("Jun 2020\n- Aug 2023") or from text, so a quote may still run into it; make those
+// openers a boundary if pilot telemetry or an eval shows a quote joining such items.
 const LIST_MARK = /[\u2022\u2023\u2043\u25AA\u25AB\u25CF\u25E6\u25A0\u27A2]/;
 const DASH = /[-\u2013\u2014]/;
-// Where a list item opened in the flattened text. findQuote refuses a needle holding one, so no match spans it.
+// Where a list item opened in the flattened text (a line-opening marker). findQuote refuses a needle holding one, so no match spans it.
 const BOUNDARY = '\u0000';
 const ENDS = new RegExp(`^[\\s${BOUNDARY}]+|[\\s${BOUNDARY}]+$`, 'g');
 
@@ -163,7 +164,7 @@ function flatten(text: string): { flat: string; at: number[] } {
         : !(/\p{Nd}/u.test(before) && /\p{Nd}/u.test(after));
     }
     let opens = false;
-    if (layout) {
+    if (layout && mark) {
       let k = i - 1;
       while (k >= 0 && /[^\S\n]/.test(text.charAt(k))) k--;
       opens = k < 0 || text.charAt(k) === '\n';
@@ -179,11 +180,11 @@ function flatten(text: string): { flat: string; at: number[] } {
 }
 
 /**
- * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space, lone list markers and
- * dashes read as a space inside a line and as a boundary no quote crosses where they open one (AIV-P1-156), and
- * letters' compatibility forms folded (case, words, figures and punctuation must match): a CV extracted from a PDF
- * keeps its bullets, ligatures and line breaks, and a quote of it does not (AIV-P1-148). Offsets index the original
- * text, so the stored excerpt is the source's own characters.
+ * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space, lone dashes and list
+ * markers read as a space, except a marker that opens a line, a boundary no quote crosses (AIV-P1-156), and letters'
+ * compatibility forms folded (case, words, figures and punctuation must match): a CV extracted from a PDF keeps its
+ * bullets, ligatures and line breaks, and a quote of it does not (AIV-P1-148). Offsets index the original text, so the
+ * stored excerpt is the source's own characters.
  */
 export function findQuote(text: string, quote: string): { start: number; end: number } | undefined {
   const { flat, at } = flatten(text);

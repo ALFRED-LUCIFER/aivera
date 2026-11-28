@@ -153,13 +153,15 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
     const span = findQuote(cv, 'Verification of watermarks');
     expect(cv.slice(span?.start, span?.end)).toBe('Veriﬁcation of watermarks');
     expect(findQuote(cv, '• Regression testing')).toEqual(findQuote(cv, 'Regression testing'));
-    // AIV-P1-156: a quote cannot run from one list item into the next, with or without the marker, whatever opens the
-    // item; a lone marker or dash inside a line is still layout.
-    // SAFETY: mutation check: read a line-opening mark or dash as a space again in flatten -> this assertion failed
+    // AIV-P1-156: a quote cannot run from one list item into the next, with or without the marker; a lone marker inside
+    // a line, and a lone dash anywhere (a date broken before its dash), are still layout.
+    // SAFETY: mutation check: read a line-opening mark as a space again in flatten -> this assertion failed
     expect(findQuote(cv, 'Verification of watermarks Regression testing')).toBeUndefined();
     expect(findQuote(cv, 'Verification of watermarks • Regression testing')).toBeUndefined();
-    expect(findQuote(cv, 'Regression testing Bug reporting')).toBeUndefined();
-    expect(findQuote(cv, 'Regression testing - Bug reporting')).toBeUndefined();
+    expect(findQuote('Jun 2020\n- Aug 2023', 'Jun 2020 - Aug 2023')).toBeDefined();
+    expect(
+      findQuote('Led the migration\n\u2014 and cut costs', 'Led the migration \u2014 and cut costs'),
+    ).toBeDefined();
     expect(findQuote('Skills: Python \u2022 SQL \u2022 Docker', 'Python \u2022 SQL \u2022 Docker')).toBeDefined();
     expect(findQuote('Skills: Python \u2022 SQL \u2022 Docker', 'Python SQL Docker')).toBeDefined();
     expect(findQuote(cv, 'May 2018 Oct 2020')).toBeDefined();
@@ -476,6 +478,9 @@ describe('Scenario: Extraction that cites text not in the CV is rejected (AIV-P1
     const output = checkOutput('evidence.mapToCompetency', JSON.stringify(answer), schema, [S1, list], () => dropped++);
     expect(output.strengths.map((s) => s.citations[0]?.quote)).toEqual(['Python', '10 years in sales']);
     expect(dropped).toBe(1);
+    expect(() => checkOutput('evidence.mapToCompetency', JSON.stringify(answer), schema, [S1, list])).toThrow(
+      'cited S2: quote not in source',
+    );
   });
 
   it('without drop mode the whole answer is rejected', () => {
