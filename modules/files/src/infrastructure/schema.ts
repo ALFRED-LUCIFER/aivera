@@ -32,7 +32,7 @@ export const file = files
       // A workspace file is never also an account's, so the account policy below cannot reach a workspace's row.
       check('file_one_owner_check', sql`num_nonnulls(${t.workspaceId}, ${t.candidateAccountId}) = 1`),
       // Must list exactly PURPOSES and FILE_STATUSES (domain/files.ts); changing them needs a new migration.
-      check('file_purpose_check', sql`${t.purpose} in ('cv', 'evidence', 'portal')`),
+      check('file_purpose_check', sql`${t.purpose} in ('cv', 'evidence', 'portal', 'candidate_sheet')`),
       check('file_status_check', sql`${t.status} in ('pending', 'clean', 'infected', 'rejected')`),
       check('file_size_check', sql`${t.sizeBytes} > 0`),
       // Permissive policies are OR-ed: a row is reached in its workspace's scope or in its account's, never both.

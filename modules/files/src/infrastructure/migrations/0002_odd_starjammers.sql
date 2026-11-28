@@ -1,0 +1,2 @@
+ALTER TABLE "files"."file" DROP CONSTRAINT "file_purpose_check";--> statement-breakpoint
+ALTER TABLE "files"."file" ADD CONSTRAINT "file_purpose_check" CHECK ("files"."file"."purpose" in ('cv', 'evidence', 'portal', 'candidate_sheet'));

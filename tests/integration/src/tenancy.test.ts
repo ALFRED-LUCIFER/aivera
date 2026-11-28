@@ -392,6 +392,8 @@ async function seed(
       },
       source: 'email',
     });
+    // A sheet import waiting for the worker (intake.sheet_imports, AIV-P1-103); the file id is opaque to intake.
+    await intake.startSheetImport(ctx, { jobId: job.id, fileId: crypto.randomUUID() });
     // A Round 1 interview with a time, so its InterviewScheduled.v1 is in the outbox (interviews.*, AIV-P2-001).
     const approved = await createApprovedRubricReads().approvedRubric(ctx.tx, workspaceId, job.id);
     const { interviewId } = await interviews.createInterview(ctx, {

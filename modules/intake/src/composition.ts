@@ -6,17 +6,26 @@ import { enqueue, type EventDefinition } from '@credalent/db/outbox';
 import type { Tx } from '@credalent/db';
 import { uuidv7 } from '@credalent/db/uuidv7';
 import type { JobsContract } from '@credalent/jobs';
-import type { JobResource, WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
+import type { Action, JobResource, WorkspaceContext, WorkspacesContract } from '@credalent/workspaces';
 import { applicationUseCases, type InterviewPorts, type Ports } from './application/applications.ts';
 import { applyDecisions, type DecisionStagePorts } from './application/decisions.ts';
-import { ApplicationReceivedV1, type ApplicationReads, type IntakeContract, type Stage } from './contracts/index.ts';
+import { advanceSheetImport, sheetImportUseCases, type SheetWorkerPorts } from './application/sheetImports.ts';
+import {
+  ApplicationReceivedV1,
+  SheetImportRequestedV1,
+  type ApplicationReads,
+  type IntakeContract,
+  type Stage,
+} from './contracts/index.ts';
 import {
   applicationRecords,
   candidatesForJob,
   findApplication,
   intakeStore,
   jobsForCandidate,
+  sheetStore,
 } from './infrastructure/repository.ts';
+import { readSheetCells } from './infrastructure/sheetFile.ts';
 import { inbox, outbox } from './infrastructure/schema.ts';
 
 /**
@@ -34,7 +43,15 @@ export function createIntake(
   now: () => Date = () => new Date(),
   interviews?: InterviewPorts,
 ): IntakeContract {
-  return applicationUseCases({
+  const jobResource = async (ctx: WorkspaceContext, jobId: string) => {
+    const job = await jobs.getJob(ctx, jobId);
+    return job && { jobId: job.id, clientId: job.clientId };
+  };
+  const isSyntheticWorkspace = async (ctx: WorkspaceContext) =>
+    (await workspaces.getWorkspace(ctx))?.synthetic === true;
+  const authorize = (ctx: WorkspaceContext, action: Action, resource?: JobResource) =>
+    workspaces.authorize(ctx, action, resource);
+  const applications = applicationUseCases({
     storeFor: intakeStore,
     publishApplicationReceived: (tx, source) =>
       enqueue(tx, outbox, ApplicationReceivedV1, {
@@ -43,7 +60,7 @@ export function createIntake(
         dedupeKey: `application-source:${source.id}`,
         occurredAt: source.receivedAt,
       }),
-    authorize: (ctx, action, resource) => workspaces.authorize(ctx, action, resource),
+    authorize,
     auditBatchConfirmed: (ctx, batch) =>
       audit.record(
         { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
@@ -67,14 +84,28 @@ export function createIntake(
     ...(interviews && { interviews }),
     findOrCreatePerson: (ctx, input) => candidates.findOrCreatePerson(ctx, input),
     displayNames,
-    jobResource: async (ctx, jobId) => {
-      const job = await jobs.getJob(ctx, jobId);
-      return job && { jobId: job.id, clientId: job.clientId };
-    },
-    isSyntheticWorkspace: async (ctx) => (await workspaces.getWorkspace(ctx))?.synthetic === true,
+    jobResource,
+    isSyntheticWorkspace,
     newId: () => uuidv7(),
     now,
   });
+  const sheets = sheetImportUseCases({
+    sheetStoreFor: sheetStore,
+    publishSheetStep: (tx, sheet) =>
+      enqueue(tx, outbox, SheetImportRequestedV1, {
+        workspaceId: sheet.workspaceId,
+        payload: { sheetImportId: sheet.id },
+        dedupeKey: `sheet-import:${sheet.id}:${sheet.status}`,
+        occurredAt: now(),
+      }),
+    authorize,
+    jobResource,
+    receiveBatch: applications.receiveBatch,
+    isSyntheticWorkspace,
+    newId: () => uuidv7(),
+    now,
+  });
+  return { ...applications, ...sheets };
 }
 
 /**
@@ -154,3 +185,37 @@ export const createCandidateJobResolver =
     const job = await jobs.getJob(ctx, jobId);
     return job && { jobId: job.id, clientId: job.clientId };
   };
+
+/**
+ * The worker job for `SheetImportRequested.v1` (AIV-P1-103): reads an imported sheet's header row, or, once the
+ * recruiter confirmed the mapping, its rows and their CV links. `readCleanFile` and `fetchCv` come from the files
+ * composition (`createCleanFileReader`, `createCvLinkFetcher`), so intake needs no package edge to files. Nothing is
+ * added to the job here: the recruiter confirms that. No sheet value is logged.
+ */
+export const createSheetImportHandler = (config: {
+  readCleanFile: (
+    tx: Tx,
+    workspaceId: string,
+    fileId: string,
+  ) => Promise<{ purpose: string; contentType: string; data: Buffer } | 'pending' | 'rejected'>;
+  fetchCv: SheetWorkerPorts['fetchCv'];
+}): Handler<{ sheetImportId: string }> => {
+  const ports: SheetWorkerPorts = {
+    sheetStoreFor: sheetStore,
+    readSheet: async (tx, workspaceId, fileId) => {
+      const file = await config.readCleanFile(tx, workspaceId, fileId);
+      // The web action starts an import only for a clean upload, so a pending one is a retry, not a refusal.
+      if (file === 'pending') throw new Error('sheet upload not scanned yet');
+      return file === 'rejected' || file.purpose !== 'candidate_sheet'
+        ? 'unreadable'
+        : readSheetCells(file.data, file.contentType);
+    },
+    fetchCv: config.fetchCv,
+  };
+  return {
+    event: SheetImportRequestedV1,
+    inbox,
+    consumer: 'intake.sheet-import',
+    handle: (tx, payload, envelope) => advanceSheetImport(ports, tx, envelope.workspaceId, payload.sheetImportId),
+  };
+};

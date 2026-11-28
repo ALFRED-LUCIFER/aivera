@@ -200,6 +200,43 @@ export function filesUseCases(p: Ports) {
         return file ? settle(tx, target.owner, file, verdict) : null;
       });
     },
+
+    /**
+     * A CV the worker fetched from an imported sheet's link (AIV-P1-103), stored as an upload by `uploadedBy` would be:
+     * a pending `cv` file in quarantine, then Defender's scan, or settled at once where scanning is off (dev only).
+     * Null, storing nothing, when it is outside the CV limits. The row commits before the blob is written, so a scan
+     * result never arrives for a file it cannot find.
+     */
+    async storeFetchedCv(
+      workspaceId: string,
+      uploadedBy: string,
+      data: Buffer,
+      contentType: string,
+    ): Promise<string | null> {
+      const extension = contentType === 'application/pdf' ? 'pdf' : 'docx';
+      if (checkUpload({ purpose: 'cv', fileName: `cv.${extension}`, contentType, size: data.length })) return null;
+      const owner = { workspaceId };
+      const id = p.newId();
+      const blobPath = `${QUARANTINE}/${blobName(owner, id)}`;
+      const file: FileRecord = {
+        id,
+        workspaceId,
+        candidateAccountId: null,
+        purpose: 'cv',
+        contentType,
+        sizeBytes: data.length,
+        sha256: null,
+        status: 'pending',
+        blobPath,
+        uploadedBy,
+        createdAt: p.now(),
+      };
+      await p.inScope(owner, (tx) => p.storeFor(tx).insert(file));
+      await p.blobs.write(blobPath, data, contentType);
+      // shortcut: malware scanning off in dev (synthetic data, owner decision 20 Nov 2026); the pilot sets MALWARE_SCANNING=on.
+      if (!p.malwareScanning) await p.inScope(owner, (tx) => settle(tx, owner, file, 'clean'));
+      return id;
+    },
   };
 }
 

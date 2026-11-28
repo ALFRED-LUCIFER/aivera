@@ -1,6 +1,7 @@
 // Upload limits, statuses and blob naming (AIV-P0-016). Pure: no I/O.
 
-export const PURPOSES = ['cv', 'evidence', 'portal'] as const;
+// `candidate_sheet`: a CSV or Excel file of candidates a recruiter imports (AIV-P1-103), read by the worker only.
+export const PURPOSES = ['cv', 'evidence', 'portal', 'candidate_sheet'] as const;
 export type Purpose = (typeof PURPOSES)[number];
 
 export const FILE_STATUSES = ['pending', 'clean', 'infected', 'rejected'] as const;
@@ -17,6 +18,8 @@ export const CONTENT_TYPES = {
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  // shortcut: Windows with Excel installed reports a .csv as application/vnd.ms-excel and is refused; accept that type too if pilot recruiters hit it.
+  csv: 'text/csv',
 } as const;
 export type Extension = keyof typeof CONTENT_TYPES;
 
@@ -30,6 +33,7 @@ export const UPLOAD_LIMITS = {
   cv: { extensions: ['pdf', 'docx'], maxBytes: 10 * MB, message: 'limits.cv' },
   evidence: { ...documents, message: 'limits.evidence' },
   portal: { ...documents, message: 'limits.evidence' },
+  candidate_sheet: { extensions: ['csv', 'xlsx'], maxBytes: 2 * MB, message: 'limits.sheet' },
 } as const satisfies Record<Purpose, { extensions: readonly Extension[]; maxBytes: number; message: string }>;
 export type LimitMessage = (typeof UPLOAD_LIMITS)[Purpose]['message'];
 
@@ -52,8 +56,12 @@ export function checkUpload({ purpose, fileName, contentType, size }: UploadRequ
 
 /** Where every upload lands first; nothing reads from it but the scan and the move. */
 export const QUARANTINE = 'uploads-quarantine';
-/** The container a clean file is moved to. `cvs`: Blob container names take 3 to 63 characters, so not `cv`. */
-export const finalContainer = (purpose: Purpose) => (purpose === 'cv' ? 'cvs' : 'evidence');
+/**
+ * The container a clean file is moved to. `cvs`: Blob container names take 3 to 63 characters, so not `cv`. A candidate
+ * sheet is a list of candidates, so it is kept with the CVs.
+ */
+export const finalContainer = (purpose: Purpose) =>
+  purpose === 'cv' || purpose === 'candidate_sheet' ? 'cvs' : 'evidence';
 /** How long an upload SAS lives. */
 export const UPLOAD_TTL_MS = 10 * 60_000;
 /** A read link to one clean file is valid for 5 minutes (AIV-P1-045). */
