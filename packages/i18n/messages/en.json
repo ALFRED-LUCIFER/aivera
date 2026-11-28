@@ -2016,13 +2016,21 @@
     "missingAny": "Missing evidence: any",
     "missingOption": "Missing evidence: {name}",
     "columnsMenu": "Columns",
+    "compareTop": "Compare top {count}",
+    "reason": {
+      "backed": "Largest part of the backed score:",
+      "backedLevel": ", proven at {level} of 5.",
+      "claim": "No work inspected yet. Largest claim:",
+      "claimLevel": ", claimed at {level} of 5. A claim counts 0."
+    },
+    "missingCount": "{count, plural, one {# competency} other {# competencies}}",
     "columnsLegend": "Columns to show",
     "columns": {
       "rank": "#",
       "candidate": "Candidate",
       "score": "Backed score",
       "meetsNeed": "Meets the job's need",
-      "confidence": "Confidence",
+      "confidence": "Weight on Strong evidence",
       "missing": "Missing critical evidence",
       "lastScored": "Last scored",
       "nextAction": "Next action"
@@ -2057,9 +2065,9 @@
     "scheduleRound": "Schedule {round}",
     "meetsNeed": "{meets} of {count}",
     "confidence": {
-      "High": "High",
-      "Medium": "Medium",
-      "Low": "Low"
+      "High": "60% or more",
+      "Medium": "30% to under 60%",
+      "Low": "Under 30%"
     },
     "noneMissing": "None",
     "scoredOn": "{value, date, ::d MMM}",
@@ -2402,6 +2410,9 @@
     "awaitingRubric": "{job}. Jobs without an approved rubric are not assessed, so there is nothing to compare yet.",
     "changeSelection": "Change selection",
     "openPack": "Open decision pack",
+    "addToPack": "Add these to a decision pack",
+    "quote": "“{text}”",
+    "claimStatus": "Claim. Counts 0 against {needed}.",
     "tooFew": "Choose {min} to {max} candidates to compare",
     "notOnJob": "These candidates are not all on this job",
     "loading": "Loading the comparison…",
@@ -2422,9 +2433,10 @@
       "writing": "Finding the trade-offs…",
       "again": "Try again",
       "unavailable": "Trade-off summary unavailable. The grid above is complete.",
-      "notScored": "The trade-offs can be shown once every candidate here is scored.",
-      "closing": "{points, plural, one {# point separates} other {# points separate}} the {count} candidates.",
-      "couldChange": "Claims still to check could change this order."
+      "notScored": "The trade-offs compare scored candidates. Fewer than 2 here are scored.",
+      "notScoredYet": "{name} is not scored yet.",
+      "closing": "{points, plural, one {# point separates} other {# points separate}} the {count} {partial, select, true {scored candidates} other {candidates}}.",
+      "couldChange": "The open claims are large enough to change this order."
     }
   }
 }

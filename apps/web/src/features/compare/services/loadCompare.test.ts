@@ -20,7 +20,9 @@ const fake = vi.hoisted(() => ({
   rubric: vi.fn(),
   numbered: vi.fn(),
   evidence: vi.fn(),
+  packs: vi.fn(),
 }));
+vi.mock('@/server/decisions', () => ({ getDecisions: () => ({ listPacks: fake.packs }) }));
 vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: typeof ctx) => Promise<unknown>) => ({ value: await fn(ctx) }),
 }));
@@ -91,8 +93,8 @@ const assessed = () => {
     status: 'ranked',
     rubricVersionId: VERSION,
     rows: [
-      { candidateId: SARA, rank: 1, backedScore: 68, upperBound: 84 },
-      { candidateId: LAYLA, rank: 3, backedScore: 61, upperBound: 82 },
+      { candidateId: SARA, rank: 1, backedScore: 68, upperBound: 84, missingCritical: [], gaps: [], cited: null },
+      { candidateId: LAYLA, rank: 3, backedScore: 61, upperBound: 82, missingCritical: [], gaps: [], cited: null },
     ],
   });
   fake.latest.mockImplementation(async (_ctx, id: string) => ({ rubricVersionId: VERSION, competencies: RESULTS[id] }));
@@ -105,7 +107,9 @@ const assessed = () => {
     ],
   });
   fake.numbered.mockResolvedValue({ id: VERSION, version: 2 });
+  fake.packs.mockResolvedValue([]);
 };
+const saraRow = { id: 'a1', personId: SARA, name: 'Sara Al Qahtani', stage: 'new' };
 
 afterEach(() => {
   vi.resetAllMocks();
@@ -122,6 +126,12 @@ describe('loadCompare', () => {
       jobTitle: 'Senior AI Engineer',
       selectionHref: `/app/jobs/${JOB}/candidates?selected=a1,a3`,
       rubricVersion: 2,
+      // No pack yet: a recruiter may add the compared candidates to one (AIV-P1-165 §10).
+      hasPack: false,
+      pack: {
+        rows: [expect.objectContaining(saraRow), expect.objectContaining({ id: 'a3', personId: LAYLA })],
+        packs: [],
+      },
       rows: [
         { competencyId: 'llm', name: 'LLM systems in production', weightPercent: 25, needed: 4 },
         { competencyId: 'arabic', name: 'Arabic and bilingual NLP', weightPercent: 10, needed: 2 },
@@ -138,7 +148,7 @@ describe('loadCompare', () => {
               claimOnly: false,
               summary: 'Merchant assistant, about 9,000 merchants.',
             },
-            // A claim: proven 0 and marked claim-only, whatever strength it is stored with (AGENTS.md 1.6).
+            // A claim: proven 0 and marked claim-only; its strength is the one the profile shows (AGENTS.md 1.6).
             arabic: {
               proven: 0,
               lead: { strength: 'supporting', provenance: 'claim' },
@@ -232,6 +242,32 @@ describe('loadCompare', () => {
       ],
     });
     expect(fake.rubric).not.toHaveBeenCalled();
+  });
+
+  // AIV-P1-165 §10: "Open decision pack" only when a pack with members exists; "Add these…" for who may add.
+  it('says whether a pack with members exists, and hands the undecided packs to a member who may add', async () => {
+    assessed();
+    fake.packs.mockResolvedValue([
+      { id: 'pack-1', name: 'Shortlist', status: 'ready', candidateIds: [SARA] },
+      { id: 'pack-0', name: 'Decided', status: 'decided', candidateIds: [LAYLA] },
+    ]);
+    expect(await loadCompare(JOB, `${SARA},${LAYLA}`)).toMatchObject({
+      hasPack: true,
+      pack: { packs: [{ id: 'pack-1', name: 'Shortlist', candidateIds: [SARA] }] },
+    });
+    fake.packs.mockResolvedValue([{ id: 'pack-2', name: 'Empty', status: 'ready', candidateIds: [] }]);
+    expect(await loadCompare(JOB, `${SARA},${LAYLA}`)).toMatchObject({ hasPack: false });
+  });
+
+  // SAFETY: mutation check: `mayAdd` forced to true in loadCompare -> this test failed (a hiring owner was handed the pack action)
+  it('hands no pack action to a hiring owner, and reads no pack for an interviewer', async () => {
+    assessed();
+    ctx.role = 'hiring_owner';
+    expect(await loadCompare(JOB, `${SARA},${LAYLA}`)).toMatchObject({ hasPack: false, pack: null });
+    ctx.role = 'interviewer';
+    fake.packs.mockClear();
+    expect(await loadCompare(JOB, `${SARA},${LAYLA}`)).toMatchObject({ hasPack: false, pack: null });
+    expect(fake.packs).not.toHaveBeenCalled();
   });
 
   it('is not found for a malformed job id or id list, before any read', async () => {

@@ -1,6 +1,7 @@
 import type { ExplanationStatement } from '@credalent/assessment';
 import { z } from 'zod';
 import type { EvidenceCard } from '@/features/evidence-profile/domain/evidenceCards.ts';
+import type { RankingData } from '@/features/ranking/domain/ranking.ts';
 
 // The comparison page (AIV-P1-047): the candidates a recruiter ticked on the ranking, side by side on the job's
 // competencies. Pure. The browser takes this file's types and limits; nothing here reads or changes a score.
@@ -70,6 +71,21 @@ export type CompareCell = {
   summary: string | null;
 };
 
+/**
+ * A candidate's cell for a competency, from the evidence card the profile shows for it. The strength and provenance
+ * are the card's `lead`, the same value the profile labels the same evidence with (AIV-P1-165 §10: one rule, in
+ * `evidenceCards`), so a CV line stored Supporting reads "Supporting" in both places. `claimOnly` says it backs
+ * nothing: the cell then states that the claim counts 0 (AGENTS.md 1.6).
+ */
+export const cellOf = (proven: number, card: EvidenceCard | undefined): CompareCell => ({
+  proven,
+  lead: card?.lead ?? null,
+  claimOnly: card?.claimOnly ?? false,
+  // SAFETY: an excerpt is the evidence's own words and may hold a contact detail; model-cited quotes (trade-offs,
+  // pack) cannot, as @credalent/ai refuses a quote of redacted text.
+  summary: card?.items[0] ? withoutContacts(card.items[0].excerpt) : null,
+});
+
 export type CompareColumn = {
   candidateId: string;
   /** Null only if the person record is gone. */
@@ -100,23 +116,32 @@ export type CompareData =
       rubricVersion: number | null;
       rows: CompareRow[];
       columns: CompareColumn[];
+      /** The job has a decision pack with members: "Open decision pack" is offered only then (AIV-P1-165 §10). */
+      hasPack: boolean;
+      /**
+       * For a member who may add to a pack (admins and recruiters, decided on the server): the compared candidates as
+       * the ranking's rows and the job's undecided packs, for "Add these to a decision pack". Null for anyone else.
+       */
+      pack: Required<Pick<RankingData, 'rows' | 'packs'>> | null;
     });
 
 /**
- * "7 points separate the 3 candidates": the gap between the highest and lowest backed score, and whether the order
- * could change if claims hold (a lower candidate's "up to" reaches the highest backed score), whatever the gap's size.
- * Null unless everyone is scored.
+ * "7 points separate the 3 candidates": the gap between the highest and lowest backed score of the scored candidates,
+ * and whether open claims are large enough to change the order (a lower candidate's "up to" reaches the highest backed
+ * score), whatever the gap's size. `partial` when someone compared is not scored yet: the trade-offs are then of the
+ * scored ones only (AIV-P1-165 §10). Null with fewer than 2 scored: there is nothing to trade off.
  */
 export function closingOf(
   columns: readonly Pick<CompareColumn, 'score'>[],
-): { points: number; count: number; couldChange: boolean } | null {
+): { points: number; count: number; couldChange: boolean; partial: boolean } | null {
   const scores = columns.flatMap((c) => c.score ?? []);
-  if (scores.length < MIN_COMPARE || scores.length !== columns.length) return null;
+  if (scores.length < MIN_COMPARE) return null;
   const top = Math.max(...scores.map((s) => s.backed));
   return {
     points: top - Math.min(...scores.map((s) => s.backed)),
     count: scores.length,
     couldChange: scores.some((s) => s.backed < top && s.upTo >= top),
+    partial: scores.length !== columns.length,
   };
 }
 

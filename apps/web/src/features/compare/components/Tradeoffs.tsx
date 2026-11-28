@@ -23,13 +23,16 @@ import { closingOf, type CompareColumn, type TradeoffsView } from '../domain/com
 //   artboard's "A difference this small is within what Round 2 could change." is "Claims still to check could change
 //   this order.", shown only when a lower candidate's "up to" reaches the highest backed score: no gap is called small
 //   (AGENTS.md 1.7);
-// - printed (AIV-P1-165), "Show the trade-offs" is left out: a printout has no controls.
+// - printed (AIV-P1-165), "Show the trade-offs" is left out: a printout has no controls;
+// - with someone compared not scored yet, the trade-offs are of the scored candidates and a line names each one who is
+//   not ("Priya Nair is not scored yet."); the artboard draws only three scored candidates (AIV-P1-165 §10).
 
 export type TradeoffsProps = {
   view: TradeoffsView | null;
   pending: boolean;
   onWrite: () => void;
-  columns: readonly Pick<CompareColumn, 'score'>[];
+  /** Everyone compared: the trade-offs are of those scored, and each one not scored yet is named (AIV-P1-165 §10). */
+  columns: readonly Pick<CompareColumn, 'candidateId' | 'name' | 'score'>[];
 };
 
 export function Tradeoffs({ view, pending, onWrite, columns }: TradeoffsProps) {
@@ -100,7 +103,7 @@ export function Tradeoffs({ view, pending, onWrite, columns }: TradeoffsProps) {
               {closing && (
                 <p className="flex flex-wrap items-center gap-2 text-meta text-text-2 tabular-nums">
                   <ValueBasis basis="observed" label={tAll('ranking.observed')} />
-                  {t('closing', { points: closing.points, count: closing.count })}
+                  {t('closing', { points: closing.points, count: closing.count, partial: String(closing.partial) })}
                   {closing.couldChange && ` ${t('couldChange')}`}
                 </p>
               )}
@@ -108,6 +111,14 @@ export function Tradeoffs({ view, pending, onWrite, columns }: TradeoffsProps) {
           )}
           {view?.status === 'unavailable' && !pending && <p className="text-body text-text">{t('unavailable')}</p>}
         </div>
+        {closing &&
+          columns
+            .filter((column) => !column.score)
+            .map((column) => (
+              <p key={column.candidateId} className="text-body text-text-2">
+                {t('notScoredYet', { name: column.name ?? tAll('ranking.unnamed') })}
+              </p>
+            ))}
         {closing === null ? (
           <p className="text-body text-text-2">{t('notScored')}</p>
         ) : (

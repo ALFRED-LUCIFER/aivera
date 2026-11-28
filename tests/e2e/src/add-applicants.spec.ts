@@ -115,23 +115,24 @@ test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
     'Candidate',
     'Backed score',
     "Meets the job's need",
-    'Confidence',
-    'Missing critical evidence',
-    /^Last scored \(.+\)$/,
     'Next action',
   ]);
   const rows = bodyRows(table);
   await expect(rows).toHaveCount(7);
   // AIV-P1-018: Sara's second record merged into hers automatically (seed.ts); AP, an admin, may undo it. Her line is
   // her seeded Round 1, held four days ago (AIV-P2-007), not her intake stage.
+  // AIV-P1-165 §9: under the stage, one line on what the rank rests on (ranking-compare-trust.spec.ts reads it word
+  // for word); the table opens on four columns, so no "High", missing evidence or date here.
   await expect(rows.nth(0)).toHaveText(
-    'Select Sara Al Qahtani1Sara Al QahtaniRound 1 complete1 duplicate mergedUndo merge68up to 84 if claims hold4 of 6HighProduct judgement14 NovNot yet available',
+    /^Select Sara Al Qahtani1Sara Al QahtaniRound 1 completeLargest part of the backed score: [^.]+, proven at \d of 5\.1 duplicate mergedUndo merge68up to 84 if claims hold4 of 6Not yet available$/,
   );
   await expect(rows.nth(1)).toHaveText(
     // His seeded Round 2 is three days from today (seed.ts), so its date is a pattern.
-    /^Select Arjun Menon2Arjun MenonRound 2 on \d{1,2} \w{3}64up to 76 if claims hold3 of 6HighRetrieval and evaluation/,
+    /^Select Arjun Menon2Arjun MenonRound 2 on \d{1,2} \w{3}(Largest part of the backed score: [^.]+\.)?64up to 76 if claims hold3 of 6/,
   );
-  await expect(rows.nth(2)).toHaveText(/^Select Tarek Mansour3Tarek MansourNew63up to 80 if claims hold/);
+  await expect(rows.nth(2)).toHaveText(
+    /^Select Tarek Mansour3Tarek MansourNew(Largest part of the backed score: [^.]+\.)?63up to 80 if claims hold/,
+  );
   await expect(page.getByText(`8 of 9 assessed. ${FAIRNESS}`)).toBeVisible();
 });
 
@@ -160,7 +161,9 @@ test('Scenario: Show all', async ({ page }) => {
   await page.getByRole('button', { name: 'Show all 9' }).click();
   const rows = bodyRows(table);
   await expect(rows).toHaveCount(9);
-  await expect(rows.nth(7)).toHaveText(/^Select Maria Santos8Maria SantosNew31up to 69 if claims hold/);
+  await expect(rows.nth(7)).toHaveText(
+    /^Select Maria Santos8Maria SantosNewLargest part of the backed score: Retrieval and evaluation, proven at 2 of 5\.31up to 69 if claims hold/,
+  );
   // Not assessed yet and still listed: nobody drops out of the ranking (AGENTS.md 1.5).
   await expect(rows.nth(8)).toHaveText(/^Select Youssef AzizYoussef AzizNewNot started: no CV was added/);
   await expect(page.getByText(`8 of 9 assessed. ${FAIRNESS}`)).toBeVisible();
@@ -222,6 +225,8 @@ test('Scenario: The ranking is keyboard operable: search, the filters and Column
   await page.keyboard.press('Tab');
   await expect(page.getByRole('combobox', { name: 'Missing evidence' })).toBeFocused();
   await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Compare top 3' })).toBeFocused();
+  await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('checkbox', { name: 'Backed score' })).toBeFocused();
@@ -251,7 +256,7 @@ for (const theme of themes) {
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectAccessible(page);
     await page.getByText('Columns', { exact: true }).click();
-    await expect(page.getByRole('checkbox', { name: 'Confidence' })).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: 'Weight on Strong evidence' })).toBeVisible();
     await expectAccessible(page);
   });
 

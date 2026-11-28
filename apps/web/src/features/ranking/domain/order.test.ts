@@ -57,6 +57,7 @@ describe('orderBasis: the rule that ordered the ranking', () => {
       confidence: 'Low' as const,
       missingCritical: [],
       gaps: [],
+      cited: null,
       assessedAt: new Date('2026-11-28T08:00:00.000Z'),
     }));
     const rows = toCandidateRows(applicants, ranking, () => undefined);

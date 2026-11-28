@@ -4,12 +4,15 @@ import { describe, expect, it } from 'vitest';
 import type { Interview } from '@credalent/interviews';
 import {
   currentInterviews,
+  HIDDEN_BY_DEFAULT,
+  HIDEABLE_COLUMNS,
   NO_FILTERS,
   filterRows,
   missingOptions,
   roundLabelKey,
   stageOptions,
   toCandidateRows,
+  topRanked,
 } from './ranking.ts';
 
 // AIV-P1-034. Synthetic cast only (docs/00-product/personas.md).
@@ -32,6 +35,7 @@ const ranked = (n: number, rank: number, backed: number, upTo: number, missing: 
   confidence: 'High',
   missingCritical: missing,
   gaps: missing,
+  cited: null,
   assessedAt: at,
 });
 const names: Record<string, string> = { c4: 'Retrieval and evaluation', c5: 'Product judgement' };
@@ -158,5 +162,45 @@ describe('current interviews and their round line (AIV-P2-007)', () => {
     expect(roundLabelKey({ ...when, status: 'scheduled', today: false })).toBe('scheduled');
     expect(roundLabelKey({ ...when, status: 'completed', today: true })).toBe('completed');
     expect(roundLabelKey({ scheduledAt: null, status: 'to_schedule', today: false })).toBe('to_schedule');
+  });
+});
+
+// AIV-P1-165 §9: each assessed row's one-line reason, the default columns and "Compare top 3".
+const cited = (claim: boolean, competencyId = 'c4') => ({ competencyId, itemId: 'item-1', level: 4, claim });
+const reasonOf = (row: RankingRow) => toCandidateRows(applicants, [row], (id) => names[id])[0]?.score?.reason;
+
+describe('the row reason', () => {
+  it('names the competency and the cited item the rank rests on', () => {
+    expect(reasonOf({ ...ranked(1, 1, 68, 84, []), cited: cited(false) })).toEqual({
+      competency: 'Retrieval and evaluation',
+      itemId: 'item-1',
+      level: 4,
+      claim: false,
+    });
+  });
+
+  // SAFETY: mutation check: `claim: cited.claim` written as `claim: false` in toCandidateRows -> this test failed.
+  it('keeps a claim labelled a claim: it counts zero and never reads as backing (AGENTS.md 1.6)', () => {
+    expect(reasonOf({ ...ranked(1, 1, 0, 60, []), cited: cited(true) })?.claim).toBe(true);
+  });
+
+  it('gives no line when the result cites nothing or the rubric does not name the competency: no raw id is shown', () => {
+    expect(reasonOf(ranked(1, 1, 68, 84, []))).toBeUndefined();
+    expect(reasonOf({ ...ranked(1, 1, 68, 84, []), cited: cited(false, 'gone') })).toBeUndefined();
+  });
+});
+
+describe('the default columns and "Compare top 3"', () => {
+  it('opens on name, backed score, meets need and next action', () => {
+    expect(HIDEABLE_COLUMNS.filter((column) => !HIDDEN_BY_DEFAULT.includes(column))).toEqual([
+      'score',
+      'meetsNeed',
+      'nextAction',
+    ]);
+  });
+
+  it('compares the three highest ranked, and is not offered until three are scored', () => {
+    expect(topRanked(rows)).toEqual(['p1', 'p2', 'p3']);
+    expect(topRanked(rows.filter((row) => row.personId !== 'p2'))).toBeNull();
   });
 });

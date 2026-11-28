@@ -5,11 +5,13 @@ import { useLiveRefresh } from '@/features/evidence-profile';
 import { orderBasis } from '../domain/order.ts';
 import {
   FIRST_ROWS,
+  HIDDEN_BY_DEFAULT,
   NO_FILTERS,
   filterRows,
   inProgress,
   missingOptions,
   stageOptions,
+  topRanked,
   type HideableColumn,
   type RankingData,
   type RankingFilters,
@@ -32,7 +34,8 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
   const selectedIds = parseSelected(picked, rows);
   const [filters, setFilters] = useState<RankingFilters>(NO_FILTERS);
   const [showAll, setShowAll] = useState(false);
-  const [hidden, setHidden] = useState<HideableColumn[]>([]);
+  const [hidden, setHidden] = useState<HideableColumn[]>([...HIDDEN_BY_DEFAULT]);
+  const top = bulkActions.includes('compare') ? topRanked(rows) : null;
   const matching = filterRows(rows, filters);
   const shown = showAll ? matching : matching.slice(0, FIRST_ROWS);
   const assessing = inProgress(rows);
@@ -58,6 +61,9 @@ export function useRankingController({ jobId, awaitingRubric, rows, bulkActions 
     hidden,
     onToggleColumn: (column: HideableColumn) =>
       setHidden(hidden.includes(column) ? hidden.filter((c) => c !== column) : [...hidden, column]),
+    /** "Compare top 3" (AIV-P1-165 §9): opens the comparison of the three highest ranked; null while it is not offered. */
+    // compareHref builds the path from opaque ids, which typed routes cannot check.
+    compareTopHref: top && (compareHref(jobId, top) as Route),
     selection:
       bulkActions.length > 0
         ? {
