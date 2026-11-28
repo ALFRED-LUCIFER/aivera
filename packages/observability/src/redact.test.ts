@@ -1,3 +1,4 @@
+import { SpanKind } from '@opentelemetry/api';
 import { LoggerProvider, InMemoryLogRecordExporter, SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { describe, expect, it } from 'vitest';
@@ -6,12 +7,17 @@ import { REDACTED, redactingLogRecordProcessor, redactingSpanProcessor, register
 // Feature: Traces and metrics in Application Insights without personal data (AIV-P0-018). Synthetic data only.
 
 // The distro's order: the redacting processor runs before the exporting one.
-function exportSpan(attributes: Record<string, string>, exception?: Error, name = 'GET /portal/r') {
+function exportSpan(
+  attributes: Record<string, string>,
+  exception?: Error,
+  name = 'GET /portal/r',
+  kind: SpanKind = SpanKind.INTERNAL,
+) {
   const exporter = new InMemorySpanExporter();
   const provider = new BasicTracerProvider({
     spanProcessors: [redactingSpanProcessor, new SimpleSpanProcessor(exporter)],
   });
-  const span = provider.getTracer('test').startSpan(name, { attributes });
+  const span = provider.getTracer('test').startSpan(name, { attributes, kind });
   if (exception) span.recordException(exception);
   span.end();
   return exporter.getFinishedSpans()[0];
@@ -116,6 +122,26 @@ describe('Scenario Outline: Personal data is redacted', () => {
       'credalent.ai.prompt': REDACTED,
       'gen_ai.completion': REDACTED,
     });
+  });
+
+  // SAFETY: mutation check: removed the originOnly call for client spans -> this test failed (the CV link's path exported)
+  it('AIV-P1-165: an outbound call keeps its origin only, so a CV link from a sheet never names the candidate', () => {
+    const link = 'https://cv.credalent.example/people/Maria-Santos-CV.pdf';
+    const span = exportSpan(
+      { 'url.full': link, 'url.path': '/people/Maria-Santos-CV.pdf', 'http.url': link, 'http.target': '/people/x' },
+      undefined,
+      'GET',
+      SpanKind.CLIENT,
+    );
+    expect(span?.attributes['url.full']).toBe('https://cv.credalent.example');
+    expect(span?.attributes['http.url']).toBe('https://cv.credalent.example');
+    expect(JSON.stringify(span?.attributes)).not.toContain('Maria');
+    expect(JSON.stringify(span?.attributes)).not.toContain('/people');
+  });
+
+  it('an inbound request keeps its path of opaque ids, for debugging', () => {
+    const path = '/app/jobs/0190d4a2-0000-7000-9000-000000001031/candidates';
+    expect(exportSpan({ 'url.path': path }, undefined, 'GET', SpanKind.SERVER)?.attributes['url.path']).toBe(path);
   });
 
   // SAFETY: mutation check: removed the telemetry redactor (redactingSpanProcessor.onEnd did nothing) -> this test failed

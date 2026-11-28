@@ -1,3 +1,4 @@
+import { SpanKind } from '@opentelemetry/api';
 import type { LogRecordProcessor, SdkLogRecord } from '@opentelemetry/sdk-logs';
 import type { ReadableSpan, SpanProcessor } from '@opentelemetry/sdk-trace-base';
 
@@ -192,6 +193,17 @@ export function redact(record: Record<string, unknown>, parent = ''): void {
   }
 }
 
+// An outbound call goes to someone else's URL, whose path can name a person (a CV link from an imported sheet,
+// AIV-P1-103, or a candidate's portfolio page): a client span keeps the origin only. Inbound paths carry opaque ids.
+const originOnly = (attributes: Record<string, unknown>) => {
+  for (const key of ['url.full', 'http.url']) {
+    const value = attributes[key];
+    if (typeof value !== 'string') continue;
+    attributes[key] = URL.canParse(value) ? new URL(value).origin : REDACTED;
+  }
+  for (const key of ['url.path', 'url.template', 'http.target', 'http.route']) delete attributes[key];
+};
+
 const done = async () => {};
 // Names are read-only in the SDK's types but plain properties on the ended span; the exporter reads them as is.
 const rename = (named: { name: string }) => ((named as { name: string }).name = stripQuery(named.name));
@@ -201,6 +213,7 @@ export const redactingSpanProcessor: SpanProcessor = {
   onStart: () => {},
   onEnd: (span: ReadableSpan) => {
     rename(span);
+    if (span.kind === SpanKind.CLIENT) originOnly(span.attributes as Record<string, unknown>);
     redact(span.attributes as Record<string, unknown>);
     for (const event of span.events) {
       rename(event);
