@@ -209,6 +209,9 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) process.once(signal, () => 
 const now = () => new Date();
 
 const appDb = createDb(env.DATABASE_URL);
+// The sheet import's CV fetches commit their own rows while the delivery holds an appDb connection, up to 8 at once per
+// delivery (AIV-P1-103): their own two connections keep them from draining the receivers' pool. Connects only when used.
+const cvFetchDb = createDb(env.DATABASE_URL, { max: 2 });
 // Two connections: the readiness probe must not wait behind a relay pass held up by a Service Bus timeout.
 const relayDb = createDb(env.RELAY_DATABASE_URL, {
   max: 2,
@@ -334,7 +337,7 @@ if (env.AZURE_STORAGE_BLOB_URL) {
   (CONSUMERS[PACK_SUMMARY_QUEUE] ??= []).push(
     createSheetImportHandler({
       readCleanFile: createCleanFileReader(blobs),
-      fetchCv: createCvLinkFetcher({ db: appDb, blobs, malwareScanning: env.MALWARE_SCANNING === 'on', now }),
+      fetchCv: createCvLinkFetcher({ db: cvFetchDb, blobs, malwareScanning: env.MALWARE_SCANNING === 'on', now }),
     }),
   );
 }
@@ -502,6 +505,6 @@ await Promise.all([...consumers, ...(scanResults ? [scanResults] : [])].map(({ r
 // The relay pass in progress finished above, so every claimed row is marked sent or scheduled for retry.
 await Promise.all([...senders.values()].map((sender) => sender.close()));
 await Promise.all([relayBus.close(), appBus.close()]);
-await Promise.all([appDb.$client.end(), relayDb.$client.end()]);
+await Promise.all([appDb.$client.end(), cvFetchDb.$client.end(), relayDb.$client.end()]);
 health.close();
 log.info('worker stopped');

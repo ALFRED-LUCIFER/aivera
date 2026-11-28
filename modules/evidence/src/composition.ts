@@ -717,7 +717,8 @@ const tracedRead =
         // The transient failure comes before the read's row is written, so this never waits on the delivery's locks.
         // shortcut: a second pooled connection while the delivery holds one. Four receivers share the worker's pool of 10
         // (up to 16 deliveries), but only the evidence receiver's take a second connection (this write, the AI budget):
-        // 4 x 2 = 8. Give the worker a pool of its own if another receiver ever takes a second one.
+        // 4 x 2 = 8. The sheet import's CV fetches, which also commit while their delivery holds one, have their own pool
+        // (apps/backend/worker main.ts). Give any other receiver that takes a second connection a pool of its own too.
         await withWorkspace(db, workspaceId, fail);
         log.warn({ 'evidence.source_id': sourceId, 'error.type': (error as Error).name }, `${name} failed`);
         throw error;
