@@ -96,11 +96,11 @@ const publishReadRequested: RepositoryPorts['publishReadRequested'] = (tx, sourc
     occurredAt: source.createdAt,
   });
 
-const publishParseRequested: CvPorts['publishParseRequested'] = (tx, source) =>
+const publishParseRequested: CvPorts['publishParseRequested'] = (tx, source, dedupeKey = `cv-parse:${source.id}`) =>
   enqueue(tx, outbox, CvParseRequestedV1, {
     workspaceId: source.workspaceId,
     payload: { candidateId: source.candidateId, sourceId: source.id },
-    dedupeKey: `cv-parse:${source.id}`,
+    dedupeKey,
     occurredAt: source.createdAt,
   });
 
@@ -240,6 +240,7 @@ export function createEvidence(
     ...cvParseUseCases({
       ...ports,
       cvStoreFor: cvParseStore,
+      mappingStoreFor: mappingStore,
       publishParseRequested,
     }),
     ...documentReadUseCases({
@@ -522,9 +523,12 @@ export type ApplicationsPort = {
  * The evidence mapping jobs on the evidence queue (AIV-P1-027): `EvidenceRecorded.v1` and `RubricApproved.v1` fan out
  * to one `EvidenceMappingRequested.v1` per candidate and job, and `evidence.mapping` maps each through `ai` against
  * the job's approved rubric version (`approvedRubric`, the jobs module's `createApprovedRubricReads`). A model failure
- * throws, so the consumer retries with back-off (AIV-P0-015) while the profile shows the assessment as in progress.
+ * throws, so the consumer retries with back-off (AIV-P0-015) while the profile shows the assessment as in progress; an
+ * answer no retry can fix, or the last delivery, records the failure for "Could not assess" (AIV-P1-165).
  */
 export function createEvidenceMappingHandlers(config: {
+  /** The consumers' database: a mapping that fails for good is recorded in its own transaction (AIV-P1-165). */
+  db: Db;
   ai: AiClient;
   approvedRubric: MappingPorts['approvedRubric'];
   applications: ApplicationsPort;
@@ -636,7 +640,7 @@ export function createEvidenceMappingHandlers(config: {
       event: EvidenceMappingRequestedV1,
       inbox,
       consumer: 'evidence.mapping',
-      async handle(tx, { candidateId, jobId }, envelope) {
+      async handle(tx, { candidateId, jobId }, envelope, delivery) {
         const candidate = await candidateOf(config.readPerson, tx, envelope.workspaceId, candidateId);
         let run;
         try {
@@ -666,6 +670,13 @@ export function createEvidenceMappingHandlers(config: {
               { candidateId, jobId },
               now,
             );
+          // Dead-lettered now or on this last delivery: "Could not assess" with "Try again", written in its own
+          // transaction since this one rolls back (AIV-P1-165). It holds no lock the delivery holds: a run that maps
+          // deletes the row only on its way to commit.
+          if (permanent(error) || (delivery?.last ?? true))
+            await withWorkspace(config.db, envelope.workspaceId, (own) =>
+              mappingStore(own).fail(envelope.workspaceId, candidateId, jobId, now()),
+            );
           if (permanent(error)) throw new PermanentFailure(error.name);
           throw error;
         }
@@ -676,9 +687,9 @@ export function createEvidenceMappingHandlers(config: {
 }
 
 /**
- * Runs one read in its span. A transient failure is written as `failed` in its own transaction, since the delivery's
- * rolls back on the rethrow; the consumer then backs off, redelivers (a failed read runs again) and dead-letters after
- * its last delivery.
+ * Runs one read in its span. A transient failure on the last delivery is written as `failed` in its own transaction,
+ * since the delivery's rolls back on the rethrow; before that the read stays pending ("Reading the CV…", no retry
+ * offered, AIV-P1-134) while the consumer backs off and redelivers, and the last delivery dead-letters.
  */
 const tracedRead =
   (db: Db) =>
@@ -688,6 +699,7 @@ const tracedRead =
     sourceId: string,
     run: () => Promise<{ notes: number } | null>,
     fail: (own: Tx) => Promise<unknown>,
+    last: boolean,
   ) =>
     withSpan(name, async () => {
       let result: { notes: number } | null;
@@ -695,12 +707,19 @@ const tracedRead =
         result = await run();
       } catch (error) {
         if (!isTransient(error)) throw error;
+        if (!last) {
+          log.warn(
+            { 'evidence.source_id': sourceId, 'error.type': (error as Error).name },
+            `${name} failed, will retry`,
+          );
+          throw error;
+        }
         // The transient failure comes before the read's row is written, so this never waits on the delivery's locks.
         // shortcut: a second pooled connection while the delivery holds one. Four receivers share the worker's pool of 10
         // (up to 16 deliveries), but only the evidence receiver's take a second connection (this write, the AI budget):
         // 4 x 2 = 8. Give the worker a pool of its own if another receiver ever takes a second one.
         await withWorkspace(db, workspaceId, fail);
-        log.warn({ 'evidence.source_id': sourceId, 'error.type': (error as Error).name }, `${name} failed, will retry`);
+        log.warn({ 'evidence.source_id': sourceId, 'error.type': (error as Error).name }, `${name} failed`);
         throw error;
       }
       // SAFETY: the count only; a note's reason and excerpt quote the source and stay in the database (AGENTS.md 1.2).
@@ -775,7 +794,8 @@ export function createFileReadHandlers(config: {
     now,
   };
   const traced = tracedRead(config.db);
-  const parse = (tx: Tx, workspaceId: string, sourceId: string) =>
+  // `last` defaults to true: a direct call outside the consumer is its own last delivery.
+  const parse = (tx: Tx, workspaceId: string, sourceId: string, last = true) =>
     traced(
       'evidence cv parse',
       workspaceId,
@@ -796,37 +816,39 @@ export function createFileReadHandlers(config: {
         return result;
       },
       (own) => cvParseStore(own).finish(workspaceId, sourceId, 'failed'),
+      last,
     );
-  const read = (tx: Tx, workspaceId: string, sourceId: string) =>
+  const read = (tx: Tx, workspaceId: string, sourceId: string, last = true) =>
     traced(
       'evidence document read',
       workspaceId,
       sourceId,
       () => readDocument(ports, tx, workspaceId, sourceId),
       (own) => documentReadStore(own).finish(workspaceId, sourceId, 'failed'),
+      last,
     );
   const cvRequested: Handler<{ candidateId: string; sourceId: string }> = {
     event: CvParseRequestedV1,
     inbox,
     consumer: 'evidence.cv.parse',
-    handle: (tx, payload, envelope) => parse(tx, envelope.workspaceId, payload.sourceId),
+    handle: (tx, payload, envelope, delivery) => parse(tx, envelope.workspaceId, payload.sourceId, delivery?.last),
   };
   const documentRequested: Handler<{ candidateId: string; sourceId: string }> = {
     event: DocumentReadRequestedV1,
     inbox,
     consumer: 'evidence.document.read',
-    handle: (tx, payload, envelope) => read(tx, envelope.workspaceId, payload.sourceId),
+    handle: (tx, payload, envelope, delivery) => read(tx, envelope.workspaceId, payload.sourceId, delivery?.last),
   };
   const clean: Handler<{ fileId: string }> = {
     event: FileCleanV1,
     inbox,
     consumer: 'evidence.file_clean',
-    async handle(tx, payload, envelope) {
+    async handle(tx, payload, envelope, delivery) {
       const { workspaceId } = envelope;
       for (const sourceId of await cvParseStore(tx).pendingForFile(workspaceId, payload.fileId))
-        await parse(tx, workspaceId, sourceId);
+        await parse(tx, workspaceId, sourceId, delivery?.last);
       for (const sourceId of await documentReadStore(tx).pendingForFile(workspaceId, payload.fileId))
-        await read(tx, workspaceId, sourceId);
+        await read(tx, workspaceId, sourceId, delivery?.last);
     },
   };
   const rejected: Handler<{ fileId: string; reason: 'infected' | 'rejected' }> = {

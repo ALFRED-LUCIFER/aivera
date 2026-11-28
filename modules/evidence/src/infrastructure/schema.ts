@@ -122,6 +122,26 @@ export const mapping = evidence
   )
   .enableRLS();
 
+// A candidate's evidence mapping for a job that failed for good (AIV-P1-165): an answer no redelivery can fix, or the
+// last delivery. Written in its own transaction, since the delivery's rolls back; a later run's success deletes it, and
+// so does a person's "Try again". The recruiter sees "Could not assess" until then.
+export const mappingFailure = evidence
+  .table(
+    'mapping_failure',
+    {
+      workspaceId: uuid('workspace_id').notNull(),
+      candidateId: uuid('candidate_id').notNull(),
+      // The jobs module's job id: opaque, no foreign key across modules.
+      jobId: uuid('job_id').notNull(),
+      failedAt: timestamp('failed_at', tz).notNull(),
+    },
+    (t) => [
+      primaryKey({ name: 'mapping_failure_pkey', columns: [t.workspaceId, t.candidateId, t.jobId] }),
+      tenantPolicy('mapping_failure_tenant_isolation', t.workspaceId),
+    ],
+  )
+  .enableRLS();
+
 export const item = evidence
   .table(
     'item',

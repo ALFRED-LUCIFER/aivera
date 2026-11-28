@@ -115,7 +115,8 @@ beforeAll(async () => {
   execFileSync(process.execPath, [dbCli, 'migrate'], {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
-  app = createDb(urlFor('aivera_app'), { max: 1 });
+  // Two: a mapping that fails for good is recorded on its own connection while the delivery holds one (AIV-P1-165).
+  app = createDb(urlFor('aivera_app'), { max: 2 });
   const audit = createAudit(app);
   workspaces = createWorkspaces(app, audit);
   candidates = createCandidates(workspaces, () => NOW);
@@ -128,6 +129,7 @@ beforeAll(async () => {
     );
   const fake = fakeProvider();
   handlers = createEvidenceMappingHandlers({
+    db: app,
     ai: createAiClient({
       // Read per call, so each test's answer and failures apply.
       provider: { ...fake, languageModel: (d) => fakeProvider({ completion, failures }).languageModel(d) },
@@ -552,6 +554,7 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
     const rescheduled: Envelope[] = [];
     const delays: number[] = [];
     const ordered = createEvidenceMappingHandlers({
+      db: app,
       ai: createAiClient({
         provider: gated,
         budget: { spentToday: async () => ({ spent: 0, limit: 10_000_000 }), add: async () => {} },
@@ -719,6 +722,93 @@ describe("Feature: One uncited link no longer wipes out a candidate's mapped evi
     expect(listed.filter((i) => i.competencies.length)).toEqual([]);
     // The recorded CV lines stay, unlinked: nothing about her is hidden.
     expect(listed).toHaveLength(3);
+  });
+});
+
+const failedFor = (workspaceId: string, candidateId: string) =>
+  as(ALEX, workspaceId, (ctx) => evidence.listCvStatuses(ctx, JOB, [candidateId]));
+const mappingRequests = (candidateId: string) =>
+  rows(
+    w1,
+    sql`select id from evidence.outbox where type = 'EvidenceMappingRequested.v1'
+      and payload->>'candidateId' = ${candidateId} and payload->>'jobId' = ${JOB}`,
+  );
+
+const failuresCounted = (workspaceId: string) =>
+  rows(workspaceId, sql`select count(*)::int as n from evidence.mapping_failure`).then((r) => r[0]?.['n']);
+
+describe('Feature: A mapping that fails permanently shows "could not assess" with retry (AIV-P1-165)', () => {
+  // SAFETY: mutation check: removed the own-transaction write of the failure in createEvidenceMappingHandlers -> this
+  // test failed (mappingFailed false)
+  it('Scenario: the failed state is written outside the rolled-back transaction, so it is never lost', async () => {
+    approved = { [JOB]: V2 };
+    const hala = await newCandidate('Hala Saleh', 'hala.saleh@example.com');
+    await recordFragments(hala);
+    completion = '{}';
+    try {
+      await expect(mapNow(w1, hala, JOB)).rejects.toBeInstanceOf(PermanentFailure);
+    } finally {
+      completion = '{}';
+    }
+    // The delivery rolled back: no run. The failure is there all the same.
+    expect(await rows(w1, sql`select id from evidence.mapping where candidate_id = ${hala}`)).toEqual([]);
+    expect((await failedFor(w1, hala))[0]?.mappingFailed).toBe(true);
+  });
+
+  // SAFETY: mutation check: dropped the audit call from retryMapping -> this test failed (no evidence.retried entry)
+  // SAFETY: mutation check: made clearFailure always return true -> this test failed (a second retry queued again)
+  it('Scenario: "Try again" re-runs the assessment for that candidate and job only, audited; a second retry writes nothing', async () => {
+    approved = { [JOB]: V2 };
+    const omar = await newCandidate('Omar Al Suwaidi', 'omar.al.suwaidi@example.com');
+    await recordFragments(omar);
+    completion = '{}';
+    await expect(mapNow(w1, omar, JOB)).rejects.toBeInstanceOf(PermanentFailure);
+    const before = (await mappingRequests(omar)).length;
+
+    await as(ALEX, w1, (ctx) => evidence.retryMapping(ctx, omar, JOB));
+    expect(await mappingRequests(omar)).toHaveLength(before + 1);
+    expect((await failedFor(w1, omar))[0]?.mappingFailed).toBe(false);
+    const [entry] = await rows(
+      w1,
+      sql`select actor_id, after from audit.entry where action = 'evidence.retried' and subject_id = ${omar}`,
+    );
+    expect(entry).toMatchObject({ actor_id: ALEX, after: { status: 'pending', jobId: JOB } });
+
+    await expect(as(ALEX, w1, (ctx) => evidence.retryMapping(ctx, omar, JOB))).rejects.toMatchObject({
+      code: 'not_retryable',
+    });
+    expect(await mappingRequests(omar)).toHaveLength(before + 1);
+
+    // The queued run maps, which ends the failure for good.
+    completion = JSON.stringify({ links: [linkTo(RETRIEVAL, 'Wrote the Playwright suite')], changes: [] });
+    await mapNow(w1, omar, JOB);
+    expect((await failedFor(w1, omar))[0]?.mappingFailed).toBe(false);
+  });
+
+  // SAFETY: mutation check: authorized retryMapping with 'candidate.view' -> this test failed (the interviewer retried)
+  it('Scenario: an interviewer granted the job cannot retry, and nothing is queued', async () => {
+    approved = { [JOB]: V2 };
+    const priya = await newCandidate('Priya Nair', 'priya.nair@example.com');
+    await recordFragments(priya);
+    completion = '{}';
+    await expect(mapNow(w1, priya, JOB)).rejects.toBeInstanceOf(PermanentFailure);
+    const before = (await mappingRequests(priya)).length;
+    // Granted the job, so she may read the candidate: only retrying is refused.
+    await withWorkspace(app, w1, (tx) =>
+      tx.execute(sql`insert into workspaces.job_grant (id, workspace_id, user_id, job_id, granted_by)
+        select gen_random_uuid(), ${w1}, ${LINA}, ${JOB}, ${ALEX}
+        where not exists (select 1 from workspaces.job_grant where user_id = ${LINA} and job_id = ${JOB})`),
+    );
+    expect((await as(LINA, w1, (ctx) => evidence.listCvStatuses(ctx, JOB, [priya])))[0]?.mappingFailed).toBe(true);
+    await expect(as(LINA, w1, (ctx) => evidence.retryMapping(ctx, priya, JOB))).rejects.toThrow(ForbiddenError);
+    expect(await mappingRequests(priya)).toHaveLength(before);
+    expect((await failedFor(w1, priya))[0]?.mappingFailed).toBe(true);
+  });
+
+  // SAFETY: mutation check: set the mapping_failure policy to true -> this test failed (w2 counted w1's failures)
+  it('another workspace reads none of the failures with no repository filter (row-level security)', async () => {
+    expect(await failuresCounted(w1)).toBeGreaterThan(0);
+    expect(await failuresCounted(w2)).toBe(0);
   });
 });
 

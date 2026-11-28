@@ -45,6 +45,7 @@ function setup(malwareScanning: boolean, uploaded: Stored, moved: Stored = null)
   } satisfies BlobStore;
   const store = {
     insert: vi.fn(),
+    names: vi.fn(async () => new Map<string, string>()),
     find: vi.fn(async () => row),
     settle: vi.fn(
       async (_owner: unknown, _id: string, change: Partial<FileRecord>) => void (row = { ...row, ...change }),

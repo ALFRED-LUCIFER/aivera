@@ -271,7 +271,8 @@ beforeAll(async () => {
   execFileSync(process.execPath, [dbCli, 'migrate'], {
     env: { ...process.env, DATABASE_MIGRATOR_URL: urlFor('aivera_migrator') },
   });
-  app = createDb(urlFor('aivera_app'), { max: 1 });
+  // Two: a mapping that fails for good is recorded on its own connection while the delivery holds one (AIV-P1-165).
+  app = createDb(urlFor('aivera_app'), { max: 2 });
   audit = createAudit(app, () => NOW);
   workspaces = createWorkspaces(app, audit);
   jobs = createJobs(workspaces, audit, () => NOW);
@@ -362,6 +363,7 @@ beforeAll(async () => {
   // The worker's evidence mapping job (AIV-P1-027), its model answering only when the summary's excerpt reaches it: it
   // then links the excerpt to "Cost and reliability", a competency nobody confirmed. Anything else maps to nothing.
   const found = createEvidenceMappingHandlers({
+    db: app,
     ai: createAiClient({
       provider: fakeProvider({
         fixtures: [

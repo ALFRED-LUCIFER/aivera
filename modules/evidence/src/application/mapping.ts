@@ -78,6 +78,12 @@ export type MappingStore = {
   /** `pairKey`s of every pair the AI comparison flagged in the candidate's earlier runs for the job (AIV-P1-078). */
   aiFlags(workspaceId: string, candidateId: string, jobId: string): Promise<Set<string>>;
   newest(workspaceId: string, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;
+  /** Records that the candidate's mapping for the job failed for good (AIV-P1-165); a later `insert` ends it. */
+  fail(workspaceId: string, candidateId: string, jobId: string, at: Date): Promise<void>;
+  /** Ends a recorded failure; false when there was none (another retry, or a run that mapped since). */
+  clearFailure(workspaceId: string, candidateId: string, jobId: string): Promise<boolean>;
+  /** Of `candidateIds`, those whose mapping for the job failed for good. */
+  failed(workspaceId: string, jobId: string, candidateIds: string[]): Promise<string[]>;
 };
 
 /** The source kinds as the citation contract names them (@credalent/ai). */

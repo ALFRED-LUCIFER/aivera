@@ -23,8 +23,11 @@ export type Handler<P> = {
   inbox: InboxTable;
   /** Unique per handler; with the message id, the inbox key. */
   consumer: string;
-  /** Runs in the envelope's workspace transaction (ADR-005); throw to retry. */
-  handle(tx: Tx, payload: P, envelope: Envelope): Promise<void>;
+  /**
+   * Runs in the envelope's workspace transaction (ADR-005); throw to retry. `delivery.last` is true on the delivery that
+   * dead-letters on a throw, so a handler can record a visible failure only then (AIV-P1-134).
+   */
+  handle(tx: Tx, payload: P, envelope: Envelope, delivery?: { last: boolean }): Promise<void>;
 };
 
 /** Service Bus scheduled enqueue (AIV-P0-015); the caller stores the sequence number to cancel it. */
@@ -106,7 +109,7 @@ export function createConsumer(opts: {
               .onConflictDoNothing()
               .returning({ messageId: handler.inbox.messageId });
             if (!first) return log.info({ 'outbox.event_id': message.id }, 'duplicate delivery skipped');
-            await handler.handle(tx, payload.data, message);
+            await handler.handle(tx, payload.data, message, { last: delivery.deliveryCount >= MAX_DELIVERIES });
           });
           return 'handled';
         } catch (error) {

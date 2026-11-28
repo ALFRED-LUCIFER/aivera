@@ -341,6 +341,7 @@ if (env.AZURE_STORAGE_BLOB_URL) {
 if (mapping)
   evidenceHandlers.push(
     ...createEvidenceMappingHandlers({
+      db: appDb,
       ai: createAiClient({ provider: providerFromEnv(process.env), budget: createAiTokenBudget(appDb) }),
       ...createApprovedRubricReads(),
       applications: createApplicationReads(),

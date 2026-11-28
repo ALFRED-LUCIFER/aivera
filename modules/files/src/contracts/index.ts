@@ -34,6 +34,12 @@ export interface FilesContract {
    * pending file and returns a SAS URL that may create that one blob in uploads-quarantine, once and never overwrite it, for 10 minutes.
    */
   requestUpload(ctx: WorkspaceContext, input: UploadRequest): Promise<UploadTicket>;
+  /**
+   * The workspace's files' names as uploaded, by id (AIV-P1-165): shown on screen in place of a candidate's name until
+   * one is read from the CV, never logged or put in a URL (AGENTS.md 1.2). `file.upload`: admins and recruiters. A file
+   * uploaded before the name was kept, or another workspace's, is left out.
+   */
+  fileNames(ctx: WorkspaceContext, fileIds: string[]): Promise<Map<string, string>>;
   /** The caller's own upload's status; null when it is not theirs or not in the workspace. */
   getStatus(ctx: WorkspaceContext, fileId: string): Promise<FileStatus | null>;
   /**

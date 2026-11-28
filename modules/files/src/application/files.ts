@@ -22,6 +22,8 @@ export type FileRecord = {
   candidateAccountId: string | null;
   purpose: Purpose;
   contentType: string;
+  /** As uploaded (AIV-P1-165); it can name the candidate, so it is shown on screen only, never logged. */
+  fileName?: string | null;
   sizeBytes: number;
   sha256: string | null;
   status: FileStatus;
@@ -33,6 +35,8 @@ export type FileRecord = {
 /** The store over one owner-scoped transaction. `find` filters by owner (the first layer; RLS is the second). */
 export type FileStore = {
   insert(file: FileRecord): Promise<void>;
+  /** The owner's files' names, by id; a file with no stored name is left out. */
+  names(owner: Owner, ids: string[]): Promise<Map<string, string>>;
   /** `forUpdate` locks the row to the transaction's end, so two scan results for one file settle it once. */
   find(owner: Owner, id: string, forUpdate?: boolean): Promise<FileRecord | null>;
   /** Filters by owner too, so a file id from elsewhere changes nothing. */
@@ -145,6 +149,7 @@ export function filesUseCases(p: Ports) {
         candidateAccountId: null,
         purpose: input.purpose,
         contentType: input.contentType,
+        fileName: input.fileName,
         sizeBytes: input.size,
         sha256: null,
         status: 'pending',
@@ -154,6 +159,11 @@ export function filesUseCases(p: Ports) {
       });
       const expiresAt = new Date(createdAt.getTime() + UPLOAD_TTL_MS);
       return { fileId: id, uploadUrl: await p.blobs.uploadUrl(blobPath, expiresAt), expiresAt };
+    },
+
+    async fileNames(ctx: WorkspaceContext, fileIds: string[]): Promise<Map<string, string>> {
+      await p.authorize(ctx, 'file.upload');
+      return p.storeFor(ctx.tx).names({ workspaceId: ctx.workspaceId }, fileIds);
     },
 
     async getStatus(ctx: WorkspaceContext, fileId: string): Promise<FileStatus | null> {

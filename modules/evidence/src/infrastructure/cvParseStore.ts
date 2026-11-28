@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { CvParseStore } from '../application/cvParse.ts';
 import { cvParse, item, source, sourceNote } from './schema.ts';
 
@@ -73,6 +73,31 @@ export function cvParseStore(tx: Tx): CvParseStore {
         )
         .returning({ sourceId: cvParse.sourceId });
       return updated.length > 0;
+    },
+    async retry(workspaceId, sourceId) {
+      // Compare-and-set: of two retries at once, only one sees `failed`, so one parse is queued.
+      const [row] = await tx
+        .update(cvParse)
+        .set({ status: 'pending' })
+        .where(and(eq(cvParse.workspaceId, workspaceId), eq(cvParse.sourceId, sourceId), eq(cvParse.status, 'failed')))
+        .returning({ candidateId: cvParse.candidateId });
+      return row ?? null;
+    },
+    async newestPerCandidate(workspaceId, candidateIds) {
+      if (!candidateIds.length) return [];
+      const rows = await tx
+        .selectDistinctOn([cvParse.candidateId], {
+          candidateId: cvParse.candidateId,
+          sourceId: cvParse.sourceId,
+          fileId: source.blobFileId,
+          status: cvParse.status,
+        })
+        .from(cvParse)
+        .innerJoin(source, and(eq(source.workspaceId, cvParse.workspaceId), eq(source.id, cvParse.sourceId)))
+        .where(and(eq(cvParse.workspaceId, workspaceId), inArray(cvParse.candidateId, candidateIds)))
+        // Source ids are UUIDv7, so the greatest is the newest CV.
+        .orderBy(cvParse.candidateId, desc(cvParse.sourceId));
+      return rows;
     },
     async insertItems(items, notes) {
       if (items.length) await tx.insert(item).values(items);

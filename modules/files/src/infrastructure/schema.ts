@@ -8,7 +8,8 @@ export const files = pgSchema('files');
 
 const tz = { withTimezone: true } as const;
 
-// No file name is stored: it can name the candidate (AGENTS.md 1.2). The blob path holds opaque ids only.
+// The blob path holds opaque ids only. The file name can name the candidate (AGENTS.md 1.2): it stays in this row, shown
+// on screen to admins and recruiters until a name is read from the CV (AIV-P1-165), never in a log, URL or blob path.
 export const file = files
   .table(
     'file',
@@ -19,6 +20,8 @@ export const file = files
       candidateAccountId: uuid('candidate_account_id'),
       purpose: text({ enum: PURPOSES }).notNull(),
       contentType: text('content_type').notNull(),
+      // Null for files uploaded before AIV-P1-165.
+      fileName: text('file_name'),
       sizeBytes: integer('size_bytes').notNull(),
       sha256: text(),
       status: text({ enum: FILE_STATUSES }).notNull(),
