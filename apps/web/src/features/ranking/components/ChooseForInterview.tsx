@@ -15,8 +15,14 @@ import { ScoreCell } from './ScoreCell.tsx';
 // - no "Not sent yet" chip: nothing is sent to anyone, so the consequence line says "Nobody is contacted" instead;
 // - its title is an h2 (PreviewBanner `level`), as the artboard draws it, so the page's heading order holds.
 
-// Stable, so focus moves into the preview once, when it opens.
-const focusOnMount = (element: HTMLElement | null) => element?.focus();
+/**
+ * Stable, so it runs once per open (the card is keyed on `opened`): focus moves into the preview, then the whole card is
+ * brought into view, as it opens above the bulk bar and so out of view on a scrolled ranking (AIV-P1-165).
+ */
+export const focusOnOpen = (element: HTMLElement | null) => {
+  element?.focus();
+  element?.closest('section')?.scrollIntoView({ block: 'nearest' });
+};
 
 export function ChooseForInterview({ view }: { view: ChooseView }) {
   const t = useTranslations('ranking.choose');
@@ -26,6 +32,7 @@ export function ChooseForInterview({ view }: { view: ChooseView }) {
   if (!preview) return null;
   return (
     <PreviewBanner
+      key={view.opened}
       level={2}
       title={t('title', { count: preview.toChoose })}
       consequence={t('consequence')}
@@ -73,7 +80,7 @@ export function ChooseForInterview({ view }: { view: ChooseView }) {
       <div className="mt-3 flex flex-col gap-1.5">
         <Label htmlFor={reasonId}>{t('reason')}</Label>
         <Textarea
-          ref={focusOnMount}
+          ref={focusOnOpen}
           id={reasonId}
           required
           rows={2}

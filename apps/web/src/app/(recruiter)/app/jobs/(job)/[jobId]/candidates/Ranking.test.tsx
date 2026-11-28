@@ -51,6 +51,8 @@ afterEach(() => {
 let intl: Awaited<ReturnType<typeof intlConfig>>;
 beforeAll(async () => {
   intl = await intlConfig('en', 'Asia/Dubai');
+  // jsdom lays nothing out, so it has no scrollIntoView; the previews call it when they open (AIV-P1-165).
+  Element.prototype.scrollIntoView = vi.fn();
 });
 
 const JOB = '0190d4a2-0000-7000-9000-000000001031';
@@ -673,6 +675,23 @@ describe('One preview at a time (AIV-P2-010)', () => {
     expect(screen.getAllByRole('region', { name: /^Preview: / })).toHaveLength(1);
     expect(preview().textContent).toContain('chosen for interview');
   });
+});
+
+describe('Scenario: The preview card is visible and focused on a scrolled ranking (AIV-P1-165)', () => {
+  // SAFETY: mutation check: dropped `key={view.opened}` from both PreviewBanners -> this test failed for both (scrolled once, focus left on the button)
+  for (const action of ['Choose for interview', 'Add to decision pack'])
+    it(`"${action}" pressed again while its preview is open brings the card back into view and focus into it`, async () => {
+      packable(nine, [], ['chooseForInterview', 'addToPack']);
+      await pick('Sara Al Qahtani');
+      const button = within(bar()).getByRole('button', { name: action });
+      await userEvent.click(button);
+      expect(preview().contains(document.activeElement)).toBe(true);
+      await pick('Arjun Menon');
+      await userEvent.click(button);
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(2);
+      expect(preview().contains(document.activeElement)).toBe(true);
+      expect(preview().textContent).toContain('Arjun Menon');
+    });
 });
 
 describe('Scenario: No selection (AIV-P2-010)', () => {

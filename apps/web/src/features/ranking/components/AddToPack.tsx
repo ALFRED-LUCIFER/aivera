@@ -4,6 +4,7 @@ import { useTranslations } from '@credalent/i18n/react';
 import { Input, Label, PreviewBanner, RadioGroup } from '@credalent/ui';
 import { useId } from 'react';
 import { NAME_MAX, NEW_PACK, type PackView } from '../domain/pack.ts';
+import { focusOnOpen } from './ChooseForInterview.tsx';
 import { ScoreCell } from './ScoreCell.tsx';
 
 // AIV-P2-010: "Add to decision pack" from the ranking's bulk bar, in the shared inline PreviewBanner where the
@@ -14,9 +15,6 @@ import { ScoreCell } from './ScoreCell.tsx';
 //   leaving the ranking, so "In shortlist pack" shows on the rows at once;
 // - a candidate not yet scored is listed but not added: a pack holds each member's assessment (AIV-P2-009).
 
-// Stable, so focus moves into the preview once, when it opens.
-const focusOnMount = (element: HTMLElement | null) => element?.focus();
-
 export function AddToPack({ view }: { view: PackView }) {
   const t = useTranslations('ranking.pack');
   const unnamed = useTranslations('ranking')('unnamed');
@@ -25,6 +23,7 @@ export function AddToPack({ view }: { view: PackView }) {
   if (!preview) return null;
   return (
     <PreviewBanner
+      key={view.opened}
       level={2}
       title={t('title', { count: preview.toAdd.length })}
       consequence={t('consequence')}
@@ -45,7 +44,7 @@ export function AddToPack({ view }: { view: PackView }) {
           </li>
         ))}
       </ul>
-      <div ref={focusOnMount} tabIndex={-1} className="mt-3 outline-none">
+      <div ref={focusOnOpen} tabIndex={-1} className="mt-3 outline-none">
         <RadioGroup
           legend={t('legend')}
           value={view.target}

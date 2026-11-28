@@ -16,6 +16,7 @@ export function usePackController(
 ): PackView {
   const router = useRouter();
   const [ids, setIds] = useState<readonly string[] | null>(null);
+  const [opened, setOpened] = useState(0);
   const [target, setTarget] = useState(NEW_PACK);
   const [name, setName] = useState('');
   const [error, setError] = useState<PackView['error']>(null);
@@ -31,8 +32,10 @@ export function usePackController(
   return {
     packs,
     preview,
+    opened,
     onPreview(selected) {
       setIds(selected);
+      setOpened((n) => n + 1);
       setTarget(packs[0]?.id ?? NEW_PACK);
       setName('');
       setError(null);
