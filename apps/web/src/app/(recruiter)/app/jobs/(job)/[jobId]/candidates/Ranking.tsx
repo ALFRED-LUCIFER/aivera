@@ -9,11 +9,11 @@ import { usePackController } from '@/features/ranking/hooks/usePackController.ts
 import { useRankingController } from '@/features/ranking/hooks/useRankingController.ts';
 
 export function Ranking(data: RankingData) {
-  const t = useTranslations('ranking.choose');
+  const t = useTranslations('ranking');
   const view = useRankingController(data);
   const clearSelection = () => view.selection?.onSelectedIdsChange([]);
-  const choose = useChooseController(data, t('defaultReason'), clearSelection);
-  const pack = usePackController(data, clearSelection);
+  const choose = useChooseController(data, t('choose.defaultReason'), clearSelection);
+  const pack = usePackController(data, t('pack.defaultReason'), clearSelection);
   return (
     <RankingTable
       view={view}

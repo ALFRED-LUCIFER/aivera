@@ -480,6 +480,7 @@ async function seed(
     // A decision pack with that candidate's snapshot and its PackReady.v1 (decisions.pack, .pack_member, .outbox,
     // AIV-P2-009). The job has no hiring owner to record a decision, so its row is written as recordDecisions does.
     const { packId } = await decisions.createPack(ctx, {
+      reason: 'Shortlist for the hiring decision',
       jobId: job.id,
       name: 'Round 2 shortlist',
       members: [{ candidateId: personId }],

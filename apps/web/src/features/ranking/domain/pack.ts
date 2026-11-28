@@ -1,11 +1,11 @@
-import { NAME_MAX } from '@credalent/decisions';
+import { NAME_MAX, NOTE_MAX } from '@credalent/decisions';
 import { z } from 'zod';
 import type { CandidateRow, PackChoice } from './ranking.ts';
 
 // AIV-P2-010: adding selected candidates to a decision pack from the ranking, after a preview. Nothing changes until a
 // person confirms; nobody is contacted, and nobody not added changes (AGENTS.md 1.5).
 
-export { NAME_MAX };
+export { NAME_MAX, NOTE_MAX };
 
 /** `new`, or an existing pack's id. */
 export const NEW_PACK = 'new';
@@ -15,6 +15,8 @@ export const addToPackSchema = z.object({
   jobId: z.uuid(),
   applicationIds: z.array(z.uuid()).min(1).max(50),
   pack: z.union([z.object({ packId: z.uuid() }), z.object({ name: z.string().trim().min(1).max(NAME_MAX) })]),
+  /** Audited with each addition (AIV-P1-165: who, when and why). */
+  reason: z.string().trim().min(1).max(NOTE_MAX),
 });
 
 export type AddToPackResult =
@@ -51,6 +53,9 @@ export type PackView = {
   onTargetChange: (target: string) => void;
   name: string;
   onNameChange: (name: string) => void;
+  reason: string;
+  onReasonChange: (reason: string) => void;
+  reasonValid: boolean;
   canConfirm: boolean;
   error: 'notOnJob' | 'failed' | null;
   /** The last confirmed addition, for the success message and its link to the pack. */

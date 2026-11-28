@@ -150,6 +150,7 @@ export function clientsUseCases<Tx>({ storeFor, newId, authorize }: ClientsPorts
           ? await store.deleteJobGrant(ctx.workspaceId, revoke, input.jobId)
           : null;
       const added =
+        grant &&
         grantRole === 'hiring_owner' &&
         (await store.insertGrant(ctx.workspaceId, {
           id: newId(),

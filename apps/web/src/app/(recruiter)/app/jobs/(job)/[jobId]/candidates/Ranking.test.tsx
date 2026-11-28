@@ -586,6 +586,7 @@ const openPack = async (...names: string[]) => {
 
 describe('Scenario: Preview, then add (AIV-P2-010)', () => {
   // SAFETY: mutation check: made canConfirm ignore the pack name -> this test failed (sent with no name)
+  // SAFETY: mutation check: dropped .min(1) from addToPackSchema.reason -> this test failed (Confirm enabled with no reason)
   it('lists the three with their backed scores, needs a name for a new pack, and only Confirm sends', async () => {
     fake.pack.mockResolvedValue({ ok: true, packId: PACK, added: 3 });
     packable();
@@ -607,11 +608,19 @@ describe('Scenario: Preview, then add (AIV-P2-010)', () => {
     expect(fake.pack).not.toHaveBeenCalled();
 
     await userEvent.type(within(preview()).getByRole('textbox', { name: 'Pack name' }), 'Round 2 shortlist');
+    // AIV-P1-165: the reason is audited with each addition, so a blank one blocks Confirm.
+    const reason = within(preview()).getByRole('textbox', { name: 'Reason, recorded in the audit log' });
+    expect((reason as HTMLTextAreaElement).value).toBe('Shortlist for the hiring decision');
+    await userEvent.clear(reason);
+    expect(confirm.disabled).toBe(true);
+    expect(within(preview()).getByText('Give a reason for adding them')).toBeTruthy();
+    await userEvent.type(reason, 'Shortlist for the hiring decision');
     await userEvent.click(confirm);
     expect(fake.pack).toHaveBeenCalledExactlyOnceWith({
       jobId: JOB,
       applicationIds: ['a1', 'a2', 'a3'].map(uid),
       pack: { name: 'Round 2 shortlist' },
+      reason: 'Shortlist for the hiring decision',
     });
     expect(fake.refresh).toHaveBeenCalledOnce();
     expect(screen.getByText(/3 candidates added to Round 2 shortlist\./)).toBeTruthy();
@@ -644,6 +653,7 @@ describe('Scenario: Add to an existing pack (AIV-P2-010)', () => {
       jobId: JOB,
       applicationIds: [uid('a4')],
       pack: { packId: PACK },
+      reason: 'Shortlist for the hiring decision',
     });
   });
 });

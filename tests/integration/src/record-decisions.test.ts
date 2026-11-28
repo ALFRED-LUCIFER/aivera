@@ -234,6 +234,7 @@ beforeAll(async () => {
   huda = await applyAndAssess('Huda Al Mansoori');
   ({ packId } = await as(ZAID, w1, (ctx) =>
     decisions.createPack(ctx, {
+      reason: 'Shortlist for the hiring decision',
       jobId,
       name: 'Round 2 shortlist: Senior AI Engineer',
       members: [{ candidateId: sara }, { candidateId: arjun }, { candidateId: huda }],
@@ -344,7 +345,12 @@ describe('Scenario: Not advanced candidates stay visible', () => {
     expect(ranking.status === 'ranked' && ranking.rows.map((r) => r.candidateId)).toContain(arjun);
     expect(await stageOf(arjun)).toBe('not_advanced');
     const later = await as(ZAID, w1, (ctx) =>
-      decisions.createPack(ctx, { jobId, name: 'Round 2 reserve', members: [{ candidateId: arjun }] }),
+      decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
+        jobId,
+        name: 'Round 2 reserve',
+        members: [{ candidateId: arjun }],
+      }),
     );
     expect(
       (await as(ZAID, w1, (ctx) => decisions.getPack(ctx, later.packId)))?.members.map((m) => m.candidateId),

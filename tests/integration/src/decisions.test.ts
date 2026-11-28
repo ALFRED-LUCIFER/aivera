@@ -310,6 +310,7 @@ describe('Scenario: Create a pack with a snapshot', () => {
   it('a recruiter creates a pack for "Senior AI Engineer" with Sara, Arjun and Huda: rubric version 2 and each snapshot', async () => {
     ({ packId: shortlist } = await as(ZAID, w1, (ctx) =>
       decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
         jobId: seniorAi.jobId,
         name: SHORTLIST,
         members: [{ candidateId: sara }, { candidateId: arjun }, { candidateId: huda }],
@@ -375,7 +376,12 @@ describe('Scenario: Create a pack with a snapshot', () => {
     const daniel = await apply(w1, ALEX, seniorAi.jobId, 'Daniel Novak');
     await expect(
       as(ZAID, w1, (ctx) =>
-        decisions.createPack(ctx, { jobId: seniorAi.jobId, name: SHORTLIST, members: [{ candidateId: daniel }] }),
+        decisions.createPack(ctx, {
+          reason: 'Shortlist for the hiring decision',
+          jobId: seniorAi.jobId,
+          name: SHORTLIST,
+          members: [{ candidateId: daniel }],
+        }),
       ),
     ).rejects.toMatchObject({ code: 'candidate_not_assessed' });
     const { id: designer } = await as(ALEX, w1, (ctx) =>
@@ -388,7 +394,12 @@ describe('Scenario: Create a pack with a snapshot', () => {
     );
     await expect(
       as(ZAID, w1, (ctx) =>
-        decisions.createPack(ctx, { jobId: designer, name: SHORTLIST, members: [{ candidateId: sara }] }),
+        decisions.createPack(ctx, {
+          reason: 'Shortlist for the hiring decision',
+          jobId: designer,
+          name: SHORTLIST,
+          members: [{ candidateId: sara }],
+        }),
       ),
     ).rejects.toMatchObject({ code: 'rubric_not_approved' });
     expect(await stored()).toEqual(before);
@@ -431,7 +442,11 @@ describe('Scenario: Only the authorised hiring owner decides', () => {
 
 describe('Scenario: A candidate appears once', () => {
   it('Sara is added to the same pack twice: the second add is ignored and her snapshot stays', async () => {
-    expect(await as(ZAID, w1, (ctx) => decisions.addMembers(ctx, shortlist, [{ candidateId: sara }]))).toEqual({
+    expect(
+      await as(ZAID, w1, (ctx) =>
+        decisions.addMembers(ctx, shortlist, [{ candidateId: sara }], 'Shortlist for the hiring decision'),
+      ),
+    ).toEqual({
       added: 0,
     });
     const members = (await as(ZAID, w1, (ctx) => decisions.getPack(ctx, shortlist)))?.members ?? [];
@@ -496,7 +511,14 @@ describe('Scenario: Record decisions emits one event', () => {
       as(HASSAN, w1, (ctx) => decisions.recordDecisions(ctx, advance(shortlist, [sara, arjun, huda]))),
     ).rejects.toMatchObject({ code: 'pack_decided' });
     await expect(
-      as(ZAID, w1, (ctx) => decisions.addMembers(ctx, shortlist, [{ candidateId: crypto.randomUUID() }])),
+      as(ZAID, w1, (ctx) =>
+        decisions.addMembers(
+          ctx,
+          shortlist,
+          [{ candidateId: crypto.randomUUID() }],
+          'Shortlist for the hiring decision',
+        ),
+      ),
     ).rejects.toMatchObject({ code: 'pack_decided' });
     expect(await stored()).toEqual(before);
   });
@@ -515,7 +537,12 @@ describe('Scenario: Record decisions emits one event', () => {
 
   it('a rolled-back record writes no decision, event or audit entry (same transaction), and every member needs one', async () => {
     const { packId } = await as(ZAID, w1, (ctx) =>
-      decisions.createPack(ctx, { jobId: seniorAi.jobId, name: 'Round 3', members: [{ candidateId: arjun }] }),
+      decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
+        jobId: seniorAi.jobId,
+        name: 'Round 3',
+        members: [{ candidateId: arjun }],
+      }),
     );
     const before = [await stored(), (await decisionAudits(arjun)).length];
     await expect(
@@ -541,7 +568,12 @@ describe('Job scope: hiring owners and interviewers reach only granted jobs', ()
     const rana = await apply(w1, ALEX, backend.jobId, 'Rana Khoury');
     await assess(w1, ALEX, backend, rana, [[0, 4, 'proven']]);
     const { packId: other } = await as(ZAID, w1, (ctx) =>
-      decisions.createPack(ctx, { jobId: backend.jobId, name: 'Shortlist', members: [{ candidateId: rana }] }),
+      decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
+        jobId: backend.jobId,
+        name: 'Shortlist',
+        members: [{ candidateId: rana }],
+      }),
     );
     expect((await as(FAISAL, w1, (ctx) => decisions.getPack(ctx, other)))?.id).toBe(other);
     expect(await as(FAISAL, w1, (ctx) => decisions.getPack(ctx, shortlist))).toBeNull();
@@ -555,12 +587,19 @@ describe('Job scope: hiring owners and interviewers reach only granted jobs', ()
     ] as const)
       await expect(
         as(userId, w1, (ctx) =>
-          decisions.createPack(ctx, { jobId, name: 'Shortlist', members: [{ candidateId: rana }] }),
+          decisions.createPack(ctx, {
+            reason: 'Shortlist for the hiring decision',
+            jobId,
+            name: 'Shortlist',
+            members: [{ candidateId: rana }],
+          }),
         ),
       ).rejects.toThrow(ForbiddenError);
-    await expect(as(FAISAL, w1, (ctx) => decisions.addMembers(ctx, other, [{ candidateId: rana }]))).rejects.toThrow(
-      ForbiddenError,
-    );
+    await expect(
+      as(FAISAL, w1, (ctx) =>
+        decisions.addMembers(ctx, other, [{ candidateId: rana }], 'Shortlist for the hiring decision'),
+      ),
+    ).rejects.toThrow(ForbiddenError);
     // The owner of Staff Backend Engineer decides on its pack.
     await as(FAISAL, w1, (ctx) => decisions.recordDecisions(ctx, advance(other, [rana])));
     expect((await as(ZAID, w1, (ctx) => decisions.getPack(ctx, other)))?.status).toBe('decided');
@@ -582,7 +621,12 @@ describe('Scenario: Workspace isolation', () => {
     karim = await apply(w2, OMAR, w2Job.jobId, 'Karim Nasser');
     await assess(w2, OMAR, w2Job, karim, [[0, 3, 'proven']]);
     ({ packId: w2Pack } = await as(OMAR, w2, (ctx) =>
-      decisions.createPack(ctx, { jobId: w2Job.jobId, name: SHORTLIST, members: [{ candidateId: karim }] }),
+      decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
+        jobId: w2Job.jobId,
+        name: SHORTLIST,
+        members: [{ candidateId: karim }],
+      }),
     ));
     await as(CAMILLE, w2, (ctx) => decisions.recordDecisions(ctx, advance(w2Pack, [karim])));
   });
@@ -591,14 +635,21 @@ describe('Scenario: Workspace isolation', () => {
     const before = await stored();
     expect(await as(ALEX, w1, (ctx) => decisions.getPack(ctx, w2Pack))).toBeNull();
     await expect(
-      as(ALEX, w1, (ctx) => decisions.addMembers(ctx, w2Pack, [{ candidateId: sara }])),
+      as(ALEX, w1, (ctx) =>
+        decisions.addMembers(ctx, w2Pack, [{ candidateId: sara }], 'Shortlist for the hiring decision'),
+      ),
     ).rejects.toMatchObject({ code: 'pack_not_found' });
     await expect(
       as(HASSAN, w1, (ctx) => decisions.recordDecisions(ctx, advance(w2Pack, [karim]))),
     ).rejects.toMatchObject({ code: 'pack_not_found' });
     await expect(
       as(ALEX, w1, (ctx) =>
-        decisions.createPack(ctx, { jobId: w2Job.jobId, name: SHORTLIST, members: [{ candidateId: karim }] }),
+        decisions.createPack(ctx, {
+          reason: 'Shortlist for the hiring decision',
+          jobId: w2Job.jobId,
+          name: SHORTLIST,
+          members: [{ candidateId: karim }],
+        }),
       ),
     ).rejects.toMatchObject({ code: 'job_not_found' });
     expect(await stored()).toEqual(before);
@@ -623,6 +674,7 @@ describe('listPacks', () => {
   it("lists the job's packs, newest first, each with its status and members in pack order", async () => {
     const { packId } = await as(ZAID, w1, (ctx) =>
       decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
         jobId: seniorAi.jobId,
         name: 'Round 3 shortlist',
         members: [{ candidateId: arjun }, { candidateId: sara }],
@@ -658,11 +710,17 @@ describe('Scenario: Pack creation and member additions are audited', () => {
   let round4: string;
 
   // SAFETY: mutation check: removed auditPackCreated and the auditMemberAdded loop from createPack -> this test failed (no entries)
+  // SAFETY: mutation check: dropped `note: reason` from auditMemberAdded in composition.ts -> this test failed (no note, AIV-P1-165)
   // SAFETY: mutation check: added the pack's name to pack.created's after -> this test failed (after compared exactly; the
   // audit module's own check catches emails and phone numbers only, not names)
   it('Zaid creates a pack with Sara: one pack.created, one pack.member_added, and Sara added by Zaid at the time', async () => {
     ({ packId: round4 } = await as(ZAID, w1, (ctx) =>
-      decisions.createPack(ctx, { jobId: seniorAi.jobId, name: 'Round 4', members: [{ candidateId: sara }] }),
+      decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
+        jobId: seniorAi.jobId,
+        name: 'Round 4',
+        members: [{ candidateId: sara }],
+      }),
     ));
     const pack = await as(ZAID, w1, (ctx) => decisions.getPack(ctx, round4));
     expect(pack?.members).toEqual([expect.objectContaining({ candidateId: sara, addedBy: ZAID, addedAt: NOW })]);
@@ -671,6 +729,7 @@ describe('Scenario: Pack creation and member additions are audited', () => {
         action: 'pack.created',
         actor: { type: 'user', id: ZAID },
         occurredAt: NOW,
+        note: 'Shortlist for the hiring decision',
         after: { jobId: seniorAi.jobId, rubricVersionId: seniorAi.rubric.versionId },
       }),
     ]);
@@ -678,6 +737,7 @@ describe('Scenario: Pack creation and member additions are audited', () => {
       expect.objectContaining({
         actor: { type: 'user', id: ZAID },
         occurredAt: NOW,
+        note: 'Shortlist for the hiring decision',
         after: { packId: round4, jobId: seniorAi.jobId, assessmentId: expect.any(String), position: 0 },
       }),
     ]);
@@ -686,7 +746,14 @@ describe('Scenario: Pack creation and member additions are audited', () => {
   // SAFETY: mutation check: removed the auditMemberAdded loop from addMembers -> this test failed (no entry for Arjun)
   it('Alex adds Arjun and Sara again: only Arjun is added, by Alex, and only he is audited', async () => {
     expect(
-      await as(ALEX, w1, (ctx) => decisions.addMembers(ctx, round4, [{ candidateId: sara }, { candidateId: arjun }])),
+      await as(ALEX, w1, (ctx) =>
+        decisions.addMembers(
+          ctx,
+          round4,
+          [{ candidateId: sara }, { candidateId: arjun }],
+          'Shortlist for the hiring decision',
+        ),
+      ),
     ).toEqual({ added: 1 });
     const members = (await as(ALEX, w1, (ctx) => decisions.getPack(ctx, round4)))?.members ?? [];
     expect(members.map((m) => [m.candidateId, m.addedBy])).toEqual([
@@ -703,7 +770,7 @@ describe('Scenario: Pack creation and member additions are audited', () => {
     const before = [await stored(), (await memberAudits(round4, huda)).length];
     await expect(
       as(ZAID, w1, async (ctx) => {
-        await decisions.addMembers(ctx, round4, [{ candidateId: huda }]);
+        await decisions.addMembers(ctx, round4, [{ candidateId: huda }], 'Shortlist for the hiring decision');
         throw new Error('rolled back');
       }),
     ).rejects.toThrow('rolled back');
@@ -885,10 +952,17 @@ describe('Scenario: Pack summaries are written once per member, cited, by the wo
 
   it('a member added later is announced (PackMembersAdded.v1) and summarised alone', async () => {
     const { packId } = await as(ZAID, w1, (ctx) =>
-      decisions.createPack(ctx, { jobId: seniorAi.jobId, name: 'Round 2 reserve', members: [{ candidateId: huda }] }),
+      decisions.createPack(ctx, {
+        reason: 'Shortlist for the hiring decision',
+        jobId: seniorAi.jobId,
+        name: 'Round 2 reserve',
+        members: [{ candidateId: huda }],
+      }),
     );
     expect(await deliver(await eventOf(w1, packId, 'PackReady.v1'))).toEqual(['complete']);
-    await as(ZAID, w1, (ctx) => decisions.addMembers(ctx, packId, [{ candidateId: arjun }]));
+    await as(ZAID, w1, (ctx) =>
+      decisions.addMembers(ctx, packId, [{ candidateId: arjun }], 'Shortlist for the hiring decision'),
+    );
     const calls = requests.length;
     expect(await deliver(await eventOf(w1, packId, 'PackMembersAdded.v1'))).toEqual(['complete']);
     expect(requests).toHaveLength(calls + 1);

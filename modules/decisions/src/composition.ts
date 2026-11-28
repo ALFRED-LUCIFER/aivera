@@ -84,21 +84,23 @@ export function createDecisions(
           after: { packId: d.packId, jobId, decision: d.decision },
         },
       ),
-    auditPackCreated: (ctx, pack) =>
+    auditPackCreated: (ctx, pack, reason) =>
       audit.record(
         { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
         {
           action: 'pack.created',
           subject: { type: 'pack', id: pack.id },
+          note: reason,
           after: { jobId: pack.jobId, rubricVersionId: pack.rubricVersionId },
         },
       ),
-    auditMemberAdded: (ctx, jobId, m) =>
+    auditMemberAdded: (ctx, jobId, m, reason) =>
       audit.record(
         { tx: ctx.tx, workspaceId: ctx.workspaceId, actor: { type: 'user', id: ctx.userId } },
         {
           action: 'pack.member_added',
           subject: { type: 'candidate', id: m.candidateId },
+          note: reason,
           after: { packId: m.packId, jobId, assessmentId: m.assessmentId, position: m.position },
         },
       ),

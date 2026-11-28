@@ -326,13 +326,17 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
   ).toHaveCount(3);
   await expect(preview(page)).toContainText('Nothing changes until you confirm.');
   await expect(row(page, 'Sara Al Qahtani')).not.toContainText('In shortlist pack');
-  // Focus moved into the preview: Tab reaches the pack choice, then its name, then Confirm.
+  // Focus moved into the preview: Tab reaches the pack choice, its name, the reason (AIV-P1-165), then Confirm.
   await page.keyboard.press('Tab');
   await expect(preview(page).getByRole('radio', { name: 'New pack' })).toBeFocused();
   await expect(preview(page).getByRole('radio', { name: 'New pack' })).toBeChecked();
   await page.keyboard.press('Tab');
   await expect(preview(page).getByRole('textbox', { name: 'Pack name' })).toBeFocused();
   await page.keyboard.type('Round 2 shortlist');
+  await page.keyboard.press('Tab');
+  const reason = preview(page).getByRole('textbox', { name: 'Reason, recorded in the audit log' });
+  await expect(reason).toBeFocused();
+  await expect(reason).toHaveValue('Shortlist for the hiring decision');
   await page.keyboard.press('Tab');
   await expect(preview(page).getByRole('button', { name: 'Add 3 to the pack' })).toBeFocused();
   await page.keyboard.press('Enter');

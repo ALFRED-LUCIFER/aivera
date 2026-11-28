@@ -11,6 +11,7 @@ const PACK = id(2);
 const [SARA_APP, ARJUN_APP, OTHER_JOB_APP] = [id(11), id(12), id(13)];
 const intake = { listApplicationsForJob: vi.fn() };
 const decisions = { createPack: vi.fn(), addMembers: vi.fn() };
+const WHY = 'Shortlist for the hiring decision';
 vi.mock('@/server/intake', () => ({ getIntake: () => intake }));
 vi.mock('@/server/decisions', () => ({ getDecisions: () => decisions }));
 vi.mock('@/server/workspace', () => ({
@@ -44,22 +45,30 @@ describe('addToDecisionPack', () => {
       jobId: JOB,
       applicationIds: [SARA_APP, ARJUN_APP],
       pack: { name: 'Round 2 shortlist' },
+      reason: WHY,
     });
     expect(result).toEqual({ ok: true, packId: PACK, added: 2 });
     expect(decisions.createPack).toHaveBeenCalledWith(
       {},
-      { jobId: JOB, name: 'Round 2 shortlist', members: [{ candidateId: 'p-sara' }, { candidateId: 'p-arjun' }] },
+      {
+        jobId: JOB,
+        name: 'Round 2 shortlist',
+        members: [{ candidateId: 'p-sara' }, { candidateId: 'p-arjun' }],
+        reason: WHY,
+      },
     );
   });
 
   it('adds to an existing pack', async () => {
     decisions.addMembers.mockResolvedValue({ added: 1 });
-    expect(await addToDecisionPack({ jobId: JOB, applicationIds: [ARJUN_APP], pack: { packId: PACK } })).toEqual({
+    expect(
+      await addToDecisionPack({ jobId: JOB, applicationIds: [ARJUN_APP], pack: { packId: PACK }, reason: WHY }),
+    ).toEqual({
       ok: true,
       packId: PACK,
       added: 1,
     });
-    expect(decisions.addMembers).toHaveBeenCalledWith({}, PACK, [{ candidateId: 'p-arjun' }]);
+    expect(decisions.addMembers).toHaveBeenCalledWith({}, PACK, [{ candidateId: 'p-arjun' }], WHY);
   });
 
   // SAFETY: mutation check: removed the `members.some((m) => m === undefined)` refusal -> this test failed (createPack called with Sara only)
@@ -68,6 +77,7 @@ describe('addToDecisionPack', () => {
       jobId: JOB,
       applicationIds: [SARA_APP, OTHER_JOB_APP],
       pack: { name: 'Round 2 shortlist' },
+      reason: WHY,
     });
     expect(result).toEqual({ ok: false, error: 'notOnJob' });
     expect(decisions.createPack).not.toHaveBeenCalled();
@@ -76,14 +86,16 @@ describe('addToDecisionPack', () => {
 
   it('a refused pack change, a role refusal and a malformed input', async () => {
     decisions.addMembers.mockRejectedValueOnce(new PackError('pack_decided'));
-    expect(await addToDecisionPack({ jobId: JOB, applicationIds: [SARA_APP], pack: { packId: PACK } })).toEqual({
+    expect(
+      await addToDecisionPack({ jobId: JOB, applicationIds: [SARA_APP], pack: { packId: PACK }, reason: WHY }),
+    ).toEqual({
       ok: false,
       error: 'refused',
     });
     decisions.addMembers.mockRejectedValueOnce(new ForbiddenError());
-    await expect(addToDecisionPack({ jobId: JOB, applicationIds: [SARA_APP], pack: { packId: PACK } })).rejects.toThrow(
-      '403',
-    );
+    await expect(
+      addToDecisionPack({ jobId: JOB, applicationIds: [SARA_APP], pack: { packId: PACK }, reason: WHY }),
+    ).rejects.toThrow('403');
     expect(await addToDecisionPack({ jobId: JOB, applicationIds: [], pack: { name: '' } })).toEqual({
       ok: false,
       error: 'invalid',
