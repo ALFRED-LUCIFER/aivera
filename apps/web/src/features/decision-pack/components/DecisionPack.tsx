@@ -9,7 +9,7 @@ import { evidenceAnchor, profileHref } from '@/features/evidence-profile/domain/
 import { MAX_COMPARE, MIN_COMPARE, compareHref } from '@/features/compare/domain/compare.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import { packHref } from '@/features/ranking/domain/pack.ts';
-import type { DecisionPackView, PackPage, RecordView } from '../domain/pack.ts';
+import type { DecisionPackView, NameSelfView, PackPage, RecordView } from '../domain/pack.ts';
 import { Needs, SummaryText } from './CardSummary.tsx';
 import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
 
@@ -46,7 +46,15 @@ import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
 // - no Credalent assistant panel: the assistant is AIV-P2-028 (#142).
 
 /** `record`: the hiring owner's choices and "Record decisions" (AIV-P2-012); without it the choices are read-only. */
-export function DecisionPack({ view, record }: { view: DecisionPackView; record?: RecordView }) {
+export function DecisionPack({
+  view,
+  record,
+  nameSelf,
+}: {
+  view: DecisionPackView;
+  record?: RecordView;
+  nameSelf?: NameSelfView;
+}) {
   const t = useTranslations();
   if (view.status === 'loading')
     return (
@@ -63,10 +71,18 @@ export function DecisionPack({ view, record }: { view: DecisionPackView; record?
         <Button onClick={view.onRetry}>{t('ranking.retry')}</Button>
       </div>
     );
-  return <Pack pack={view.pack} record={record} />;
+  return <Pack pack={view.pack} record={record} nameSelf={nameSelf} />;
 }
 
-function Pack({ pack, record }: { pack: PackPage; record: RecordView | undefined }) {
+function Pack({
+  pack,
+  record,
+  nameSelf,
+}: {
+  pack: PackPage;
+  record: RecordView | undefined;
+  nameSelf: NameSelfView | undefined;
+}) {
   const t = useTranslations();
   const names = new Map(pack.members.map((m) => [m.candidateId, m.name ?? t('ranking.unnamed')] as const));
   // Read-only once recorded, before the page is read again too, and for anyone but the job's hiring owner.
@@ -131,7 +147,7 @@ function Pack({ pack, record }: { pack: PackPage; record: RecordView | undefined
           </Member>
         ))
       )}
-      {pack.members.length > 0 && <RecordSection pack={pack} record={record} names={names} />}
+      {pack.members.length > 0 && <RecordSection pack={pack} record={record} nameSelf={nameSelf} names={names} />}
       <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
         <ValueBasis basis="observed" label={t('ranking.observed')} />
         {t('decisionPack.basis')}

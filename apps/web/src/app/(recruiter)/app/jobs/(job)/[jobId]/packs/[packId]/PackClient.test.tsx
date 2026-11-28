@@ -9,8 +9,9 @@ import { PackClient } from './PackClient.tsx';
 
 // AIV-P2-012: "Record the decision" on the pack, with its controller; the server action and the router are faked. The
 // hiring owner's authority and the stored decisions are proven against PostgreSQL in tests/integration. Synthetic cast.
-const fake = vi.hoisted(() => ({ record: vi.fn(), refresh: vi.fn() }));
+const fake = vi.hoisted(() => ({ record: vi.fn(), nameSelf: vi.fn(), refresh: vi.fn() }));
 vi.mock('@/features/decision-pack/services/recordDecisions.ts', () => ({ recordDecisions: fake.record }));
+vi.mock('@/features/decision-pack/services/nameSelfOwner.ts', () => ({ nameSelfOwner: fake.nameSelf }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: fake.refresh }) }));
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
@@ -64,6 +65,7 @@ const pack = (over: Partial<PackPage> = {}): PackPage => ({
   })),
   others: 2,
   mayDecide: true,
+  mayNameSelf: false,
   decided: null,
   ...over,
 });
@@ -180,6 +182,49 @@ describe('Scenario: Only the authorised hiring owner', () => {
       ).toBe(true);
     expect(screen.getByText('Only the hiring owner can record decisions.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Record decisions' })).toBeNull();
+  });
+});
+
+describe('Scenario: A decision can be recorded on the pilot path (AIV-P1-165 §13, owner decision (b))', () => {
+  it('an admin on a job with no hiring owner names themselves after a preview with a reason, and nothing else is offered', async () => {
+    fake.nameSelf.mockResolvedValue({ ok: true });
+    show(pack({ mayDecide: false, mayNameSelf: true }));
+    expect(screen.getByText(/^This job has no hiring owner yet\./)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Record decisions' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Record decisions yourself' }));
+    const preview = screen.getByRole('region', { name: "Preview: become this job's hiring owner" });
+    expect(preview.textContent).toContain('Nobody is contacted.');
+    const confirm = within(preview).getByRole('button', { name: 'Become hiring owner' });
+    expect(confirm.matches(':disabled')).toBe(true);
+    await userEvent.type(
+      within(preview).getByRole('textbox', { name: 'Reason, recorded in the audit log' }),
+      'Solo recruiter',
+    );
+    await userEvent.click(confirm);
+    expect(fake.nameSelf).toHaveBeenCalledExactlyOnceWith({ jobId: JOB, reason: 'Solo recruiter' });
+    expect(fake.refresh).toHaveBeenCalledOnce();
+  });
+
+  it('a job that gained a hiring owner meanwhile: nothing changes and the card says so', async () => {
+    fake.nameSelf.mockResolvedValue({ ok: false, error: 'taken' });
+    show(pack({ mayDecide: false, mayNameSelf: true }));
+    await userEvent.click(screen.getByRole('button', { name: 'Record decisions yourself' }));
+    const preview = screen.getByRole('region', { name: "Preview: become this job's hiring owner" });
+    await userEvent.type(
+      within(preview).getByRole('textbox', { name: 'Reason, recorded in the audit log' }),
+      'Solo recruiter',
+    );
+    await userEvent.click(within(preview).getByRole('button', { name: 'Become hiring owner' }));
+    expect(within(preview).getByRole('alert').textContent).toBe(
+      'This job already has a hiring owner. Nothing was changed.',
+    );
+    expect(fake.refresh).not.toHaveBeenCalled();
+  });
+
+  it('anyone else sees why they cannot record, with no button that fails silently', () => {
+    show(pack({ mayDecide: false, mayNameSelf: false }));
+    expect(screen.getByText('Only the hiring owner can record decisions.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Record decisions yourself' })).toBeNull();
   });
 });
 

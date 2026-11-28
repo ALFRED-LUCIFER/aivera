@@ -6,7 +6,14 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { useId } from 'react';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
-import { DECISIONS, NOTE_MAX, type DecisionValue, type PackPage, type RecordView } from '../domain/pack.ts';
+import {
+  DECISIONS,
+  NOTE_MAX,
+  type DecisionValue,
+  type NameSelfView,
+  type PackPage,
+  type RecordView,
+} from '../domain/pack.ts';
 
 // AIV-P2-012: "Record the decision" on the Pack artboard (docs/01-design/artboards/Pack.dc.html), ported as its own
 // card (the shared Card) under the members. Deviations:
@@ -26,7 +33,8 @@ import { DECISIONS, NOTE_MAX, type DecisionValue, type PackPage, type RecordView
 //   when and why); the artboard records at once and asks for no reason;
 // - "Back to ranking" stays at the foot of the pack, where AIV-P2-010 put it, not beside "Record decisions";
 // - a recruiter, an admin or another hiring owner sees the choices read-only with "Only the hiring owner can record
-//   decisions"; a decided pack shows them read-only with who recorded them and when (the ticket's scenarios).
+//   decisions"; on a job with no hiring owner an admin is offered "Record decisions yourself", which names them the
+//   hiring owner after a preview with a reason (owner decision (b), AIV-P1-165); a decided pack shows them read-only with who recorded them and when (the ticket's scenarios).
 
 const focusOnMount = (element: HTMLElement | null) => element?.focus();
 
@@ -71,10 +79,13 @@ export function DecisionChoice({
 export function RecordSection({
   pack,
   record,
+  nameSelf,
   names,
 }: {
   pack: PackPage;
   record: RecordView | undefined;
+  /** "Record decisions yourself", for an admin on a job with no hiring owner (`pack.mayNameSelf`). */
+  nameSelf?: NameSelfView | undefined;
   /** Each member's name by candidate id, as the cards show it. */
   names: ReadonlyMap<string, string>;
 }) {
@@ -114,7 +125,10 @@ export function RecordSection({
               {schedule}
             </p>
           ) : !pack.mayDecide || !record ? (
-            <p className="text-body text-text">{t('onlyOwner')}</p>
+            <>
+              <p className="text-body text-text">{t(pack.mayNameSelf ? 'noOwner' : 'onlyOwner')}</p>
+              {pack.mayNameSelf && nameSelf && <NameSelf view={nameSelf} />}
+            </>
           ) : (
             <>
               <p className="max-w-[72ch] text-body text-text-2">{t('lead')}</p>
@@ -184,5 +198,54 @@ export function RecordSection({
         </div>
       </Card>
     </section>
+  );
+}
+
+/** "Record decisions yourself": an admin names themselves the job's hiring owner, after a preview with a reason. */
+function NameSelf({ view }: { view: NameSelfView }) {
+  const t = useTranslations('decisionPack.record.nameSelf');
+  const reasonId = useId();
+  const errorId = useId();
+  if (!view.previewing)
+    return (
+      <div>
+        <Button variant="secondary" onClick={view.onOpen}>
+          {t('open')}
+        </Button>
+      </div>
+    );
+  return (
+    <PreviewBanner
+      title={t('title')}
+      consequence={t('consequence')}
+      confirmLabel={t('confirm')}
+      pendingLabel={t('pending')}
+      confirmDisabled={!view.reasonValid}
+      cancelLabel={t('cancel')}
+      footer={t('footer')}
+      errorMessage={t(view.error === 'taken' ? 'taken' : 'failed')}
+      onConfirm={view.onConfirm}
+      onCancel={view.onCancel}
+    >
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={reasonId}>{t('reason')}</Label>
+        <Textarea
+          ref={focusOnMount}
+          id={reasonId}
+          required
+          rows={2}
+          maxLength={NOTE_MAX}
+          aria-invalid={!view.reasonValid || undefined}
+          aria-describedby={view.reasonValid ? undefined : errorId}
+          value={view.reason}
+          onChange={(event) => view.onReasonChange(event.target.value)}
+        />
+        {!view.reasonValid && (
+          <span id={errorId} className="text-meta text-err-text">
+            {t('reasonRequired')}
+          </span>
+        )}
+      </div>
+    </PreviewBanner>
   );
 }

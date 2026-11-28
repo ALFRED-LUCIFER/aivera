@@ -125,6 +125,8 @@ async function withPack<T>(
         members,
         others: new Set(applicants.map((a) => a.personId)).size - pack.members.length,
         mayDecide: pack.mayDecide,
+        // Owner decision (b): an admin may decide once named; offered only while the job has no hiring owner.
+        mayNameSelf: !pack.mayDecide && ctx.role === 'admin' && !header?.job.hiringOwnerUserId,
         // One record decides the whole pack: every decision has the same author and time.
         decided: pack.decisions[0]
           ? { by: (decidedBy && adders.get(decidedBy)) ?? null, at: pack.decisions[0].decidedAt }
