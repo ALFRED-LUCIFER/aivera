@@ -130,7 +130,7 @@ test('Scenario: The ranking for Senior AI Engineer', async ({ page }) => {
     /^Select Arjun Menon2Arjun MenonRound 2 on \d{1,2} \w{3}64up to 76 if claims hold3 of 6HighRetrieval and evaluation/,
   );
   await expect(rows.nth(2)).toHaveText(/^Select Tarek Mansour3Tarek MansourNew63up to 80 if claims hold/);
-  await expect(page.getByText(`Showing 7 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
+  await expect(page.getByText(`8 of 9 assessed. ${FAIRNESS}`)).toBeVisible();
 });
 
 test('Scenario: Exact duplicates merge automatically: the row shows "1 duplicate merged", and undo previews first', async ({
@@ -160,8 +160,8 @@ test('Scenario: Show all', async ({ page }) => {
   await expect(rows).toHaveCount(9);
   await expect(rows.nth(7)).toHaveText(/^Select Maria Santos8Maria SantosNew31up to 69 if claims hold/);
   // Not assessed yet and still listed: nobody drops out of the ranking (AGENTS.md 1.5).
-  await expect(rows.nth(8)).toHaveText(/^Select Youssef AzizYoussef AzizNewNot yet scoredNot yet available/);
-  await expect(page.getByText(`Showing 8 of 8 assessed. ${FAIRNESS}`)).toBeVisible();
+  await expect(rows.nth(8)).toHaveText(/^Select Youssef AzizYoussef AzizNewNot started: no CV was added/);
+  await expect(page.getByText(`8 of 9 assessed. ${FAIRNESS}`)).toBeVisible();
 });
 
 test('Scenario: Filter by missing evidence', async ({ page }) => {

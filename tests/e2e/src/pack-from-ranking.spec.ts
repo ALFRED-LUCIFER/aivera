@@ -357,7 +357,7 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
   await expect(
     row(page, 'Daniel Novak').getByRole('img', { name: /^55 backed by evidence · up to \d+ if claims hold$/ }),
   ).toBeVisible();
-  await expect(row(page, 'Maria Santos')).toContainText('Not yet scored');
+  await expect(row(page, 'Maria Santos')).toContainText('Not started: no CV was added');
 
   // Add to an existing pack: Daniel joins the undecided one, offered first. The new bulk action starts from him alone
   // ("Add 1"), never from the three just added (AGENTS.md 1.5).
