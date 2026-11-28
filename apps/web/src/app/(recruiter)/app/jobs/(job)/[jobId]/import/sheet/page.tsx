@@ -1,4 +1,4 @@
-import { SheetImport } from '@/features/sheet-import';
+import { SheetImport } from '@/features/sheet-import/components/SheetImport.tsx';
 import { loadSheetImport } from '@/features/sheet-import/services/loadSheetImport.ts';
 import { loadJob } from '../../loadJob.ts';
 import { jobPageMetadata } from '../../metadata.ts';
