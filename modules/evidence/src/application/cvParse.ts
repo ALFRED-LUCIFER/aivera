@@ -23,6 +23,7 @@ import {
   type CvExtraction,
   type CvLayout,
   type CvParseStatus,
+  PARSE_GIVE_UP_MS,
   type SourceNote,
 } from '../domain/cv.ts';
 import { EvidenceError, type EvidenceItem, type EvidenceSource } from '../domain/evidence.ts';
@@ -67,13 +68,18 @@ export type CvParseStore = {
   pendingForFile(workspaceId: string, fileId: string): Promise<string[]>;
   /** Sets the status only while pending, waiting or failed; false when another delivery finished it first. */
   finish(workspaceId: string, sourceId: string, status: Exclude<CvParseStatus, 'pending'>): Promise<boolean>;
-  /** Sets a `failed` parse back to pending; null when it is not `failed` (or not this workspace's). */
-  retry(workspaceId: string, sourceId: string): Promise<{ candidateId: string } | null>;
-  /** Each candidate's newest CV source, with its file id and parse status. */
+  /**
+   * Sets a `failed` parse, or one still `pending` from before `staleBefore`, back to pending as asked for `at`; null when
+   * it is neither (or not this workspace's).
+   */
+  retry(workspaceId: string, sourceId: string, at: Date, staleBefore: Date): Promise<{ candidateId: string } | null>;
+  /** Each candidate's newest CV source, with its file id, parse status and when the parse was last asked for. */
   newestPerCandidate(
     workspaceId: string,
     candidateIds: string[],
-  ): Promise<{ candidateId: string; sourceId: string; fileId: string | null; status: CvParseStatus }[]>;
+  ): Promise<
+    { candidateId: string; sourceId: string; fileId: string | null; status: CvParseStatus; requestedAt: Date }[]
+  >;
   insertItems(items: EvidenceItem[], notes: SourceNote[]): Promise<void>;
   notes(workspaceId: string, sourceId: string): Promise<SourceNote[]>;
 };
@@ -162,16 +168,17 @@ export function cvParseUseCases(
     },
 
     /**
-     * A person asks for a CV that could not be read to be read again (AIV-P1-134): only a `failed` parse, set back to
-     * pending, with `CvParseRequested.v1` for the same source; never a new source. Audited as the last statement.
+     * A person asks for a CV that could not be read to be read again (AIV-P1-134): only a `failed` parse, or one pending
+     * past PARSE_GIVE_UP_MS (shown as failed), set back to pending, with `CvParseRequested.v1` for the same source; never
+     * a new source. Audited as the last statement.
      */
     async retryCvParse(ctx: WorkspaceContext, sourceId: string): Promise<void> {
       await authorize(ctx, 'candidate.create');
       const store = cvStoreFor(ctx.tx);
-      const retried = await store.retry(ctx.workspaceId, sourceId);
+      const at = now();
+      const retried = await store.retry(ctx.workspaceId, sourceId, at, new Date(at.getTime() - PARSE_GIVE_UP_MS));
       if (!retried)
         throw new EvidenceError((await store.find(ctx.workspaceId, sourceId)) ? 'not_retryable' : 'cv_not_found');
-      const at = now();
       await ports.publishParseRequested(
         ctx.tx,
         { id: sourceId, workspaceId: ctx.workspaceId, candidateId: retried.candidateId, createdAt: at },
@@ -210,11 +217,15 @@ export function cvParseUseCases(
           await authorize(ctx, 'candidate.view', (await candidateJob(ctx, id, jobId)) ?? undefined);
       else await authorize(ctx, 'candidate.view');
       const failed = new Set(await mappingStoreFor(ctx.tx).failed(ctx.workspaceId, jobId, candidateIds));
+      const staleBefore = now().getTime() - PARSE_GIVE_UP_MS;
+      // A parse whose last delivery never reached the handler stays pending for good: past the limit it reads as failed.
       const cvs = new Map(
-        (await cvStoreFor(ctx.tx).newestPerCandidate(ctx.workspaceId, candidateIds)).map(({ candidateId, ...cv }) => [
-          candidateId,
-          cv,
-        ]),
+        (await cvStoreFor(ctx.tx).newestPerCandidate(ctx.workspaceId, candidateIds)).map(
+          ({ candidateId, requestedAt, ...cv }) => [
+            candidateId,
+            cv.status === 'pending' && requestedAt.getTime() < staleBefore ? { ...cv, status: 'failed' as const } : cv,
+          ],
+        ),
       );
       return candidateIds.map((candidateId) => ({
         candidateId,

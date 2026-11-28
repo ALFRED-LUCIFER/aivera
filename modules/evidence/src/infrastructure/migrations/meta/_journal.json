@@ -239,6 +239,13 @@
       "when": 1795841563508,
       "tag": "0033_force_rls_mapping_failure",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795845511048,
+      "tag": "0034_material_whiplash",
+      "breakpoints": true
     }
   ]
 }

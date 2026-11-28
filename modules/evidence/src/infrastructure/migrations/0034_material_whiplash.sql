@@ -1,0 +1,1 @@
+ALTER TABLE "evidence"."cv_parse" ADD COLUMN "requested_at" timestamp with time zone DEFAULT now() NOT NULL;

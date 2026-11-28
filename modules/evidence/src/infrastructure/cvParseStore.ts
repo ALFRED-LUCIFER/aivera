@@ -1,5 +1,5 @@
 import type { Tx } from '@credalent/db/client';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lt, or, sql } from 'drizzle-orm';
 import type { CvParseStore } from '../application/cvParse.ts';
 import { cvParse, item, source, sourceNote } from './schema.ts';
 
@@ -20,8 +20,8 @@ export function cvParseStore(tx: Tx): CvParseStore {
         })
         .returning({ id: source.id });
       if (inserted) {
-        const { workspaceId, id: sourceId, candidateId } = src;
-        await tx.insert(cvParse).values({ workspaceId, sourceId, candidateId, status: 'pending' });
+        const { workspaceId, id: sourceId, candidateId, createdAt: requestedAt } = src;
+        await tx.insert(cvParse).values({ workspaceId, sourceId, candidateId, status: 'pending', requestedAt });
         return null;
       }
       const [existing] = await tx
@@ -74,12 +74,18 @@ export function cvParseStore(tx: Tx): CvParseStore {
         .returning({ sourceId: cvParse.sourceId });
       return updated.length > 0;
     },
-    async retry(workspaceId, sourceId) {
-      // Compare-and-set: of two retries at once, only one sees `failed`, so one parse is queued.
+    async retry(workspaceId, sourceId, at, staleBefore) {
+      // Compare-and-set: of two retries at once, only one sees `failed` (or the stale request time), so one parse is queued.
       const [row] = await tx
         .update(cvParse)
-        .set({ status: 'pending' })
-        .where(and(eq(cvParse.workspaceId, workspaceId), eq(cvParse.sourceId, sourceId), eq(cvParse.status, 'failed')))
+        .set({ status: 'pending', requestedAt: at })
+        .where(
+          and(
+            eq(cvParse.workspaceId, workspaceId),
+            eq(cvParse.sourceId, sourceId),
+            or(eq(cvParse.status, 'failed'), and(eq(cvParse.status, 'pending'), lt(cvParse.requestedAt, staleBefore))),
+          ),
+        )
         .returning({ candidateId: cvParse.candidateId });
       return row ?? null;
     },
@@ -91,6 +97,7 @@ export function cvParseStore(tx: Tx): CvParseStore {
           sourceId: cvParse.sourceId,
           fileId: source.blobFileId,
           status: cvParse.status,
+          requestedAt: cvParse.requestedAt,
         })
         .from(cvParse)
         .innerJoin(source, and(eq(source.workspaceId, cvParse.workspaceId), eq(source.id, cvParse.sourceId)))

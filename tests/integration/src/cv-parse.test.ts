@@ -698,6 +698,35 @@ describe('Feature: Retry a CV that failed to parse (AIV-P1-134)', () => {
       code: 'not_retryable',
     });
   });
+
+  // SAFETY: mutation check: listCvStatuses returned the stored status again -> this test failed (pending, not failed)
+  // SAFETY: mutation check: cvParseStore.retry accepted only 'failed' again -> this test failed (not_retryable)
+  it('Scenario: a parse whose last delivery never arrived reads as failed after 30 minutes, and "Try again" works', async () => {
+    // Never scanned, so nothing ever runs it: the shape a lost last delivery leaves.
+    const { candidateId, sourceId } = await parse('Omar Haddad', [['Omar Haddad']], answer({}), { clean: false });
+    const status = async () => (await as(w1, (ctx) => evidence.listCvStatuses(ctx, JOB, [candidateId])))[0]?.cv?.status;
+    const askedAgo = (minutes: number) =>
+      withWorkspace(app, w1, (tx) =>
+        tx.execute(sql`update evidence.cv_parse set requested_at = ${new Date(NOW.getTime() - minutes * 60_000).toISOString()}
+          where source_id = ${sourceId}`),
+      );
+    await askedAgo(29);
+    expect(await status()).toBe('pending');
+    await expect(as(w1, (ctx) => evidence.retryCvParse(ctx, sourceId))).rejects.toMatchObject({
+      code: 'not_retryable',
+    });
+
+    await askedAgo(31);
+    expect(await status()).toBe('failed');
+    const before = await parseRequests(sourceId);
+    await as(w1, (ctx) => evidence.retryCvParse(ctx, sourceId));
+    expect(await parseRequests(sourceId)).toHaveLength(before.length + 1);
+    // Asked for again now, so it reads "Reading the CV…" for another 30 minutes, and a second retry queues nothing.
+    expect(await status()).toBe('pending');
+    await expect(as(w1, (ctx) => evidence.retryCvParse(ctx, sourceId))).rejects.toMatchObject({
+      code: 'not_retryable',
+    });
+  });
 });
 
 const MARIA_CV = [

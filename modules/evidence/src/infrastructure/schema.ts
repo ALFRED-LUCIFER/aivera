@@ -588,6 +588,8 @@ export const cvParse = evidence
       sourceId: uuid('source_id').notNull(),
       candidateId: uuid('candidate_id').notNull(),
       status: text({ enum: CV_PARSE_STATUSES }).notNull(),
+      // When the parse was last asked for (its source's creation or a retry); pending past PARSE_GIVE_UP_MS reads failed.
+      requestedAt: timestamp('requested_at', tz).notNull().defaultNow(),
     },
     (t) => [
       primaryKey({ name: 'cv_parse_pkey', columns: [t.workspaceId, t.sourceId] }),
