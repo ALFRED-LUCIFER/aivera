@@ -151,6 +151,7 @@ describe('Migrations', () => {
         'item',
         'link_read',
         'mapping',
+        'mapping_failure',
         'merged_pull_request',
         'outbox',
         'portal_token',
