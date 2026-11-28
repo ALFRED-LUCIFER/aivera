@@ -31,7 +31,8 @@ import { evidenceAnchor } from '../domain/profile.ts';
 //   nothing to open. A source backed by an uploaded file is a link for admins and recruiters only, and only where a
 //   storage account is configured; a hiring owner or interviewer reads its name (AGENTS.md 1.9);
 // - "Unusual content in this source" notes are listed under the rows, each with its quoted excerpt and citation: the
-//   ticket's deliverable, which the artboard does not draw. Neutral ink, no highlighter, no action;
+//   ticket's deliverable, which the artboard does not draw. Neutral ink, no highlighter, no action. Text hidden in the
+//   file is one line per source with a count and no excerpt, so a layout quirk never reads as an accusation (AIV-P1-165);
 // - the section is full width, not beside a right column: "Needs live verification" sits under it (AIV-P1-113), and
 //   "Interview history and score changes" and "Across your roles" are AIV-P1-046 (#110);
 // - the padding is the shared Card's 16 px, not 20 px, and a competency name is the 16 px card size, not 15 px:
@@ -194,12 +195,18 @@ export function EvidenceCards({ cards, notes }: { cards: EvidenceCard[]; notes: 
                   {noteIcon}
                   {t('evidence.unusualContent.title')}
                 </span>
-                <figure className="flex flex-col gap-1">
-                  <blockquote className="max-w-[72ch] border-s-2 border-border-strong ps-3">{note.excerpt}</blockquote>
-                  <figcaption className="font-mono text-meta text-text-2">
-                    {note.hidden ? t('candidateProfile.noteHidden', { citation: note.citation }) : note.citation}
-                  </figcaption>
-                </figure>
+                {note.hidden ? (
+                  <p className="font-mono text-meta text-text-2">
+                    {t('candidateProfile.noteHidden', { citation: note.citation, count: note.hidden })}
+                  </p>
+                ) : (
+                  <figure className="flex flex-col gap-1">
+                    <blockquote className="max-w-[72ch] border-s-2 border-border-strong ps-3">
+                      {note.excerpt}
+                    </blockquote>
+                    <figcaption className="font-mono text-meta text-text-2">{note.citation}</figcaption>
+                  </figure>
+                )}
               </li>
             ))}
           </ul>

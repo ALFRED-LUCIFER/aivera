@@ -7,7 +7,7 @@ import { getFiles } from '@/server/files';
 import { getIntake } from '@/server/intake';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
 import { inActiveWorkspace } from '@/server/workspace';
-import { evidenceCards, sourceNote, type SourceNoteView } from '../domain/evidenceCards.ts';
+import { evidenceCards, sourceNotes, type SourceNoteView } from '../domain/evidenceCards.ts';
 import { needRows } from '../domain/needs.ts';
 import type { Fit, ProfileData } from '../domain/profile.ts';
 
@@ -24,7 +24,7 @@ async function notesOf(ctx: WorkspaceContext, evidence: readonly EvidenceItemVie
   for (const source of sources.values()) {
     if (!(source.kind in NOTE_READS)) continue;
     const read = await getEvidence()[NOTE_READS[source.kind as keyof typeof NOTE_READS]](ctx, source.id);
-    for (const note of read?.notes ?? []) notes.push(sourceNote(source, note, notes.length));
+    notes.push(...sourceNotes(source, read?.notes ?? [], notes.length));
   }
   return notes;
 }

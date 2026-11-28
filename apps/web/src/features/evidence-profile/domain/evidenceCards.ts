@@ -48,8 +48,11 @@ export type EvidenceCard = {
   limits: string[];
 };
 
-/** "Unusual content in this source": the quoted excerpt with its citation ("CV, page 1"). It changes no score. */
-export type SourceNoteView = { key: string; citation: string; excerpt: string; hidden: boolean };
+/**
+ * "Unusual content in this source": the quoted excerpt with its citation ("CV, page 1"). It changes no score. Text hidden
+ * in the file is one line per source, without excerpts: `hidden` counts the places (0 for any other note), AIV-P1-165.
+ */
+export type SourceNoteView = { key: string; citation: string; excerpt: string; hidden: number };
 
 /** "github.com/…/llm-eval-harness": the host and the last path segment. */
 function shortUrl(url: string): string | null {
@@ -65,16 +68,28 @@ export function citation(source: Pick<EvidenceSource, 'kind' | 'label' | 'url'>,
   return span ? `${name}, ${span}` : name;
 }
 
-export const sourceNote = (
+/** A source's notes, keyed from `offset`: each note as it is, then its hidden-text notes folded into one line. */
+export function sourceNotes(
   source: Pick<EvidenceSource, 'id' | 'kind' | 'label' | 'url'>,
-  note: { reason: string; excerpt: string; excerptSpan?: string | null },
-  index: number,
-): SourceNoteView => ({
-  key: `${source.id}:${index}`,
-  citation: citation(source, note.excerptSpan ?? null),
-  excerpt: note.excerpt,
-  hidden: note.reason === 'hidden_text',
-});
+  notes: readonly { reason: string; excerpt: string; excerptSpan?: string | null }[],
+  offset: number,
+): SourceNoteView[] {
+  const views = notes
+    .filter((note) => note.reason !== 'hidden_text')
+    .map((note, index) => ({
+      key: `${source.id}:${offset + index}`,
+      citation: citation(source, note.excerptSpan ?? null),
+      excerpt: note.excerpt,
+      hidden: 0,
+    }));
+  const hidden = notes.length - views.length;
+  return hidden
+    ? [
+        ...views,
+        { key: `${source.id}:${offset + views.length}`, citation: citation(source, null), excerpt: '', hidden },
+      ]
+    : views;
+}
 
 const stronger = (a: EvidenceItemView, b: EvidenceItemView) =>
   STRENGTHS.indexOf(a.strength) - STRENGTHS.indexOf(b.strength);

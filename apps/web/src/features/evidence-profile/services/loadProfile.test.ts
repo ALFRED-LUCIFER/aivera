@@ -120,7 +120,7 @@ describe('loadProfile', () => {
       competencies: [card],
       // AIV-P1-044: a row only for the competency the approved rubric names.
       needs: [{ competencyId: 'llm', name: 'LLM systems in production', proven: 5, claimed: 5, needed: 3 }],
-      notes: [{ key: 's-cv:0', citation: 'CV, page 1', excerpt: NOTE, hidden: false }],
+      notes: [{ key: 's-cv:0', citation: 'CV, page 1', excerpt: NOTE, hidden: 0 }],
     });
     expect(fake.explain).toHaveBeenCalledWith(ctx, SARA, JOB);
     expect(fake.evidence).toHaveBeenCalledWith(ctx, SARA, JOB);

@@ -2026,7 +2026,7 @@
     "newTab": "(opens in a new tab)",
     "limit": "Limit:",
     "claimLimit": "Claim only. Counts as zero in the backed score.",
-    "noteHidden": "{citation} · This text is hidden in the file",
+    "noteHidden": "{citation} · Some text is not visible on the page ({count, plural, one {# place} other {# places}})",
     "loading": "Loading the candidate profile…",
     "error": "We could not load this candidate. Try again."
   },
