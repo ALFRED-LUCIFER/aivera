@@ -150,8 +150,13 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
     // AIV-P1-148: what a PDF's layout leaves in a CV's text. The span is the source's own characters.
     // SAFETY: mutation check: compared without folding or list marks (the old whitespace-only rule) -> this test failed
     const cv = 'Roles :1) Veriﬁcation of watermarks\n• Regression testing\n- Bug reporting\nMay 2018 - Oct 2020';
-    const span = findQuote(cv, 'Verification of watermarks Regression testing Bug reporting');
-    expect(cv.slice(span?.start, span?.end)).toBe('Veriﬁcation of watermarks\n• Regression testing\n- Bug reporting');
+    const span = findQuote(cv, 'Regression testing Bug reporting');
+    expect(cv.slice(span?.start, span?.end)).toBe('Regression testing\n- Bug reporting');
+    expect(findQuote(cv, '• Regression testing')).toEqual(span && { start: span.start, end: cv.indexOf('\n- Bug') });
+    // AIV-P1-156: a quote cannot run from one list item into the next, with or without the marker.
+    // SAFETY: mutation check: read a lone list mark as a space again in flatten -> this assertion failed
+    expect(findQuote(cv, 'Verification of watermarks Regression testing')).toBeUndefined();
+    expect(findQuote(cv, 'Verification of watermarks • Regression testing')).toBeUndefined();
     expect(findQuote(cv, 'May 2018 Oct 2020')).toBeDefined();
     // A hyphen inside a word, a changed word and a changed number are still not the source.
     expect(findQuote('end-to-end tests', 'end to end tests')).toBeUndefined();

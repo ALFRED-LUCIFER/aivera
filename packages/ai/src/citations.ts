@@ -123,13 +123,12 @@ export const formatSources = (sources: readonly Source[]) =>
 
 // What a PDF's layout leaves in extracted text and a model does not copy: list markers, and a dash standing alone
 // between two spaces (a list dash or a date-range dash; never one between two figures, where it is a range of numbers).
-// Read as a space on both sides of the comparison.
-// shortcut: a quote may therefore run from one list item into the next, as it already could across a line break, though
-// the prompts ask for one line; the words are the source's and in its order, but two items read together can say what
-// neither says alone. Make a list mark a boundary a quote cannot cross once AIV-P1-156 (#654, the scenario added in
-// its comment of 27 Nov 2026) drops a bad link alone.
+// A lone dash reads as a space on both sides of the comparison. A lone list marker is a boundary a quote cannot cross
+// (AIV-P1-156): two list items read together can say what neither says alone; a quote may still start or end on one.
 const LIST_MARK = /[\u2022\u2023\u2043\u25AA\u25AB\u25CF\u25E6\u25A0\u27A2]/;
 const DASH = /[-\u2013\u2014]/;
+// Where a list marker stood in the flattened text; never in a needle after its ends are trimmed, so no match spans it.
+const BOUNDARY = '\u0000';
 
 /** The nearest character that is not whitespace before (`step` -1) or after (`step` 1) `i`, or '' at an end. */
 function nearest(text: string, i: number, step: -1 | 1): string {
@@ -159,9 +158,9 @@ function flatten(text: string): { flat: string; at: number[] } {
         ? !LIST_MARK.test(before) && !LIST_MARK.test(after)
         : !(/\p{Nd}/u.test(before) && /\p{Nd}/u.test(after));
     }
-    const space = /\s/.test(char) || layout;
+    const space = /\s/.test(char) || (layout && !mark);
     if (space && (flat === '' || flat.endsWith(' '))) continue;
-    const folded = space ? ' ' : foldChar(char);
+    const folded = layout && mark ? BOUNDARY : space ? ' ' : foldChar(char);
     // One entry per code unit, so an offset never drifts when a character folds to several.
     for (let k = 0; k < folded.length; k++) at.push(i);
     flat += folded;
@@ -170,15 +169,16 @@ function flatten(text: string): { flat: string; at: number[] } {
 }
 
 /**
- * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space, list markers and lone
- * dashes read as a space and letters' compatibility forms folded (case, words, figures and punctuation must match): a CV extracted from
- * a PDF keeps its bullets, ligatures and line breaks, and a quote of it does not (AIV-P1-148). Offsets index the
- * original text, so the stored excerpt is the source's own characters.
+ * Where `quote` occurs in `text`, comparing with runs of whitespace collapsed to one space, lone dashes read as a
+ * space, a lone list marker as a boundary no quote crosses (AIV-P1-156) and letters' compatibility forms folded (case,
+ * words, figures and punctuation must match): a CV extracted from a PDF keeps its bullets, ligatures and line breaks,
+ * and a quote of it does not (AIV-P1-148). Offsets index the original text, so the stored excerpt is the source's own
+ * characters.
  */
 export function findQuote(text: string, quote: string): { start: number; end: number } | undefined {
   const { flat, at } = flatten(text);
-  const needle = flatten(quote).flat.trim();
-  const found = needle === '' ? -1 : flat.indexOf(needle);
+  const needle = flatten(quote).flat.replace(/^[\s\0]+|[\s\0]+$/g, '');
+  const found = needle === '' || needle.includes(BOUNDARY) ? -1 : flat.indexOf(needle);
   if (found < 0) return undefined;
   return { start: at[found] ?? 0, end: charEnd(text, at[found + needle.length - 1] ?? 0) };
 }
