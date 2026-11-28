@@ -16,8 +16,10 @@ export type CvParseStatus = (typeof CV_PARSE_STATUSES)[number];
  */
 export const PARSE_GIVE_UP_MS = 30 * 60_000;
 
+// Heading and title words that are never part of a name. Words that are also real name parts ("Key", "Work", "Abu")
+// stay out: a two-word heading is caught by its other word ("Key Achievements", "Work History", "Abu Dhabi").
 const NOT_A_NAME =
-  /\b(curriculum|vitae|resume|résumé|cv|profile|summary|contact|about|personal|experience|education|skills|objective|engineer|developer|manager|designer|analyst|scientist|consultant|architect|director|lead|senior|junior|intern|specialist|officer|tester|qa|software|data|product|project|technical|professional|career|work|employment|history|key|core|achievements|competencies|qualifications|certifications|projects|languages|references|details|united|emirates|arab|saudi|kingdom|dubai|riyadh|abu|dhabi)\b/iu;
+  /\b(curriculum|vitae|resume|résumé|cv|profile|summary|contact|about|personal|experience|education|skills|objective|engineer|developer|manager|designer|analyst|scientist|consultant|architect|director|lead|senior|junior|intern|specialist|officer|tester|qa|software|product|project|technical|professional|career|employment|history|achievements|competencies|qualifications|certifications|projects|languages|references|details|united|emirates|arab|saudi|kingdom|dubai|riyadh|dhabi)\b/iu;
 const PARTICLE = /^(?:bin|bint|ben|ibn|van|von|de|del|da|di|al|el)$/u;
 const NAME_WORD = /^(?!\p{Ll})\p{L}[\p{L}\p{M}'’.-]*$/u;
 

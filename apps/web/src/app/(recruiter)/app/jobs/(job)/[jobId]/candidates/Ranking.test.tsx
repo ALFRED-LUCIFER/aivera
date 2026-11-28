@@ -576,7 +576,8 @@ describe('Scenario: Preview, then confirm (AIV-P1-114)', () => {
     ).toBeTruthy();
     expect(text).toContain('To investigate: Product judgement');
     expect(text).toContain('To investigate: Retrieval and evaluation');
-    expect(text).toContain('Round 1, structured screen');
+    expect(text).toContain('Round 1');
+    expect(text).not.toContain('structured screen');
     expect(text).toContain('Interviewer: You');
     expect(text).toContain('Nobody is contacted');
     expect(text).toContain('Nothing changes until you confirm.');

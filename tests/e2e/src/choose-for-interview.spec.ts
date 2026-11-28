@@ -155,7 +155,8 @@ test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
     await expect(person.getByRole('img', { name: /^55 backed by evidence · up to \d+ if claims hold$/ })).toBeVisible();
     await expect(person).toContainText('To investigate: Cost and reliability; Retrieval and evaluation');
   }
-  await expect(preview(page)).toContainText('Round 1, structured screen');
+  await expect(preview(page)).toContainText('Round 1');
+  await expect(preview(page)).not.toContainText('structured screen');
   await expect(preview(page)).toContainText('Interviewer: You');
   // Focus moved into the preview, on the reason, prefilled.
   const reason = preview(page).getByRole('textbox', { name: 'Reason' });

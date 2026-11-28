@@ -443,6 +443,9 @@ describe('nameFromCv (AIV-P1-090)', () => {
     [['Layla Al-Mansoori'], 'Layla Al-Mansoori'],
     // A title before the dash, or a heading, is not taken for the name.
     [['QA Tester – Acme Trading', 'KEY ACHIEVEMENTS', 'Core Competencies'], null],
+    // A name part that is also a word ("Abu", "Key") is still a name: the heading beside it is caught by its other word.
+    [['Ahmed Abu Bakr', 'Abu Dhabi'], 'Ahmed Abu Bakr'],
+    [['WORK HISTORY', 'Mei Key'], 'Mei Key'],
   ])('%j -> %j', (lines, expected) => {
     expect(nameFromCv(lines.join('\n'))).toBe(expected);
   });
