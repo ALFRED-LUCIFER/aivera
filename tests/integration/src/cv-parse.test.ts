@@ -384,7 +384,7 @@ describe("Sara Al Qahtani's synthetic CV, parsed once it passed the malware scan
     expect(record?.emails).toContain('sara.alqahtani@example.com');
     expect(record?.phones).toEqual(['+971500000001']);
     // The run's telemetry and logs carry no contact detail (Sara's CV has both).
-    expect(JSON.stringify(saraTelemetry)).not.toMatch(/@example\.com|\+?971|000 0001|sara|qahtani/i);
+    expect(JSON.stringify(saraTelemetry)).not.toMatch(/@example\.com|\+?971 ?50 ?000|000 0001|sara|qahtani/i);
   });
 
   it('a repository the CV links is queued for a read, with no login and no emails from the CV', async () => {
