@@ -25,7 +25,8 @@ async function addClient(page: Page, name: string) {
 test('Scenarios: add clients, pick one on Add a job with a hiring owner, archive one', async ({ page }) => {
   await signIn(page, { email: ZAID });
   await page.goto('/app/settings');
-  await page.getByRole('link', { name: 'Clients' }).click();
+  // The settings page's link; the sidebar has a "Clients" entry too (AIV-P1-165).
+  await page.getByRole('main').getByRole('link', { name: 'Clients' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Clients' })).toBeVisible();
 
   // Scenario: Add a client.
@@ -50,9 +51,31 @@ test('Scenarios: add clients, pick one on Add a job with a hiring owner, archive
   await expect(jobRow.getByRole('cell').nth(1)).toHaveText('Dune Logistics');
   await expect(jobRow).toContainText('Faisal Client');
 
-  // The Client filter.
-  await page.getByLabel('Client', { exact: true }).selectOption({ label: 'Dune Logistics' });
+  // The Client filter. AIV-P1-165 "The client filter survives reload": the URL carries the client's opaque id, never
+  // its name, so a reload and Back keep the filter.
+  const filter = page.getByLabel('Client', { exact: true });
+  await filter.selectOption({ label: 'Dune Logistics' });
   await expect(jobRow).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/jobs\?client=[0-9a-f]{8}-[0-9a-f-]{27}$/);
+  expect(page.url()).not.toMatch(/dune/i);
+  await page.reload();
+  await expect(filter.locator('option:checked')).toHaveText('Dune Logistics');
+  await expect(jobRow).toBeVisible();
+  await jobRow.getByRole('link', { name: 'Staff Backend Engineer' }).click();
+  await expect(page).toHaveURL(/\/rubric$/);
+  await page.goBack();
+  await expect(filter.locator('option:checked')).toHaveText('Dune Logistics');
+
+  // AIV-P1-165 "Agencies have a Clients entry": the sidebar lists each client, linking to Jobs filtered to it.
+  const sidebar = page.getByRole('navigation', { name: 'Primary' });
+  await expect(sidebar.getByRole('link', { name: 'Clients' })).toHaveAttribute('href', '/app/settings/clients');
+  await expect(sidebar.getByRole('link', { name: 'Dune Logistics' })).toBeVisible();
+  await sidebar.getByRole('link', { name: 'Falcon Pay' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/app\/jobs\?client=[0-9a-f]{8}-[0-9a-f-]{27}$/);
+  await expect(filter.locator('option:checked')).toHaveText('Falcon Pay');
+  await expect(page.getByText('No jobs match this filter.')).toBeVisible();
+  await expect(jobRow).toHaveCount(0);
 
   // Scenario: Archiving asks for confirmation, by keyboard: Escape cancels and returns focus to the button.
   await page.goto('/app/settings/clients');
@@ -90,6 +113,12 @@ for (const theme of themes)
     await page.goto('/app/jobs/new');
     await expect(page.getByLabel('Team or client')).toBeVisible();
     await expectAccessible(page);
+    // The agency's Jobs list, with its Clients entry in the sidebar and the client filter.
+    await page.goto('/app/jobs');
+    await expect(
+      page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Clients' }),
+    ).toBeVisible();
+    await expectAccessible(page);
   });
 
 test('Scenario: In-house workspaces have no clients', async ({ page }) => {
@@ -99,6 +128,7 @@ test('Scenario: In-house workspaces have no clients', async ({ page }) => {
   await expect(page.getByLabel('Team or client')).toHaveCount(0);
   await page.goto('/app/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  // Neither the settings link nor, AIV-P1-165, a sidebar "Clients" entry.
   await expect(page.getByRole('link', { name: 'Clients' })).toHaveCount(0);
   // The settings loading boundary streams the page, so the not-found page arrives with status 200.
   await page.goto('/app/settings/clients');

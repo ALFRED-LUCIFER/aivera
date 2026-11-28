@@ -25,6 +25,9 @@ export async function expectAccessible(page: Page) {
   expect(violations.map(({ id, impact, nodes }) => ({ id, impact, targets: nodes.map((n) => n.target) }))).toEqual([]);
 }
 
+/** The page's primary buttons and button-styled links (ink fill): DESIGN.md allows one per view. */
+export const primaryButtons = (page: Page) => page.getByRole('main').locator(':is(a, button).bg-action');
+
 export const css = (locator: Locator, property: string) =>
   locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
 

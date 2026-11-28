@@ -39,7 +39,11 @@ const member: Member = {
 // What the layout passes: no flag is on, so only built sections.
 const built = navigation.filter((entry) => canOpen(entry, ['member', 'recruiter'], new Set()));
 
-const renderShell = ({ synthetic = true, status = 'active' as Member['workspace']['status'] } = {}) =>
+const renderShell = ({
+  synthetic = true,
+  status = 'active' as Member['workspace']['status'],
+  clients = null as { id: string; name: string }[] | null,
+} = {}) =>
   render(
     <RecruiterShell
       intl={intl}
@@ -47,6 +51,7 @@ const renderShell = ({ synthetic = true, status = 'active' as Member['workspace'
       member={{ ...member, workspace: { synthetic, status } }}
       screens={built}
       counts={{ interviews: 5 }}
+      clients={clients}
     >
       <p>Page body</p>
     </RecruiterShell>,
@@ -72,6 +77,33 @@ describe('Recruiter app shell', () => {
     // Owner decision (20 Nov 2026): the recruiter app never links out to the website.
     expect(screen.queryByRole('link', { name: /website/i })).toBeNull();
     expect(document.querySelector('a[href="/"]')).toBeNull();
+  });
+
+  // AIV-P1-165 "Agencies have a Clients entry": each client links to Jobs filtered by its opaque id, never its name.
+  it('Scenario: an agency sidebar lists its clients; an in-house team has no Clients entry', () => {
+    renderShell({
+      clients: [
+        { id: '0190d4a2-0000-7000-9000-00000000c001', name: 'Dune Logistics' },
+        { id: '0190d4a2-0000-7000-9000-00000000c002', name: 'Falcon Pay' },
+      ],
+    });
+    expect(sectionNames()).toEqual([
+      'Credalent',
+      'My desk',
+      'Jobs',
+      'Candidates',
+      'Interviews 5',
+      'Clients',
+      'Dune Logistics',
+      'Falcon Pay',
+      'Settings',
+    ]);
+    expect(within(sidebar()).getByRole('link', { name: 'Falcon Pay' }).getAttribute('href')).toBe(
+      '/app/jobs?client=0190d4a2-0000-7000-9000-00000000c002',
+    );
+    cleanup();
+    renderShell();
+    expect(within(sidebar()).queryByRole('link', { name: 'Clients' })).toBeNull();
   });
 
   // Scenario: Sign out (the cookie and the redirect are proven end to end in tests/e2e/src/sign-in.spec.ts).

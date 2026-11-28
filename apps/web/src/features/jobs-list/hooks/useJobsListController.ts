@@ -1,24 +1,25 @@
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
 import {
-  clientNames,
   filterByClient,
   filterCounts,
   filterJobs,
+  parseClient,
   parseFilter,
+  type ClientOption,
   type JobFilter,
   type JobRow,
 } from '../domain/jobsList.ts';
-import { replaceFilterInUrl } from '../services/filterUrl.ts';
+import { replaceInUrl } from '../services/filterUrl.ts';
 
 /**
- * The Jobs list: the filter from the URL, the rows it shows, and each tab's count. An agency also filters by client
- * (AIV-P1-056); the tabs count within the chosen client.
+ * The Jobs list: the filters from the URL, the rows they show, and each tab's count. An agency also filters by client
+ * (AIV-P1-056), kept in the URL as the client's id so reload and Back keep it (AIV-P1-165); the tabs count within the
+ * chosen client. `clients` is null for an in-house team.
  */
-export function useJobsListController(rows: JobRow[], agency: boolean) {
-  const filter = parseFilter(useSearchParams().get('filter'));
-  // shortcut: the client choice lives in state, not the URL like the tabs; move it to the URL if recruiters ask to link it.
-  const [client, setClient] = useState('');
+export function useJobsListController(rows: JobRow[], clients: ClientOption[] | null) {
+  const params = useSearchParams();
+  const filter = parseFilter(params.get('filter'));
+  const client = parseClient(params.get('client'), clients);
   const scoped = filterByClient(rows, client);
   return {
     status: 'ready' as const,
@@ -26,9 +27,9 @@ export function useJobsListController(rows: JobRow[], agency: boolean) {
     counts: filterCounts(scoped),
     total: rows.length,
     rows: filterJobs(scoped, filter),
-    onFilterChange: (next: JobFilter) => replaceFilterInUrl(next),
-    clients: agency ? clientNames(rows) : null,
+    onFilterChange: (next: JobFilter) => replaceInUrl('filter', next === 'all' ? '' : next),
+    clients,
     client,
-    onClientChange: setClient,
+    onClientChange: (next: string) => replaceInUrl('client', next),
   };
 }

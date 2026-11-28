@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectAccessible, themes } from './gallery.ts';
+import { expectAccessible, primaryButtons, themes } from './gallery.ts';
 import { approvedWorkspace } from './workspaces.ts';
 
 // AIV-P1-084 (ADR-014): My desk's "Rubrics to approve". A recruiter alone in a fresh workspace sees the
@@ -37,6 +37,11 @@ for (const theme of themes) {
     await approvedWorkspace(solo, `Solo ${theme} ${Date.now()}`);
     await signIn(page, { email: solo });
     await page.waitForURL(/\/app/);
+    // AIV-P1-165 "A new recruiter's desk leads with Add a job": an approved workspace with no jobs.
+    await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
+    await expect(primaryButtons(page)).toHaveText(['Add a job']);
+    await expect(page.getByRole('link', { name: 'Add a job' })).toHaveAttribute('href', '/app/jobs/new');
+    await expectAccessible(page);
     const title = `Desk AI Engineer ${theme} ${Date.now()}`;
     await saveDraft(page, title);
 
@@ -55,7 +60,10 @@ for (const theme of themes) {
     expect(await open.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/app\/jobs\/[0-9a-f-]+\/rubric$/);
-    await page.getByRole('button', { name: 'Approve version 1' }).click();
+    // AIV-P1-165: approving is confirmed in the preview card, with a reason.
+    await page.getByRole('button', { name: 'Approve rubric' }).click();
+    await page.getByRole('textbox', { name: 'Reason, recorded in the audit log' }).fill('Matches the job description');
+    await page.getByRole('button', { name: 'Confirm approval' }).click();
     await expect(
       page.getByRole('status').filter({ hasText: 'Version 1 is approved. Assessment can now start for this job.' }),
     ).toBeVisible();
@@ -72,4 +80,6 @@ test('Scenario Outline: Only members who may approve see the section (hiring own
   await page.goto('/app');
   await expect(page.getByRole('heading', { level: 1, name: 'My desk' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Rubrics to approve' })).toHaveCount(0);
+  // Nor "Add a job": only admins and recruiters add jobs.
+  await expect(page.getByRole('link', { name: 'Add a job' })).toHaveCount(0);
 });

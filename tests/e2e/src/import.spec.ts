@@ -25,9 +25,15 @@ const IMPORT_PATH = /^\/app\/jobs\/[0-9a-f-]{36}\/import$/;
 
 const row = (page: Page, title: string) => page.getByRole('row').filter({ hasText: title });
 
-async function openFromJobs(page: Page, title: string) {
+async function openFromJobs(page: Page, title: string, approved = true) {
   await page.goto('/app/jobs');
-  await row(page, title).getByRole('link', { name: 'Add CVs' }).click();
+  if (approved) await row(page, title).getByRole('link', { name: 'Add CVs' }).click();
+  else {
+    // AIV-P1-165: a job whose rubric is not approved has "Approve the rubric" as its row button; Add CVs is its stage.
+    await row(page, title).getByRole('link', { name: title }).click();
+    const stages = page.getByRole('navigation', { name: 'Stages of this job' });
+    await stages.getByRole('link', { name: /^Add CVs/ }).click();
+  }
   await expect(page).toHaveURL((url) => IMPORT_PATH.test(url.pathname));
   // The title streams in after the page commits: waiting for it means axe never reads a page mid-navigation.
   await expect(page).toHaveTitle(`${title}: Add CVs · Credalent`);
@@ -110,7 +116,7 @@ test('Scenario: The page for Senior AI Engineer', async ({ page }) => {
 
 test('Scenario: Importing into a job whose rubric is waiting', async ({ page }) => {
   await signIn(page, { email: creator });
-  await openFromJobs(page, 'Platform Engineer');
+  await openFromJobs(page, 'Platform Engineer', false);
   const from = new URL(page.url()).pathname;
   await picker(page).selectOption({ label: 'Staff ML Engineer · rubric waiting for approval' });
   await expect(page).toHaveTitle('Staff ML Engineer: Add CVs · Credalent');
@@ -253,7 +259,7 @@ test('Scenario: A job-scoped member cannot bring candidates in: the message, no 
   context,
 }) => {
   await signIn(page, { email: creator });
-  await openFromJobs(page, 'Platform Engineer');
+  await openFromJobs(page, 'Platform Engineer', false);
   const url = page.url();
   await context.clearCookies({ name: '__Host-credalent-session' });
   await signIn(page, { email: owner });

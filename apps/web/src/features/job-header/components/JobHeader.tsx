@@ -1,5 +1,5 @@
 import { useTranslations } from '@credalent/i18n/react';
-import { StatusBadge } from '@credalent/ui';
+import { Button, StatusBadge, UploadIcon, type ButtonProps } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -15,6 +15,20 @@ const check = (
 // "Add CVs" in the header's actions (AIV-P1-101, AIV-P1-165): the Rubric artboard's "Import candidates" and the
 // Candidates artboard's "Add candidates", one name for the action. It opens the Add CVs dialog over the job page.
 const ADD_CVS_PAGES: readonly JobPage[] = ['rubric', 'candidates'];
+
+/**
+ * The header's "Add CVs" button, the Add CVs dialog's trigger (it passes the dialog's props and ref through). Primary
+ * when adding CVs is the job's one next step (`addCvsIsNext`, AIV-P1-165), secondary otherwise.
+ */
+export function AddCvsButton({ primary, ...props }: ButtonProps & { primary: boolean }) {
+  const t = useTranslations('jobHeader');
+  return (
+    <Button {...props} variant={primary ? 'primary' : 'secondary'}>
+      <UploadIcon />
+      {t('stages.import')}
+    </Button>
+  );
+}
 
 /** Every job page's header (AIV-P1-011): breadcrumb, title, where the job stands, and its stages as links. */
 export function JobHeader({

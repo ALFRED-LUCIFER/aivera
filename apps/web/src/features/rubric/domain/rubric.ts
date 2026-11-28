@@ -75,7 +75,14 @@ export type RubricDecisionView = {
   /** The version the last decision was about, and whether an approved one stays in force, for its message after the
    * page reloads without it. */
   decided: { version: number; inForce: boolean } | null;
-  onApprove: () => void;
+  /** The approve preview is open (AIV-P1-165): "Approve rubric" only opens it; nothing is approved until Confirm. */
+  approving: boolean;
+  onApprovingChange: (open: boolean) => void;
+  /** Why the approver approves, recorded in the audit log; Confirm waits for it. */
+  reason: string;
+  onReason: (value: string) => void;
+  /** Confirm in the preview: the only path that approves. Resolves once the outcome is shown in the panel. */
+  onApprove: () => Promise<void>;
   onStartReturn: () => void;
   onCancelReturn: () => void;
   onNote: (value: string) => void;
@@ -83,6 +90,9 @@ export type RubricDecisionView = {
   /** "Send to the hiring owner" on a draft (ADR-014): the recruiter's choice, the only path that emails the owner. */
   onSend: () => void;
 };
+
+/** The longest reason an approver may give; the server action checks it again. */
+export const APPROVAL_REASON_MAX = 500;
 
 /** What a decision returns to the page. */
 export type DecisionResult = { ok: true } | { error: 'stale' | 'failed' };

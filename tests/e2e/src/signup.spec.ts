@@ -5,8 +5,8 @@ import { css, expectAccessible, themes } from './gallery.ts';
 // AIV-P1-059 J1 step 0: from the home page through the (mocked) External ID sign-up to the no-workspace page.
 
 const noWorkspace = async (page: Page) => {
-  await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 2, name: 'Or create your own workspace' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Create your workspace' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create your workspace' })).toBeVisible();
 };
 
 for (const theme of themes) {

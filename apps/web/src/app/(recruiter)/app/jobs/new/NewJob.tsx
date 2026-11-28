@@ -1,26 +1,40 @@
 'use client';
 
 import type { CatalogueContent } from '@credalent/jobs';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { CompetencyDraft } from '@/features/job-new/components/CompetencyDraft.tsx';
 import { JobSaved } from '@/features/job-new/components/JobSaved.tsx';
 import { NewJobForm } from '@/features/job-new/components/NewJobForm.tsx';
 import { useCompetencyDraftController } from '@/features/job-new/hooks/useCompetencyDraftController.ts';
 import { useNewJobController } from '@/features/job-new/hooks/useNewJobController.ts';
 import { useSendRubricController } from '@/features/job-new/hooks/useSendRubricController.ts';
+import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 
 type Props = Pick<
   ComponentProps<typeof NewJobForm>,
   'labels' | 'jobTypes' | 'hiringOwners' | 'clients' | 'membersHref'
-> & { defaultJobType: string; catalogue: CatalogueContent; canSend: boolean };
+> & {
+  defaultJobType: string;
+  catalogue: CatalogueContent;
+  canSend: boolean;
+  breadcrumb: ReactNode;
+  titles: { form: string; saved: string };
+};
 
-export function NewJob({ defaultJobType, catalogue, canSend, ...props }: Props) {
+export function NewJob({ defaultJobType, catalogue, canSend, breadcrumb, titles, ...props }: Props) {
   const job = useNewJobController(defaultJobType);
   const { result, onDraft, onSaving, onUseStarters, rubric, replacing, onConfirmRedraft, onCancelRedraft, ...draft } =
     useCompetencyDraftController(catalogue);
   const send = useSendRubricController(job.state.rubricVersionId);
-  if (job.state.saved) return <JobSaved {...send} jobId={job.state.jobId} canSend={canSend} />;
-  return (
+  // The page heading follows the state: "Add a job", then "Job saved" (AIV-P1-165).
+  if (job.state.saved)
+    return (
+      <>
+        <PageHeader breadcrumb={breadcrumb} title={titles.saved} />
+        <JobSaved {...send} jobId={job.state.jobId} canSend={canSend} />
+      </>
+    );
+  const form = (
     <NewJobForm
       {...props}
       // "Invite a hiring owner" leads to a Members invitation, which is an email: off where sending is (AIV-P1-165).
@@ -45,5 +59,11 @@ export function NewJob({ defaultJobType, catalogue, canSend, ...props }: Props) 
         />
       }
     />
+  );
+  return (
+    <>
+      <PageHeader breadcrumb={breadcrumb} title={titles.form} />
+      {form}
+    </>
   );
 }

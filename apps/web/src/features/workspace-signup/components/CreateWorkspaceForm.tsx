@@ -2,7 +2,6 @@ import { Button, Input, Label, Select } from '@credalent/ui';
 import type { CreateWorkspaceState } from '../domain/signup.ts';
 
 export type CreateWorkspaceLabels = {
-  title: string;
   company: string;
   optional: string;
   companyHint: string;
@@ -23,13 +22,16 @@ type CreateWorkspaceFormProps = {
 
 // shortcut: no "In-house team or agency?" choice; every workspace starts in-house and an admin makes it an agency with
 // setWorkspaceType (AIV-P0-906). Add the choice here once a ticket asks for it on sign-up.
-/** "Create your workspace" for a signed-in user with no workspace (SignUp artboard, AIV-P1-001, AIV-P1-068). */
+/**
+ * "Create your workspace" for a signed-in user with no workspace (SignUp artboard, AIV-P1-001, AIV-P1-068): the page's
+ * primary action, under its title (AIV-P1-165). Deviations from the artboard: no name, email or password (the sign-in
+ * tenant holds them, AIV-P0-009); Company and the hiring focus are optional and the company is pre-filled from a work
+ * email's domain (AIV-P1-165); the button reads "Create your workspace", since a job is added only after an operator
+ * approves the workspace (AIV-P2-039).
+ */
 export function CreateWorkspaceForm({ action, state, pending, focusOptions, labels }: CreateWorkspaceFormProps) {
   return (
-    <section aria-labelledby="create-workspace-title" className="flex flex-col gap-4 border-t border-border pt-6">
-      <h2 id="create-workspace-title" className="font-display text-section text-text">
-        {labels.title}
-      </h2>
+    <div className="flex flex-col gap-4">
       {state.error && (
         <p role="alert" className="text-body text-text">
           {labels.failed}
@@ -55,17 +57,16 @@ export function CreateWorkspaceForm({ action, state, pending, focusOptions, labe
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="create-workspace-focus">{labels.hiringFocus}</Label>
+          <Label htmlFor="create-workspace-focus">
+            {labels.hiringFocus} <span className="ms-1 font-normal text-text-2">{labels.optional}</span>
+          </Label>
           <Select
             id="create-workspace-focus"
             name="hiringFocus"
-            required
             defaultValue={state.values.hiringFocus}
             className="min-h-11"
           >
-            <option value="" disabled>
-              {labels.choose}
-            </option>
+            <option value="">{labels.choose}</option>
             {focusOptions.map(({ value, label }) => (
               <option key={value} value={value}>
                 {label}
@@ -77,6 +78,6 @@ export function CreateWorkspaceForm({ action, state, pending, focusOptions, labe
           {labels.submit}
         </Button>
       </form>
-    </section>
+    </div>
   );
 }

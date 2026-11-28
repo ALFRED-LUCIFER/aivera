@@ -2,9 +2,9 @@
 
 import { useTranslations } from '@credalent/i18n/react';
 import { RETURN_NOTE_MAX } from '@credalent/jobs';
-import { Button, Card, Label, SuccessBanner, Textarea } from '@credalent/ui';
+import { Button, Card, Label, PreviewConfirmCard, SuccessBanner, Textarea } from '@credalent/ui';
 import { useId } from 'react';
-import type { ReviewView, RubricDecisionView } from '../domain/rubric.ts';
+import { APPROVAL_REASON_MAX, type ReviewView, type RubricDecisionView } from '../domain/rubric.ts';
 
 type Props = {
   review: ReviewView | null;
@@ -13,22 +13,26 @@ type Props = {
   outdatedLink: boolean;
   /** Only the job's hiring owner returns a version sent to them; a draft has no one to return it to. */
   canReturn: boolean;
-  /** A draft of a job with a hiring owner: "Send to the hiring owner" is offered beside "Approve version N". */
+  /** A draft of a job with a hiring owner: "Send to the hiring owner" is offered beside "Approve rubric". */
   canSend: boolean;
   /** A version the viewer sent: it is with the hiring owner, and they may still approve it themselves. */
   withOwner: boolean;
 };
 
 /**
- * The approval panel on the rubric page (AIV-P1-014, ADR-014): what changed, "Approve version N" and, for a version sent
- * for approval, "Return with a note". No artboard draws it; it follows the Rubric artboard's publish panel and the ERubric and ENewer emails' words.
+ * The approval panel on the rubric page (AIV-P1-014, ADR-014): what changed, "Approve rubric" and, for a version sent
+ * for approval, "Return with a note". "Approve rubric" opens the shared preview-confirm card with the version, its
+ * competencies and a required reason; only its Confirm approves, and the reason goes to the audit log (AIV-P1-165).
+ * No artboard draws it; it follows the Rubric artboard's publish panel and the ERubric and ENewer emails' words.
  */
 export function RubricDecision({ review, decision, outdatedLink, canReturn, canSend, withOwner }: Props) {
   const title = withOwner ? 'titleSent' : canReturn ? 'title' : 'titleDraft';
   const intro = withOwner ? 'introSent' : canReturn ? 'intro' : 'introDraft';
   const t = useTranslations('rubric.decide');
+  const tr = useTranslations('rubric');
   const ta = useTranslations('access');
   const noteId = useId();
+  const reasonId = useId();
   const { status } = decision;
   const done = status === 'approved' || status === 'returned' ? status : null;
   const problem =
@@ -93,9 +97,54 @@ export function RubricDecision({ review, decision, outdatedLink, canReturn, canS
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                <Button variant="primary" disabled={decision.pending} onClick={decision.onApprove}>
-                  {t('approve', { version: review.version })}
-                </Button>
+                <PreviewConfirmCard
+                  title={t('previewTitle', { version: review.version })}
+                  trigger={
+                    <Button variant="primary" disabled={decision.pending}>
+                      {t('approve')}
+                    </Button>
+                  }
+                  open={decision.approving}
+                  onOpenChange={decision.onApprovingChange}
+                  closeLabel={t('close')}
+                  consequence={t('previewConsequence')}
+                  confirmLabel={t('confirmApprove')}
+                  pendingLabel={t('approving')}
+                  cancelLabel={t('cancel')}
+                  footer={t('previewFooter')}
+                  errorMessage={t('failed')}
+                  confirmDisabled={!decision.reason.trim()}
+                  onConfirm={decision.onApprove}
+                  onCancel={() => {}}
+                >
+                  <div className="flex flex-col gap-4">
+                    <ul className="flex flex-col gap-2">
+                      {review.competencies.map((c) => (
+                        <li key={c.name} className="flex flex-col">
+                          <span className="font-semibold">{c.name}</span>
+                          <span className="text-meta text-text-2">
+                            {[
+                              tr('weight', { weight: c.weightPercent }),
+                              tr('levelOf', { level: c.levelNeeded }),
+                              tr(`type.${c.type}`),
+                            ].join(tr('separator'))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor={reasonId}>{t('reason')}</Label>
+                      <Textarea
+                        id={reasonId}
+                        required
+                        rows={3}
+                        maxLength={APPROVAL_REASON_MAX}
+                        value={decision.reason}
+                        onChange={(e) => decision.onReason(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </PreviewConfirmCard>
                 {canReturn && (
                   <Button disabled={decision.pending} onClick={decision.onStartReturn}>
                     {t('return')}
