@@ -1,0 +1,134 @@
+# Kristine Dela Cruz's two-column CV as a real PDF's extraction reads it (AIV-P1-155, AIV-P1-156): the skills column's
+# lines interleaved with the work history's, skill bars with percentages, dates on a line of their own after the role.
+# Synthetic; it imitates the layout problems of six real QA-engineer CVs (owner's local test, 27 Nov 2026; never stored
+# in the repo) and none of their content. A quote joined around an interleaved line is not in the source.
+# gpt-main joins the Postman line around "EDUCATION" on every run, so that link is dropped (dropInvalidCitations) and
+# c-api-testing is not expected; recorded from the product's checked answer (the dropped link left out), as a live run
+# scores it, since the raw answer always holds that quote. Live, mapToCompetency@4, 10 runs: never rejected, citation
+# validity 100% of kept links, every hard gate 10/10; CV lines rated "claim" not "supporting" on every run, so strength is
+# expected by AIV-P1-157 (#655), not here.
+id: kristine-dela-cruz-two-columns
+people: [Kristine Dela Cruz]
+input:
+  # A synthetic 8-competency rubric for "QA Automation Engineer" (hiring owner Rashid Al Nuaimi, Head of Quality),
+  # written for the real-layout set (AIV-P1-155); the same in every case of the set.
+  competencies:
+    - id: c-ui-automation
+      name: End-to-end UI test automation
+      evidenceExpected: A browser test suite the candidate built and keeps running, with its size and what it covers.
+    - id: c-api-testing
+      name: API test automation
+      evidenceExpected: Automated API or contract tests the candidate wrote for real services.
+    - id: c-ci
+      name: Tests in the delivery pipeline
+      evidenceExpected: Tests the candidate wired into CI so they gate a merge or a release.
+    - id: c-performance
+      name: Performance and load testing
+      evidenceExpected: A load or performance test the candidate designed, with the limit it found.
+    - id: c-reliability
+      name: Test reliability
+      evidenceExpected: Flaky tests the candidate found and fixed, with the effect on the pass rate.
+    - id: c-strategy
+      name: Test strategy
+      evidenceExpected: A test strategy or plan the candidate wrote for a product, and what it decided.
+    - id: c-defects
+      name: Defect reporting and triage
+      evidenceExpected: Defect reports the candidate wrote that engineers could reproduce and fix.
+    - id: c-mobile
+      name: Mobile app testing
+      evidenceExpected: Test coverage of an Android or iOS app the candidate built or ran.
+sources:
+  - id: S1
+    kind: cv
+    text: |-
+      Kristine Dela Cruz
+      QA Automation Engineer
+      kristine@example.com
+      +44 7700 900456
+      WORK HISTORY
+      SKILLS
+      Test Automation Lead
+      Playwright ████████░░ 80%
+      Falcon Ridge Payments, Abu Dhabi
+      Cypress ██████░░░░ 60%
+      Mar 2022 – Present
+      TypeScript ███████░░░ 70%
+      Wrote the test strategy for the card onboarding flow and owned its release sign-off.
+      Postman █████████░ 90%
+      Moved 300 Cypress tests to Playwright and removed the nightly retries.
+      k6 ████░░░░░░ 40%
+      Added the Playwright suite as a required check on every merge request.
+      LANGUAGES
+      QA Engineer
+      English, Tagalog
+      Coral Bay Software, Manila
+      CERTIFICATIONS
+      Jan 2018 – Feb 2022
+      ISTQB Foundation Level
+      Wrote Postman collections for 60 payment APIs
+      EDUCATION
+      and ran them in the build pipeline.
+      BS Information Technology, 2017
+      Tested the Android and iOS releases by hand before automation was in place.
+expected:
+  match:
+    links[*].competencyId: [c-ui-automation, c-strategy]
+    links[*].label: [claim]
+  safety:
+    forbidden: [strong]
+recorded:
+  promptVersion: evidence.mapToCompetency@4
+  promptHash: eb95c123cab5
+  output:
+    links:
+      - competencyId: c-ui-automation
+        strength: claim
+        label: claim
+        level: 4
+        limit: This evidence does not show the full size or coverage details of the UI test suite.
+        citations:
+          - sourceId: S1
+            quote: Moved 300 Cypress tests to Playwright and removed the nightly retries
+            start: 355
+            end: 424
+        claim: true
+      - competencyId: c-ci
+        strength: claim
+        label: claim
+        level: 4
+        limit: This evidence does not specify the scale or impact of the CI integration beyond requiring checks on merges.
+        citations:
+          - sourceId: S1
+            quote: Added the Playwright suite as a required check on every merge request
+            start: 444
+            end: 513
+        claim: true
+      - competencyId: c-strategy
+        strength: claim
+        label: claim
+        level: 4
+        limit: This evidence does not detail the full test strategy or its outcomes.
+        citations:
+          - sourceId: S1
+            quote: Wrote the test strategy for the card onboarding flow and owned its release sign-off
+            start: 247
+            end: 330
+        claim: true
+      - competencyId: c-mobile
+        strength: claim
+        label: claim
+        level: 3
+        limit: This evidence does not show automated mobile testing or coverage extent.
+        citations:
+          - sourceId: S1
+            quote: Tested the Android and iOS releases by hand before automation was in place
+            start: 763
+            end: 837
+        claim: true
+    changes:
+      - competencyId: c-ui-automation
+        text: Provide details on the size, coverage, and maintenance of the Playwright UI test suite.
+      - competencyId: c-api-testing
+        text: Show examples or metrics of API test coverage and complexity in Postman collections.
+      - competencyId: c-ci
+        text: Demonstrate the impact of CI integration on release quality or speed, including metrics.

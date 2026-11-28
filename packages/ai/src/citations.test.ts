@@ -150,8 +150,20 @@ describe('Scenario: A cited answer passes and gets offsets', () => {
     // AIV-P1-148: what a PDF's layout leaves in a CV's text. The span is the source's own characters.
     // SAFETY: mutation check: compared without folding or list marks (the old whitespace-only rule) -> this test failed
     const cv = 'Roles :1) Veriﬁcation of watermarks\n• Regression testing\n- Bug reporting\nMay 2018 - Oct 2020';
-    const span = findQuote(cv, 'Verification of watermarks Regression testing Bug reporting');
-    expect(cv.slice(span?.start, span?.end)).toBe('Veriﬁcation of watermarks\n• Regression testing\n- Bug reporting');
+    const span = findQuote(cv, 'Verification of watermarks');
+    expect(cv.slice(span?.start, span?.end)).toBe('Veriﬁcation of watermarks');
+    expect(findQuote(cv, '• Regression testing')).toEqual(findQuote(cv, 'Regression testing'));
+    // AIV-P1-156: a quote cannot run from one list item into the next, with or without the marker; a lone marker inside
+    // a line, and a lone dash anywhere (a date broken before its dash), are still layout.
+    // SAFETY: mutation check: read a line-opening mark as a space again in flatten -> this assertion failed
+    expect(findQuote(cv, 'Verification of watermarks Regression testing')).toBeUndefined();
+    expect(findQuote(cv, 'Verification of watermarks • Regression testing')).toBeUndefined();
+    expect(findQuote('Jun 2020\n- Aug 2023', 'Jun 2020 - Aug 2023')).toBeDefined();
+    expect(
+      findQuote('Led the migration\n\u2014 and cut costs', 'Led the migration \u2014 and cut costs'),
+    ).toBeDefined();
+    expect(findQuote('Skills: Python \u2022 SQL \u2022 Docker', 'Python \u2022 SQL \u2022 Docker')).toBeDefined();
+    expect(findQuote('Skills: Python \u2022 SQL \u2022 Docker', 'Python SQL Docker')).toBeDefined();
     expect(findQuote(cv, 'May 2018 Oct 2020')).toBeDefined();
     // A hyphen inside a word, a changed word and a changed number are still not the source.
     expect(findQuote('end-to-end tests', 'end to end tests')).toBeUndefined();
@@ -450,6 +462,25 @@ describe('Scenario: Extraction that cites text not in the CV is rejected (AIV-P1
     expect(output.strengths[0]?.claim).toBe(true);
     expect(structuredSpan()?.attributes).toMatchObject({ 'credalent.ai.citation_failures': 1 });
     expect(JSON.stringify(structuredSpan()?.attributes)).not.toMatch(candidateText);
+  });
+
+  // AIV-P1-156: the scenario's own lines; the joined quote is dropped as any quote not in its source, the others kept.
+  it('drops a quote run from one list item into the next and keeps one quoting a single item', () => {
+    const list = { id: 'ev-list', kind: 'cv' as const, text: '\u2022 Python\n\u2022 10 years in sales' };
+    const answer = {
+      strengths: [
+        statementOf('Python 10 years in sales'),
+        statementOf('\u2022 Python'),
+        statementOf('10 years in sales'),
+      ],
+    };
+    let dropped = 0;
+    const output = checkOutput('evidence.mapToCompetency', JSON.stringify(answer), schema, [S1, list], () => dropped++);
+    expect(output.strengths.map((s) => s.citations[0]?.quote)).toEqual(['Python', '10 years in sales']);
+    expect(dropped).toBe(1);
+    expect(() => checkOutput('evidence.mapToCompetency', JSON.stringify(answer), schema, [S1, list])).toThrow(
+      'cited S2: quote not in source',
+    );
   });
 
   it('without drop mode the whole answer is rejected', () => {
