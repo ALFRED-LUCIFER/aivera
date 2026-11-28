@@ -345,15 +345,17 @@ export function jobsUseCases({
     /**
      * Admins (AIV-P1-056, AIV-P1-097): the job's hiring owner becomes `ownerId` (null: none). The new owner gets a grant
      * on the job and the previous one loses theirs (audited by the workspaces module), `alongside` runs next (the
-     * rubric email), and `job.hiring_owner_changed` with the reason is the last write.
+     * rubric email), and `job.hiring_owner_changed` with the reason is the last write. `onlyIfNone` (an admin naming
+     * themselves from a pack, AIV-P1-165) throws `owner_taken` when the job has an owner, read under the row lock.
      */
     async changeHiringOwner(
       ctx: WorkspaceContext,
       jobId: string,
       ownerId: string | null,
-      options: { reason?: string; alongside?: (changed: Job) => Promise<void> } = {},
+      options: { reason?: string; alongside?: (changed: Job) => Promise<void>; onlyIfNone?: boolean } = {},
     ): Promise<void> {
       const job = await visibleJob(ctx, jobId, 'job.change_owner', true);
+      if (options.onlyIfNone && job.hiringOwnerUserId) throw new JobError('owner_taken');
       if (job.hiringOwnerUserId === ownerId) return;
       await storeFor(ctx.tx).setHiringOwner(ctx.workspaceId, job.id, ownerId);
       await setJobOwner(ctx, {

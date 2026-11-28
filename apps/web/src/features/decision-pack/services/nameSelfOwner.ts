@@ -21,18 +21,15 @@ export async function nameSelfOwner(input: unknown): Promise<NameSelfResult> {
   const { jobId, reason } = parsed.data;
   let result;
   try {
-    result = await inActiveWorkspace(async (ctx) => {
-      const job = await getJobs().getJob(ctx, jobId);
-      if (!job) throw new JobError('not_found');
-      // SAFETY: a job that already has a hiring owner keeps them; this never replaces one.
-      if (job.hiringOwnerUserId) return 'taken' as const;
-      await getJobs().changeHiringOwner(ctx, jobId, ctx.userId, { reason });
-      return 'named' as const;
-    });
+    // SAFETY: a job that already has a hiring owner keeps them; jobs checks it under the job's row lock (`onlyIfNone`).
+    result = await inActiveWorkspace((ctx) =>
+      getJobs().changeHiringOwner(ctx, jobId, ctx.userId, { reason, onlyIfNone: true }),
+    );
   } catch (error) {
     unstable_rethrow(error);
     if (error instanceof ForbiddenError) forbidden();
     if (error instanceof JobError && error.code === 'not_found') notFound();
+    if (error instanceof JobError && error.code === 'owner_taken') return { ok: false, error: 'taken' };
     log.error(
       { area: 'decisions', 'error.type': error instanceof Error ? error.name : 'unknown' },
       'name self hiring owner failed',
@@ -40,7 +37,6 @@ export async function nameSelfOwner(input: unknown): Promise<NameSelfResult> {
     return { ok: false, error: 'failed' };
   }
   if (!result) forbidden();
-  if (result.value === 'taken') return { ok: false, error: 'taken' };
   log.info({ area: 'decisions', jobId }, 'admin named hiring owner');
   revalidatePath(`/app/jobs/${jobId}`, 'layout');
   return { ok: true };

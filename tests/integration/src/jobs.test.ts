@@ -1047,6 +1047,20 @@ describe('Feature: Pick the client and the hiring owner on Add a job (AIV-P1-056
     expect(await grantsOf(OWNER_A)).not.toContain(saved.id);
   });
 
+  // SAFETY: mutation check: removed the `onlyIfNone` check from changeHiringOwner -> this test failed (Alex replaced Faisal)
+  it('naming oneself from a pack never replaces an owner already named (AIV-P1-165, onlyIfNone)', async () => {
+    const { job: saved } = await as(RANA, w, (ctx) =>
+      jobs.createJobWithDraftRubric(ctx, {
+        ...job('Platform Engineer', { hiringOwnerUserId: OWNER_A }),
+        competencies: competencies([100]),
+      }),
+    );
+    await expect(
+      as(ALEX, w, (ctx) => jobs.changeHiringOwner(ctx, saved.id, ALEX, { reason: 'I decide', onlyIfNone: true })),
+    ).rejects.toThrow(new JobError('owner_taken'));
+    expect((await as(ALEX, w, (ctx) => jobs.getJob(ctx, saved.id)))?.hiringOwnerUserId).toBe(OWNER_A);
+  });
+
   it('a hiring owner who is not an active hiring owner is refused and no job is saved', async () => {
     const before = (await as(ALEX, w, (ctx) => jobs.listJobs(ctx))).length;
     await expect(

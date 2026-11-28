@@ -103,6 +103,7 @@ const MESSAGES = {
   stage_needs_rubric: 'Approve the rubric before moving the job on.',
   not_synthetic: 'Only a synthetic workspace holding only synthetic jobs can be purged.',
   public_descriptor: 'Describe the employer for candidates, without its name, in up to 80 characters.',
+  owner_taken: 'This job already has a hiring owner.',
 } as const;
 
 export type JobErrorCode = keyof typeof MESSAGES;
