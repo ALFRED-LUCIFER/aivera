@@ -102,6 +102,7 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
     result,
     failure,
     // After a save, with nothing new waiting, the one primary action is the ranking (AIV-P1-165).
+    sheetHref: `${jobPageHref(jobId, 'import')}/sheet`,
     rankingHref: rows.some((r) => r.added) && ready.length === 0 && !busy ? jobPageHref(jobId, 'candidates') : null,
     onSubmit() {
       if (!source) return;

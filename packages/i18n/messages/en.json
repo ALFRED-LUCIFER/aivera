@@ -1722,6 +1722,7 @@
     "close": "Close",
     "choose": "Choose CV files",
     "limits": "PDF or Word, up to 10 MB each, 200 per save.",
+    "fromSheet": "From a CSV or Excel file",
     "source": "Where did they come from?",
     "sources": {
       "linkedin": "LinkedIn",

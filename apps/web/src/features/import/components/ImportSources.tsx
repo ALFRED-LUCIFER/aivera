@@ -10,7 +10,8 @@ import type { ImportView } from '../domain/importPage.ts';
 // action's one name (AIV-P1-165). Deviations:
 // - The title, the card's "Upload CVs" (now "From CV files") and its "Upload files" button read "Add CVs" (AIV-P1-165).
 // - The intro's "warns you before you submit someone a client has already seen" shows in an agency workspace only.
-// - Only the CV card is offered. "Spreadsheet or job board export" (AIV-P1-103), "Forward by email" (the job's address,
+// - Only the CV card is offered. "Spreadsheet or job board export" (AIV-P1-103) is reached from the Add CVs dialog's
+//   "From a CSV or Excel file" link, so Add CVs stays the one entry (AIV-P1-165). "Forward by email" (the job's address,
 //   AIV-P2-057), "From your talent pool" (AIV-P2-021, AIV-P2-022) and "From your ATS" (AIV-P6-E06) stay hidden until
 //   their tickets ship (AIV-P1-095).
 // - "Add CVs" opens the Add CVs dialog (AIV-P1-019, AIV-P1-165), several CVs per pick, 200 per save; the artboard's

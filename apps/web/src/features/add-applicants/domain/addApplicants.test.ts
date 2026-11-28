@@ -11,7 +11,9 @@ const ids = (n: number) =>
 
 describe('SOURCE_OPTIONS', () => {
   it("offers every intake source but a member's link (recruiter, AIV-P1-076) exactly once, each with its label", async () => {
-    expect(SOURCE_OPTIONS.toSorted()).toEqual(SOURCES.filter((s) => s !== 'recruiter').toSorted());
+    expect(SOURCE_OPTIONS.toSorted()).toEqual(
+      SOURCES.filter((s) => s !== 'recruiter' && s !== 'spreadsheet').toSorted(),
+    );
     const labels = (await intlConfig('en', 'UTC')).messages.addApplicants.sources;
     expect(SOURCE_OPTIONS.map((s) => labels[s])).toEqual(['LinkedIn', 'Referral', 'Email', 'WhatsApp', 'Careers page']);
   });

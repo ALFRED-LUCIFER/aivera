@@ -116,7 +116,7 @@ function Choose(p: Exclude<Props, { readOnly: true }>) {
         label={t('choose')}
         hint={t('hint')}
         accept={p.accept}
-        onSelect={p.onSelectFile}
+        onSelect={(files) => files[0] && p.onSelectFile(files[0])}
         disabled={upload.phase === 'uploading' || upload.phase === 'checking' || p.pending}
         progress={upload.phase === 'uploading' ? upload.percent : null}
         status={

@@ -276,3 +276,14 @@ for (const theme of themes) {
     await expectAccessible(page);
   });
 }
+
+// AIV-P1-165 §6: Add CVs is the one entry; the spreadsheet import (AIV-P1-103) is offered from it, and email is not.
+test('Scenario: CSV or Excel import is reachable from Add CVs', async ({ page }) => {
+  await signIn(page, { email: AP });
+  const dialog = await openDialog(page);
+  await expect(dialog.getByRole('link', { name: /email/i })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: /email/i })).toHaveCount(0);
+  await dialog.getByRole('link', { name: 'From a CSV or Excel file' }).click();
+  await expect(page).toHaveURL(/\/app\/jobs\/[0-9a-f-]{36}\/import\/sheet$/);
+  await expect(page.getByRole('heading', { name: 'Import from a CSV or Excel file' })).toBeVisible();
+});
