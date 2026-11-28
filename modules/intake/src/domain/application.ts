@@ -46,6 +46,9 @@ export const stageAfter = (decision: RecordedDecision['decision']): Stage | null
 /** The longest reason a recruiter may give for choosing people for interview (AIV-P1-114). */
 export const CHOICE_REASON_MAX = 500;
 
+/** The most CVs one confirmed batch takes: "200 per save" (AIV-P1-101, AIV-P1-165), the Import artboard's batch size. */
+export const MAX_BATCH_ARRIVALS = 200;
+
 export type Application = {
   id: string;
   workspaceId: string;
@@ -110,6 +113,7 @@ const MESSAGES = {
   not_synthetic: 'Only a synthetic demo workspace can be purged.',
   not_on_job: 'This candidate has not applied to this job',
   reason_required: 'Give a reason for this choice',
+  batch_too_large: 'Too many CVs in one save',
 } as const;
 
 export type IntakeErrorCode = keyof typeof MESSAGES;

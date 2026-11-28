@@ -71,14 +71,15 @@ export function AppShell({
   const sections = screens.filter((screen) => !('foot' in screen));
   return (
     // Under 1024px the grid falls away: header, then the opened menu, then the page stack in one column.
-    <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
+    // Printed, only the page is: no top bar or sidebar (AIV-P1-165).
+    <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] print:block">
       <a
         href="#content"
-        className="sr-only rounded-control bg-action px-3 py-2 font-semibold text-on-action focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50"
+        className="sr-only rounded-control bg-action px-3 py-2 font-semibold text-on-action focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 print:hidden"
       >
         {t('skipToContent')}
       </a>
-      <header className="flex flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-3 lg:col-start-2 lg:px-8">
+      <header className="flex flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-3 lg:col-start-2 lg:px-8 print:hidden">
         <Button
           variant="ghost"
           size="iconOnly"
@@ -124,7 +125,7 @@ export function AppShell({
       <nav
         id={navId}
         aria-label={t('nav.label')}
-        className={`${navOpen ? 'flex' : 'hidden'} flex-col gap-5 border-b border-border bg-surface px-3 py-4 lg:sticky lg:top-0 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:flex lg:h-screen lg:overflow-y-auto lg:border-e lg:border-b-0`}
+        className={`${navOpen ? 'flex' : 'hidden'} flex-col gap-5 border-b border-border bg-surface px-3 py-4 lg:sticky lg:top-0 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:flex lg:h-screen lg:overflow-y-auto lg:border-e lg:border-b-0 print:hidden`}
       >
         <Link
           href="/app"

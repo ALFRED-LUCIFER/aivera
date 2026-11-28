@@ -11,6 +11,7 @@ import {
   MAX_COMPARE,
   MIN_COMPARE,
   parseIds,
+  withoutContacts,
   type CompareColumn,
   type CompareData,
   type CompareRow,
@@ -84,7 +85,9 @@ export async function loadCompare(
                 proven: r.proven.level,
                 lead: card?.lead ?? null,
                 claimOnly: card?.claimOnly ?? false,
-                summary: card?.items[0]?.excerpt ?? null,
+                // SAFETY: an excerpt is the evidence's own words and may hold a contact detail; model-cited quotes
+                // (trade-offs, pack) cannot, as @credalent/ai refuses a quote of redacted text.
+                summary: card?.items[0] ? withoutContacts(card.items[0].excerpt) : null,
               },
             ];
           }),
@@ -94,6 +97,7 @@ export async function loadCompare(
     return {
       ...base,
       status: 'ready',
+      preparedAt: new Date(),
       rubricVersion: numbered?.id === versionId ? numbered.version : null,
       rows,
       columns,

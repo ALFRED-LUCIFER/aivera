@@ -6,6 +6,7 @@ import { newJobOptions } from '@/features/job-new/services/newJobOptions.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { requireScreen } from '@/features/shell/services/request.ts';
 import { getCatalogue } from '@/server/jobs';
+import { outboundOn } from '@/server/notifications';
 import { inActiveWorkspace } from '@/server/workspace';
 import { NewJob } from './NewJob.tsx';
 
@@ -46,6 +47,7 @@ export default async function NewJobPage() {
         hiringOwners={hiringOwners}
         clients={clients}
         membersHref={MEMBERS}
+        canSend={outboundOn()}
         labels={{
           steps: t('jobNew.steps'),
           stepList: [t('jobNew.step1'), t('jobNew.step2'), t('jobNew.step3'), t('jobNew.step4')],

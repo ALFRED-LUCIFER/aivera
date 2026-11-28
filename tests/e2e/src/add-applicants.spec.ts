@@ -3,24 +3,19 @@ import { signIn } from './auth.ts';
 import { expect, test } from './csp.ts';
 import { expectAccessible, themes } from './gallery.ts';
 
-// AIV-P1-019: "Add applicants", opened by "Upload files" on a job's Bring in candidates page (AIV-P1-101), as AP, admin
-// of "Demo" (seed.ts). This harness has no Blob storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here: the
+// AIV-P1-019, AIV-P1-165: the Add CVs dialog, opened by "Add CVs" in the job header over the ranking, as AP, admin of
+// "Demo" (seed.ts). This harness has no Blob storage (AZURE_STORAGE_BLOB_URL unset), so no CV is stored here: the
 // upload-to-application path is proven against Azurite and PostgreSQL in tests/integration/src/add-applicants.test.ts.
 // This spec covers the dialog itself.
 const AP = 'ap@example.com';
 
 async function openDialog(page: Page) {
   await page.goto('/app/jobs');
+  await page.getByRole('link', { name: 'Senior AI Engineer' }).click();
   // The title streams in after the page commits: waiting for it means axe never reads a page mid-navigation.
-  await page
-    .getByRole('row')
-    .filter({ hasText: 'Senior AI Engineer' })
-    .getByRole('link', { name: 'Import candidates' })
-    .click();
-  await expect(page).toHaveURL(/\/import$/);
-  await expect(page).toHaveTitle('Senior AI Engineer: Bring in candidates · Credalent');
-  await page.getByRole('button', { name: 'Upload files' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add applicants' });
+  await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent');
+  await page.getByRole('button', { name: 'Add CVs' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add CVs' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -36,15 +31,18 @@ for (const [file, payload] of refused) {
   }) => {
     await signIn(page, { email: AP });
     const dialog = await openDialog(page);
-    await expect(dialog.getByRole('radio', { name: 'LinkedIn' })).toBeChecked();
-    await expect(dialog.getByRole('button', { name: 'Add people to this job' })).toBeDisabled();
+    // AIV-P1-165: no source is chosen for the recruiter.
+    await expect(dialog.getByRole('radio', { name: 'LinkedIn' })).not.toBeChecked();
+    await expect(dialog.getByRole('button', { name: 'Add CVs' })).toBeDisabled();
 
     const chooser = page.waitForEvent('filechooser');
-    await dialog.getByRole('button', { name: 'Upload CV' }).click();
-    // The picker's `accept` only filters the browser's dialog; a file chosen anyway is still refused.
+    await dialog.getByRole('button', { name: 'Choose CV files' }).click();
+    // The picker's `accept` only filters the browser's dialog; a file chosen anyway is still refused, by name.
     await (await chooser).setFiles({ ...payload, buffer: Buffer.from(payload.buffer) });
-    await expect(dialog.locator('p').filter({ hasText: 'PDF or Word, up to 10 MB.' })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Add people to this job' })).toBeDisabled();
+    await expect(
+      dialog.getByRole('listitem').filter({ hasText: `${payload.name} · not added: PDF or Word, up to 10 MB.` }),
+    ).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Add CVs' })).toBeDisabled();
   });
 }
 
@@ -56,10 +54,10 @@ test('the dialog is keyboard operable: source, upload, then close with Escape ba
   await page.keyboard.press('ArrowDown');
   await expect(dialog.getByRole('radio', { name: 'Referral' })).toBeChecked();
   await page.keyboard.press('Tab');
-  await expect(dialog.getByRole('button', { name: 'Upload CV' })).toBeFocused();
+  await expect(dialog.getByRole('button', { name: 'Choose CV files' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Upload files' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Add CVs' })).toBeFocused();
 });
 
 // AIV-P1-104: the confirmation above the add button. No CV can be stored in this harness, so the button stays disabled for
@@ -74,16 +72,19 @@ test('Scenario: The add button waits for the confirmation: an unticked box, with
   const dialog = await openDialog(page);
   const box = dialog.getByRole('checkbox', { name: CONFIRMATION });
   await expect(box).not.toBeChecked();
-  const add = dialog.getByRole('button', { name: 'Add people to this job' });
+  const add = dialog.getByRole('button', { name: 'Add CVs' });
   await expect(add).toBeDisabled();
-  await expect(add).toHaveAccessibleDescription('Confirm the line above to add these people.');
-  // Source radios, Upload CV, then the box: Space ticks it and the hint goes.
-  await dialog.getByRole('button', { name: 'Upload CV' }).focus();
+  // AIV-P1-165: the source first, since none is chosen for her.
+  await expect(add).toHaveAccessibleDescription('Choose where they came from to add them.');
+  await dialog.getByRole('radio', { name: 'Referral' }).check();
+  await expect(add).toHaveAccessibleDescription('Confirm the line above to add these CVs.');
+  // Source radios, Choose CV files, then the box: Space ticks it and the hint goes.
+  await dialog.getByRole('button', { name: 'Choose CV files' }).focus();
   await page.keyboard.press('Tab');
   await expect(box).toBeFocused();
   await page.keyboard.press('Space');
   await expect(box).toBeChecked();
-  await expect(dialog.getByText('Confirm the line above to add these people.')).toBeHidden();
+  await expect(dialog.getByText('Confirm the line above to add these CVs.')).toBeHidden();
   // No consent column and nobody "not yet given": nobody is held back one by one.
   await expect(dialog).not.toContainText('Consent');
 });
@@ -183,7 +184,7 @@ test('Scenario: Job without an approved rubric, and no applicants', async ({ pag
     'No ranking yet. Candidates are ranked once the rubric is approved and their evidence is assessed.',
   );
   // People can be brought in before the rubric is approved (AIV-P1-101).
-  await expect(page.getByRole('link', { name: 'Add candidates' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add CVs' })).toBeVisible();
   // The stage line in the header says it too; this is the page's own notice, with its link.
   await expect(page.locator('p').filter({ hasText: /^Starts after rubric approval/ })).toBeVisible();
   await page.getByRole('link', { name: 'Send rubric for approval' }).click();
@@ -226,15 +227,14 @@ test('Scenario: The ranking is keyboard operable: search, the filters and Column
   await expect(table.getByRole('columnheader', { name: 'Backed score' })).toHaveCount(0);
 });
 
-test('Scenario: "Add candidates" opens Bring in candidates from the ranking with Enter (AIV-P1-101)', async ({
-  page,
-}) => {
+test('Scenario: "Add CVs" opens the dialog over the ranking with Enter (AIV-P1-101, AIV-P1-165)', async ({ page }) => {
   await signIn(page, { email: AP });
   await expect(await openCandidates(page)).toBeVisible();
-  await page.getByRole('link', { name: 'Add candidates' }).focus();
+  const url = page.url();
+  await page.getByRole('button', { name: 'Add CVs' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveTitle('Senior AI Engineer: Bring in candidates · Credalent');
-  await expect(page.getByRole('button', { name: 'Upload files' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Add CVs' })).toBeVisible();
+  expect(page.url()).toBe(url);
 });
 
 for (const theme of themes) {
@@ -265,7 +265,7 @@ for (const theme of themes) {
     await expectAccessible(page);
   });
 
-  test(`axe passes on the Add applicants dialog (${theme})`, async ({ page, context, baseURL }) => {
+  test(`axe passes on the Add CVs dialog (${theme})`, async ({ page, context, baseURL }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: baseURL ?? '' }]);
     await signIn(page, { email: AP });
     const dialog = await openDialog(page);

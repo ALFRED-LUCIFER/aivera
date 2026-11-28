@@ -54,6 +54,7 @@ export async function addJob(_previous: NewJobState, form: FormData): Promise<Ne
     errors: {},
     error: null,
     saved: true,
+    jobId: result.value.job.id,
     rubricVersionId: result.value.rubricVersion.id,
     values: failed.values,
   };

@@ -22,7 +22,8 @@ import { closingOf, type CompareColumn, type TradeoffsView } from '../domain/com
 // - the closing line counts in figures ("7 points separate the 3 candidates"), with its basis, "Observed". The
 //   artboard's "A difference this small is within what Round 2 could change." is "Claims still to check could change
 //   this order.", shown only when a lower candidate's "up to" reaches the highest backed score: no gap is called small
-//   (AGENTS.md 1.7).
+//   (AGENTS.md 1.7);
+// - printed (AIV-P1-165), "Show the trade-offs" is left out: a printout has no controls.
 
 export type TradeoffsProps = {
   view: TradeoffsView | null;
@@ -111,7 +112,7 @@ export function Tradeoffs({ view, pending, onWrite, columns }: TradeoffsProps) {
           <p className="text-body text-text-2">{t('notScored')}</p>
         ) : (
           view?.status !== 'written' && (
-            <div>
+            <div className="print:hidden">
               <Button size="compact" disabled={pending} onClick={onWrite}>
                 {pending ? t('writing') : t(view ? 'again' : 'write')}
               </Button>

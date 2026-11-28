@@ -30,6 +30,8 @@ export const choosePreview = (rows: readonly CandidateRow[], ids: readonly strin
 export type ChooseView = {
   /** Null while no preview is open. */
   preview: ReturnType<typeof choosePreview> | null;
+  /** Counts the opens: the card remounts on each, so it comes back into view and takes focus even while open. */
+  opened: number;
   onPreview: (ids: readonly string[]) => void;
   reason: string;
   onReasonChange: (reason: string) => void;

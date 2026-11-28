@@ -6,13 +6,15 @@ import type { ComponentProps, ReactNode } from 'react';
 import { AddApplicantsDialog } from '@/features/add-applicants';
 import type { ImportView } from '../domain/importPage.ts';
 
-// AIV-P1-101: "Bring in candidates", ported from docs/01-design/artboards/Import.dc.html. Deviations:
-// - Only "Upload CVs" is offered. "Spreadsheet or job board export" (AIV-P1-103), "Forward by email" (the job's address,
+// AIV-P1-101: "Bring in candidates", ported from docs/01-design/artboards/Import.dc.html, now titled "Add CVs", the
+// action's one name (AIV-P1-165). Deviations:
+// - The title, the card's "Upload CVs" (now "From CV files") and its "Upload files" button read "Add CVs" (AIV-P1-165).
+// - The intro's "warns you before you submit someone a client has already seen" shows in an agency workspace only.
+// - Only the CV card is offered. "Spreadsheet or job board export" (AIV-P1-103), "Forward by email" (the job's address,
 //   AIV-P2-057), "From your talent pool" (AIV-P2-021, AIV-P2-022) and "From your ATS" (AIV-P6-E06) stay hidden until
 //   their tickets ship (AIV-P1-095).
-// - "Upload files" opens the existing "Add applicants" dialog (AIV-P1-019), which takes CVs one at a time and their
-//   source, so the card says so instead of the artboard's "up to 200 at a time"; the artboard's "Check before adding"
-//   table and the "added" note are AIV-P1-102 and AIV-P1-104.
+// - "Add CVs" opens the Add CVs dialog (AIV-P1-019, AIV-P1-165), several CVs per pick, 200 per save; the artboard's
+//   "Check before adding" table and the "added" note are AIV-P1-102 and AIV-P1-104.
 // - The footer "Applications from the published job listing arrive here on their own: N so far" stays hidden until
 //   candidate-site applications arrive (AIV-P3-008): today only a member's own upload writes a careers-page source, so
 //   the count would not be what it says (AGENTS.md 1.7).
@@ -30,8 +32,10 @@ export type ImportSourcesProps =
   | {
       readOnly?: false;
       view: ImportView;
+      /** An agency workspace: the intro names the client check. */
+      agency: boolean;
       onPick: (jobId: string) => void;
-      /** The "Add applicants" dialog's state, from its controller. */
+      /** The Add CVs dialog's state, from its controller. */
       upload: Omit<ComponentProps<typeof AddApplicantsDialog>, 'trigger'>;
     };
 
@@ -39,7 +43,7 @@ export type ImportSourcesProps =
 export function ImportSources(props: ImportSourcesProps) {
   const t = useTranslations();
   return (
-    <Frame intro={props.readOnly ? t('access.forbidden') : t('import.intro')}>
+    <Frame intro={props.readOnly ? t('access.forbidden') : t(props.agency ? 'import.introAgency' : 'import.intro')}>
       {!props.readOnly && <Sources {...props} />}
     </Frame>
   );

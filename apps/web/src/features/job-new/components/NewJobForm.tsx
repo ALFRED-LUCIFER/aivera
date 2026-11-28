@@ -82,8 +82,8 @@ type NewJobFormProps = {
   hiringOwners: readonly Option[];
   /** An agency's clients; null for an in-house team, which names a team instead. */
   clients: readonly Option[] | null;
-  /** Where "Invite a hiring owner" goes. */
-  membersHref: string;
+  /** Members, for "Invite a hiring owner"; null where sending is off, since inviting is an email (AIV-P1-165). */
+  membersHref: string | null;
   labels: NewJobLabels;
 };
 
@@ -240,10 +240,15 @@ export function NewJobForm(props: NewJobFormProps) {
           <div className="flex flex-col gap-1">
             <p className="text-meta font-semibold text-text">{labels.hiringOwner}</p>
             <p className="text-body text-text-2">
-              {labels.noHiringOwner}{' '}
-              <a href={props.membersHref} className="font-semibold text-text underline underline-offset-2">
-                {labels.inviteHiringOwner}
-              </a>
+              {labels.noHiringOwner}
+              {props.membersHref && (
+                <>
+                  {' '}
+                  <a href={props.membersHref} className="font-semibold text-text underline underline-offset-2">
+                    {labels.inviteHiringOwner}
+                  </a>
+                </>
+              )}
             </p>
           </div>
         )}

@@ -13,6 +13,7 @@ describe('parseWebEnv', () => {
     expect(parseWebEnv(valid)).toEqual({
       ...valid,
       MALWARE_SCANNING: 'on',
+      OUTBOUND: 'off',
       auth: null,
       candidateAuth: null,
       platformOperators: new Set(),
@@ -47,6 +48,15 @@ describe('parseWebEnv malware scanning (AIV-P0-016)', () => {
   it.each(['local', 'dev'])('%s may turn it off; unset, it is on', (APP_ENV) => {
     expect(parseWebEnv({ ...valid, APP_ENV, MALWARE_SCANNING: 'off' }).MALWARE_SCANNING).toBe('off');
     expect(parseWebEnv({ ...valid, APP_ENV }).MALWARE_SCANNING).toBe('on');
+  });
+});
+
+describe('parseWebEnv outbound (AIV-P1-165)', () => {
+  it('is off unless set, and on needs the email key and public origin', () => {
+    expect(parseWebEnv(valid).OUTBOUND).toBe('off');
+    expect(() => parseWebEnv({ ...valid, OUTBOUND: 'on' })).toThrow('missing or invalid: OUTBOUND');
+    const email = { NOTIFICATIONS_ENCRYPTION_KEY: 'key', AUTH_URL: 'https://app.credalent.example' };
+    expect(parseWebEnv({ ...valid, ...email, OUTBOUND: 'on' }).OUTBOUND).toBe('on');
   });
 });
 

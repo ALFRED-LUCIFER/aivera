@@ -1,5 +1,6 @@
 'use client';
 
+import { AddApplicantsDialog, useAddApplicantsController } from '@/features/add-applicants';
 import { ChangeHiringOwner } from '@/features/job-header/components/ChangeHiringOwner.tsx';
 import { JobHeader } from '@/features/job-header/components/JobHeader.tsx';
 import type { JobHeaderView } from '@/features/job-header/domain/jobHeader.ts';
@@ -9,11 +10,12 @@ import { useCurrentJobPage } from '@/features/job-header/hooks/useCurrentJobPage
 export function JobHeaderNav({ view, canImport }: { view: JobHeaderView; canImport: boolean }) {
   const ownerChange = view.ownerChange ?? { currentUserId: null, options: [] };
   const owner = useChangeOwnerController(view.jobId, ownerChange);
+  const addCvs = useAddApplicantsController(view.jobId);
   return (
     <JobHeader
       view={view}
       current={useCurrentJobPage()}
-      canImport={canImport}
+      addCvs={canImport && <AddApplicantsDialog {...addCvs} jobTitle={view.title} />}
       ownerAction={
         view.ownerChange && (
           <ChangeHiringOwner

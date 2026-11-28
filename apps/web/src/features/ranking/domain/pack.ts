@@ -43,6 +43,8 @@ export type PackView = {
   packs: PackChoice[];
   /** Null while no preview is open. */
   preview: ReturnType<typeof packPreview> | null;
+  /** Counts the opens: the card remounts on each, so it comes back into view and takes focus even while open. */
+  opened: number;
   onPreview: (ids: readonly string[]) => void;
   /** `NEW_PACK` or an existing pack's id. */
   target: string;
