@@ -149,16 +149,16 @@ const withImport = (canImport: boolean) =>
     </IntlProvider>,
   );
 
-describe('AIV-P1-101: "Import candidates" on each row', () => {
-  it("links an admin or recruiter to the job's Bring in candidates page, by its opaque id", () => {
+describe('AIV-P1-101, AIV-P1-165: "Add CVs" on each row', () => {
+  it("links an admin or recruiter to the job's Add CVs page, by its opaque id", () => {
     withImport(true);
-    expect(screen.getByRole('link', { name: 'Import candidates' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'Add CVs' }).getAttribute('href')).toBe(
       '/app/jobs/0190d4a2-0000-7000-9000-000000001031/import',
     );
   });
 
   it('is not offered to a hiring owner or interviewer', () => {
     withImport(false);
-    expect(screen.queryByRole('link', { name: 'Import candidates' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Add CVs' })).toBeNull();
   });
 });

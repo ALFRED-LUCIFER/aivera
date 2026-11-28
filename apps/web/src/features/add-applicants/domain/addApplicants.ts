@@ -1,5 +1,6 @@
-import type { Source } from '@credalent/intake';
+import { MAX_BATCH_ARRIVALS, type Source } from '@credalent/intake';
 import { z } from 'zod';
+import { checkUpload, uploadRequestFor, type DirectUpload } from '@/features/files/domain/files.ts';
 
 // Adding applicants by hand (AIV-P1-019): one or more clean CVs and the channel they came through.
 
@@ -27,12 +28,12 @@ export const addApplicantsSchema = z.strictObject({
   rightToProcessConfirmed: z.literal(true),
   source: z.enum(SOURCE_OPTIONS),
   // One upload per CV; the same file twice would only add an empty second source. Up to 200 per save (AIV-P1-101, the
-  // Import artboard's batch size); the files module limits each file, not a batch.
+  // Import artboard's batch size; intake refuses more too); the files module limits each file, not a batch.
   // shortcut: every CV is filed in turn in one transaction (about ten queries each); queue the batch if 200 gets slow.
   fileIds: z
     .array(z.uuid())
     .min(1)
-    .max(200)
+    .max(MAX_BATCH_ARRIVALS)
     .refine((ids) => new Set(ids).size === ids.length),
 });
 export type AddApplicantsInput = z.infer<typeof addApplicantsSchema>;
@@ -45,3 +46,20 @@ export type AddApplicantsInput = z.infer<typeof addApplicantsSchema>;
 export type AddApplicantsResult =
   | { ok: true; applications: { applicationId: string; created: boolean }[] }
   | { ok: false; error: 'notAccepted' | 'jobNotFound' | 'confirmationRequired' | 'failed' };
+
+/**
+ * One file of the Add CVs dialog, listed by its name with its own result (AIV-P1-165): its upload, then whether the
+ * save opened an application for it or added a source to one. The name stays in the browser, for this list only.
+ */
+export type CvRow = { key: string; name: string; upload: DirectUpload; added?: 'created' | 'sourceAdded' };
+
+/**
+ * The files of one pick that go on the list, in pick order: every file the limits refuse (listed with its reason) and
+ * the files that fit while the next save, counting the rows already waiting for it, stays within 200. `over` is how
+ * many were left out.
+ */
+export function withinSave(files: File[], rows: CvRow[]): { take: File[]; over: number } {
+  let left = MAX_BATCH_ARRIVALS - rows.filter((r) => !r.added && r.upload.phase !== 'error').length;
+  const take = files.filter((file) => checkUpload(uploadRequestFor('cv', file)) !== null || left-- > 0);
+  return { take, over: files.length - take.length };
+}

@@ -6,6 +6,7 @@ import {
   CHOICE_REASON_MAX,
   chosenOrDecided,
   IntakeError,
+  MAX_BATCH_ARRIVALS,
   type Application,
   type ApplicationSource,
   type ImportBatch,
@@ -211,6 +212,7 @@ export function applicationUseCases({
       if ((input.rightToProcessConfirmed as unknown) !== true) throw new IntakeError('confirmation_required');
       const version = wordingVersion(input.wordingKey);
       if (!version) throw new IntakeError('invalid_wording');
+      if (input.arrivals.length > MAX_BATCH_ARRIVALS) throw new IntakeError('batch_too_large');
       await authorize(ctx, 'candidate.create');
       if (!(await jobResource(ctx, input.jobId))) throw new IntakeError('job_not_found');
       const batch: ImportBatch = {

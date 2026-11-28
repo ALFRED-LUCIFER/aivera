@@ -627,7 +627,7 @@
   "jobsList": {
     "intro": "Every job runs on an approved rubric. Candidates are assessed only after a version is approved.",
     "add": "Add a job",
-    "import": "Import candidates",
+    "import": "Add CVs",
     "caption": "Jobs",
     "filterLabel": "Filter jobs",
     "filters": {
@@ -1337,8 +1337,6 @@
   "jobHeader": {
     "breadcrumb": "Breadcrumb",
     "stagesLabel": "Stages of this job",
-    "importCandidates": "Import candidates",
-    "addCandidates": "Add candidates",
     "hiringOwner": "Hiring owner: {name}",
     "noHiringOwner": "Hiring owner: not assigned",
     "owner": {
@@ -1365,7 +1363,7 @@
     "stages": {
       "description": "Job description",
       "rubric": "Competencies and rubric",
-      "import": "Bring in candidates",
+      "import": "Add CVs",
       "candidates": "Evidence and ranking",
       "interviews": "Interviews",
       "pack": "Decision"
@@ -1716,10 +1714,12 @@
     "stillChecking": "Still checking this file…"
   },
   "addApplicants": {
-    "open": "Add applicants",
-    "title": "Add applicants",
-    "description": "Upload the CVs you received and say where they came from. Each CV becomes an application for this job.",
+    "open": "Add CVs",
+    "title": "Add CVs",
+    "description": "Choose the CVs you received, several at once, and say where they came from. Each CV becomes an application for this job.",
     "close": "Close",
+    "choose": "Choose CV files",
+    "limits": "PDF or Word, up to 10 MB each, 200 per save.",
     "source": "Where did they come from?",
     "sources": {
       "linkedin": "LinkedIn",
@@ -1729,16 +1729,25 @@
       "careers_page": "Careers page",
       "recruiter": "Recruiter"
     },
-    "checking": "Checking the file…",
     "ready": "{count, plural, one {# CV ready} other {# CVs ready}}",
-    "readyCv": "{name} · ready",
-    "submit": "{count, plural, =0 {Add people to this job} one {Add # person to this job} other {Add # people to this job}}",
-    "confirmHint": "Confirm the line above to add these people.",
+    "files": "{count, plural, one {# file} other {# files}}",
+    "row": {
+      "idle": "{name} · waiting",
+      "uploading": "{name} · uploading {percent}%",
+      "checking": "{name} · checking",
+      "slow": "{name} · still checking",
+      "done": "{name} · ready",
+      "error": "{name} · not added: {reason}",
+      "created": "{name} · added",
+      "sourceAdded": "{name} · same CV as an existing application, source added"
+    },
+    "over": "{count, plural, one {# more CV was not added: 200 per save. Add it in another save.} other {# more CVs were not added: 200 per save. Add them in another save.}}",
+    "submit": "{count, plural, =0 {Add CVs} one {Add # CV} other {Add # CVs}}",
+    "sourceHint": "Choose where they came from to add them.",
+    "confirmHint": "Confirm the line above to add these CVs.",
     "confirmationRequired": "Confirm you are responsible for the right to process these CVs.",
     "done": "Done",
-    "unnamed": "Unnamed applicant",
-    "received": "Unnamed applicant · CV received",
-    "sourceAdded": "Same CV as an existing application · source added",
+    "goToRanking": "Go to ranking",
     "added": "{count, plural, =0 {No new applications: each CV was already filed for this job.} one {# application added.} other {# applications added.}}",
     "jobNotFound": "This job does not exist or you do not have access."
   },
@@ -1746,9 +1755,10 @@
     "rightToProcess": {
       "v1": "I am responsible for having the right to process these CVs for {title}."
     },
-    "title": "Bring in candidates",
-    "intro": "From wherever they are today. Credalent reads each CV, finds links to real work, merges duplicates, and warns you before you submit someone a client has already seen.",
-    "picker": "Import into this job",
+    "title": "Add CVs",
+    "intro": "From wherever they are today. Credalent reads each CV, finds links to real work and merges duplicates.",
+    "introAgency": "From wherever they are today. Credalent reads each CV, finds links to real work, merges duplicates, and warns you before you submit someone a client has already seen.",
+    "picker": "Add CVs to this job",
     "pickerHint": "Choosing a job opens its page.",
     "option": {
       "approvedVersion": "{title} · rubric approved, version {version}",
@@ -1760,11 +1770,11 @@
     },
     "note": "Everyone you import is assessed against this job's rubric. For a job whose rubric is still waiting, people are added now and assessed once it is approved. The same person can be imported into more than one job. They keep one profile.",
     "upload": {
-      "title": "Upload CVs",
-      "body": "PDF or Word, one file at a time. Links to repositories, portfolios and write-ups are found automatically.",
-      "button": "Upload files"
+      "title": "From CV files",
+      "body": "PDF or Word, up to 200 per save. Links to repositories, portfolios and write-ups are found automatically.",
+      "button": "Add CVs"
     },
-    "loading": "Loading Bring in candidates…",
+    "loading": "Loading Add CVs…",
     "failed": "We could not load this page. Try again.",
     "retry": "Try again"
   },
