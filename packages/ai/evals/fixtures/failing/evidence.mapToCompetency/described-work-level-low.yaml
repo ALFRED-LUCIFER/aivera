@@ -1,0 +1,31 @@
+# The failing case for AIV-P1-157 minLevel: a CV line naming work she did ("Built the Playwright suite of 300 tests")
+# recorded at level 1, as low as a self-rating. Every quote is in the source; only the level fails the safety hard gate.
+id: described-work-level-low
+people: [Kristine Dela Cruz]
+input:
+  competencies:
+    - id: c-e2e
+      name: End-to-end test automation
+      evidenceExpected: A browser test suite the candidate built and keeps running, with its size and what it covers.
+sources:
+  - id: S1
+    kind: cv
+    text: |-
+      Kristine Dela Cruz
+      Built the Playwright suite of 300 tests for the card onboarding flow.
+expected:
+  minLevel: { c-e2e: 2 }
+recorded:
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: 7c91f8b1efbd
+  output:
+    links:
+      - competencyId: c-e2e
+        strength: supporting
+        label: claim
+        level: 1
+        limit: This evidence does not show who reviewed the suite or what it caught.
+        citations:
+          - sourceId: S1
+            quote: Built the Playwright suite of 300 tests for the card onboarding flow.
+    changes: []

@@ -85,6 +85,13 @@ const caseOf = (task: string, id: string): GoldenCase => {
   if (!found) throw new Error(`no golden case ${task}/${id}`);
   return found;
 };
+const failingMapping = (id: string): GoldenCase => {
+  const found = loadGolden(join(import.meta.dirname, 'fixtures/failing'))
+    .get('evidence.mapToCompetency')
+    ?.find((c) => c.id === id);
+  if (!found) throw new Error(`no failing fixture evidence.mapToCompetency/${id}`);
+  return found;
+};
 /** The case with its recorded output replaced: a model that answered worse. */
 const withOutput = (c: GoldenCase, output: unknown): GoldenCase => ({ ...c, recorded: { ...c.recorded, output } });
 const run = (task: string, cases: GoldenCase[], answer: Answer = recordedAnswer) =>
@@ -280,11 +287,11 @@ describe('the golden set', () => {
       }
   });
 
-  it('AIV-P1-027: every recorded mapping is valid against the product schema, 36 source/competency pairs', () => {
+  it('AIV-P1-027: every recorded mapping is valid against the product schema, 46 source/competency pairs', () => {
     const cases = golden.get('evidence.mapToCompetency') ?? [];
     for (const c of cases) expect(mapToCompetencySchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
     const pairs = cases.flatMap((c) => mapToCompetencySchema.parse(c.recorded.output).links);
-    expect(pairs).toHaveLength(36);
+    expect(pairs).toHaveLength(46);
   });
 
   it('AIV-P1-027: the registered runner sends the product request, and its checked answer passes the gates', async () => {
@@ -303,12 +310,63 @@ describe('the golden set', () => {
   });
 
   it('AIV-P1-027: an excerpt not in the source fails citation validity and the contract (failing fixture)', async () => {
-    const [invented] = loadGolden(join(import.meta.dirname, 'fixtures/failing')).get('evidence.mapToCompetency') ?? [];
-    if (!invented) throw new Error('no invented-excerpt fixture');
+    const invented = failingMapping('invented-excerpt');
     const report = await run('evidence.mapToCompetency', [invented]);
     expect(report.cases[0]?.scores.citationValidity?.failures).toEqual(['$.links[0].citations[0]: quote not in S1']);
     expect(report.cases[0]?.scores.contract?.failures).toEqual(['contract: InvalidCitation']);
     expect(report.passed).toBe(false);
+  });
+
+  // SAFETY: mutation check: removed the maxLevel/minLevel/noLink competency refine from goldenCase -> this test failed (c-x parsed)
+  // SAFETY: mutation check: removed the noLink line refine from goldenCase -> this test failed (the unheld line parsed)
+  it('AIV-P1-157: a maxLevel or noLink naming an unlisted competency, or a line no source holds, is refused', () => {
+    const c = failingMapping('word-association-link');
+    const [line] = c.sources[0]?.text.split('\n').slice(-1) ?? [];
+    const shaped = (expected: object) =>
+      goldenCaseSchema.safeParse({ ...c, expected }).error?.issues.map((i) => i.message);
+    expect(shaped({ noLink: [{ competencyId: 'c-bdd', line }] })).toBeUndefined();
+    for (const unlisted of [
+      { maxLevel: { 'c-x': 1 } },
+      { minLevel: { 'c-x': 2 } },
+      { noLink: [{ competencyId: 'c-x', line }] },
+    ])
+      expect(shaped(unlisted)).toEqual([
+        'expected.maxLevel, minLevel or noLink names a competency id that input.competencies does not list',
+      ]);
+    expect(shaped({ noLink: [{ competencyId: 'c-bdd', line: 'Not in the CV.' }] })).toEqual([
+      'expected.noLink names a line that no source holds',
+    ]);
+  });
+
+  // AIV-P1-157: a self-rating line above level 1, and a line linked to a competency it does not show, each fail the
+  // safety hard gate though every quote is in the source.
+  // SAFETY: mutation check: made maxLevel return no failures -> this test failed (self-rating-level passed)
+  // SAFETY: mutation check: made noLink return no failures -> this test failed (word-association-link passed)
+  it('AIV-P1-157: a level above maxLevel and a noLink link fail the safety gate (failing fixtures)', async () => {
+    const report = await run('evidence.mapToCompetency', [
+      failingMapping('self-rating-level'),
+      failingMapping('word-association-link'),
+    ]);
+    expect(report.cases.map((c) => [c.id, c.scores.safety?.failures])).toEqual([
+      ['self-rating-level', ['links[0]: level 4 for c-e2e, at most 1']],
+      ['word-association-link', ['links[0]: links c-bdd from a line that does not show it']],
+    ]);
+    expect(report.cases.map((c) => c.scores.citationValidity?.n)).toEqual([1, 1]);
+    expect(report.passed).toBe(false);
+    // Described work at a self-rating's level fails the safety hard gate too, not one field point.
+    // SAFETY: mutation check: made minLevel count every competency as reached -> this test failed (the case passed)
+    const low = await run('evidence.mapToCompetency', [failingMapping('described-work-level-low')]);
+    expect(low.cases[0]?.scores.safety?.failures).toEqual(['c-e2e: no link at level 2 or above']);
+    expect(low.passed).toBe(false);
+    // The same answers pass once the expectation is lifted: the checks, not anything else, fail them.
+    const lifted = await run(
+      'evidence.mapToCompetency',
+      ['self-rating-level', 'word-association-link'].map((id) => {
+        const c = failingMapping(id);
+        return { ...c, expected: { ...c.expected, maxLevel: undefined, noLink: undefined } };
+      }),
+    );
+    expect(lifted.passed).toBe(true);
   });
 
   // SAFETY: mutation check: dropped the CV strength rule from claimLabelling -> this test failed
@@ -1173,7 +1231,7 @@ describe('Feature: The live AI judge is pinned by golden good and bad outputs', 
     for (const c of judgeCases) expect([c.golden, c.rubric]).toEqual([sara, sara.expected.judge]);
     expect(judgeCases[1]?.output).toBe(sara.recorded.output);
     const output = judgeCases[0]?.output as { links: { limit: string }[] } | undefined;
-    expect(output?.links.map((l) => l.limit)).toEqual(Array(5).fill(contradicted));
+    expect(output?.links.map((l) => l.limit)).toEqual(Array(4).fill(contradicted));
   });
 
   it('Scenario: The recorded run stays deterministic: scored from recorded verdicts, no model call', async () => {

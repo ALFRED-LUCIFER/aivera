@@ -1,0 +1,67 @@
+# Imran Qureshi's CV lines sit next to competencies they do not show (AIV-P1-157): a link from working in sprints to
+# BDD tooling, from manual testing of a web portal to mobile automation, or from Gherkin files to REST API testing
+# raises his "up to N" bound for work the line does not describe, and fails the safety gate. Synthetic.
+id: imran-qureshi-word-association
+people: [Imran Qureshi]
+input:
+  competencies:
+    - id: c-bdd
+      name: Behaviour-driven development tooling
+      evidenceExpected: Feature files and step definitions the candidate wrote and ran with a BDD tool.
+    - id: c-mobile
+      name: Mobile app test automation
+      evidenceExpected: Automated tests the candidate wrote for an Android or iOS app.
+    - id: c-api
+      name: REST API testing
+      evidenceExpected: Automated tests the candidate wrote against real REST APIs.
+    - id: c-regression
+      name: Regression testing
+      evidenceExpected: Regression cycles the candidate planned or ran before releases.
+sources:
+  - id: S1
+    kind: cv
+    text: |-
+      Imran Qureshi
+      QA Engineer, Harbourline Logistics, 2021 to now
+      Worked in two-week sprints with the delivery team.
+      Ran manual regression cycles on the shipment tracking web portal before each release.
+      Wrote Gherkin feature files for the checkout flows.
+expected:
+  match:
+    links[*].competencyId: [c-regression]
+    links[*].label: [claim]
+  noLink:
+    - { competencyId: c-bdd, line: Worked in two-week sprints with the delivery team. }
+    - {
+        competencyId: c-mobile,
+        line: Ran manual regression cycles on the shipment tracking web portal before each release.,
+      }
+    - { competencyId: c-api, line: Wrote Gherkin feature files for the checkout flows. }
+recorded:
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: b7471b1e79f6
+  output:
+    links:
+      - competencyId: c-bdd
+        strength: supporting
+        label: claim
+        level: 2
+        limit: Does not show step definitions or running the BDD tool, only writing feature files.
+        citations:
+          - sourceId: S1
+            quote: Wrote Gherkin feature files for the checkout flows.
+      - competencyId: c-regression
+        strength: supporting
+        label: claim
+        level: 2
+        limit: Does not show planning or automation of regression cycles, only running manual cycles.
+        citations:
+          - sourceId: S1
+            quote: Ran manual regression cycles on the shipment tracking web portal before each release.
+    changes:
+      - competencyId: c-bdd
+        text: Provide evidence of writing step definitions and running BDD tests with a tool.
+      - competencyId: c-mobile
+        text: Provide evidence of writing automated tests for Android or iOS apps.
+      - competencyId: c-api
+        text: Provide evidence of writing automated tests against real REST APIs.

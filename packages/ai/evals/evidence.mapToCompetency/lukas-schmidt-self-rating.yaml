@@ -1,0 +1,86 @@
+# Lukas Schmidt's CV only rates his own skill, in five phrasings, and names no work done with it (AIV-P1-157). Each line
+# is a claim that may map at level 1 at most, however confidently it is worded: the order among CV-only candidates must
+# follow described work (kristine-dela-cruz-described-work, same rubric), not self-description. Synthetic.
+id: lukas-schmidt-self-rating
+people: [Lukas Schmidt]
+input:
+  competencies:
+    - id: c-e2e
+      name: End-to-end test automation
+      evidenceExpected: A browser test suite the candidate built and keeps running, with its size and what it covers.
+    - id: c-api
+      name: REST API testing
+      evidenceExpected: Automated tests the candidate wrote against real REST APIs.
+    - id: c-ci
+      name: Tests in the delivery pipeline
+      evidenceExpected: Tests the candidate wired into CI so they gate a merge or a release.
+    - id: c-performance
+      name: Performance testing
+      evidenceExpected: A load test the candidate designed, with the limit it found.
+sources:
+  - id: S1
+    kind: cv
+    text: |-
+      Lukas Schmidt
+      QA Engineer
+      Expert in Playwright.
+      Advanced user of Cypress.
+      Skilled in REST API testing with Postman.
+      Strong command of CI pipelines in GitHub Actions.
+      Well versed in JMeter load testing.
+expected:
+  match:
+    links[*].label: [claim]
+  maxLevel: { c-e2e: 1, c-api: 1, c-ci: 1, c-performance: 1 }
+recorded:
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: 1b0e24a0c991
+  output:
+    links:
+      - competencyId: c-e2e
+        strength: supporting
+        label: claim
+        level: 1
+        limit: Does not show a browser test suite built or maintained, nor its size or coverage.
+        citations:
+          - sourceId: S1
+            quote: Expert in Playwright.
+      - competencyId: c-e2e
+        strength: supporting
+        label: claim
+        level: 1
+        limit: Does not show a browser test suite built or maintained, nor its size or coverage.
+        citations:
+          - sourceId: S1
+            quote: Advanced user of Cypress.
+      - competencyId: c-api
+        strength: supporting
+        label: claim
+        level: 1
+        limit: Does not show automated tests written against real REST APIs.
+        citations:
+          - sourceId: S1
+            quote: Skilled in REST API testing with Postman.
+      - competencyId: c-ci
+        strength: supporting
+        label: claim
+        level: 1
+        limit: Does not show tests wired into CI to gate merges or releases.
+        citations:
+          - sourceId: S1
+            quote: Strong command of CI pipelines in GitHub Actions.
+      - competencyId: c-performance
+        strength: supporting
+        label: claim
+        level: 1
+        limit: Does not show a load test designed or limits found.
+        citations:
+          - sourceId: S1
+            quote: Well versed in JMeter load testing.
+    changes:
+      - competencyId: c-e2e
+        text: Provide evidence of a browser test suite built and maintained, with details on size and coverage.
+      - competencyId: c-api
+        text: Show automated REST API tests written and executed against real APIs.
+      - competencyId: c-ci
+        text: Demonstrate tests integrated into CI pipelines that gate merges or releases.

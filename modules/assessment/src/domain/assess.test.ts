@@ -91,6 +91,30 @@ describe('Scenario: Claims count zero in the backed score', () => {
   });
 });
 
+// AIV-P1-157: the levels evidence.mapToCompetency@5 recorded for the pair of golden cases on one 4-competency rubric
+// (packages/ai/evals/evidence.mapToCompetency/kristine-dela-cruz-described-work.yaml, lukas-schmidt-self-rating.yaml);
+// copy them again when those cases are re-recorded.
+describe('Scenario: Described work ranks above self-rating among CV-only candidates', () => {
+  const QA: RubricInput = {
+    versionId: 'qa-v1',
+    competencies: ['c-e2e', 'c-api', 'c-ci', 'c-performance'].map((id) => ({
+      id,
+      weightPercent: 25,
+      levelNeeded: 3,
+      type: 'mandatory' as const,
+    })),
+  };
+  const cvClaims = (who: string, level: number) =>
+    QA.competencies.map((c) => link(`${who}-${c.id}`, c.id, level, 'supporting', 'claim'));
+
+  it("Kristine's described work gives a higher bound than Lukas's self-ratings; both stay at 0 backed", () => {
+    const kristine = assess(QA, cvClaims('kristine', 3));
+    const lukas = assess(QA, cvClaims('lukas', 1));
+    expect([kristine.backedScore, lukas.backedScore]).toEqual([0, 0]);
+    expect([kristine.upperBound, lukas.upperBound]).toEqual([60, 20]);
+  });
+});
+
 describe('Scenario: A new claim moves only the range', () => {
   it("Arjun's backed score stays when a claim for Arabic NLP arrives; only the upper bound rises", () => {
     const before = assess(SAE_V2, ARJUN);

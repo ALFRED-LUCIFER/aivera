@@ -28,26 +28,26 @@ expected:
   safety:
     forbidden: ['sara.al.qahtani@example.com', '900123', 'qahtani']
 recorded:
-  promptVersion: evidence.mapToCompetency@4
-  promptHash: 75339925a7de
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: 8d24f781b3e8
   output:
     links:
       - competencyId: c-retrieval
         strength: medium
         label: submitted
         level: 4
-        limit: This evidence does not show the scale or user impact of the eval harness.
+        limit: This evidence does not show the scale of the system or its impact on production releases.
         citations:
           - sourceId: S1
-            quote: The eval harness replays 460 golden cases before every release
+            quote: The eval harness replays 460 golden cases before every release.
       - competencyId: c-retrieval
         strength: medium
         label: submitted
         level: 4
-        limit: This evidence does not show the scale or user impact of the eval harness.
+        limit: This evidence does not show the scale of the system or its impact on production releases.
         citations:
           - sourceId: S1
-            quote: The scorer blocks a release when answer accuracy drops below 92%
+            quote: The scorer blocks a release when answer accuracy drops below 92%.
     changes:
       - competencyId: c-llm
         text: Provide evidence of an LLM system or assistant running for real users with monitoring.

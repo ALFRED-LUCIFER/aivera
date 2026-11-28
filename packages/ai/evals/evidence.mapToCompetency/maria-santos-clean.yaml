@@ -27,15 +27,15 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@4
-  promptHash: 24ae076d42c2
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: aa6986b7f9eb
   output:
     links:
       - competencyId: c-retrieval
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the scale or impact of the evaluation harness or metrics.
+        limit: This evidence does not show the scale or impact of the evaluation harness or metrics used.
         citations:
           - sourceId: S1
             quote: Wrote the retrieval evaluation notebook the team ran before each release
@@ -43,7 +43,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show monitoring details or user scale of the assistant.
+        limit: This evidence does not show the monitoring or production scale of the assistant.
         citations:
           - sourceId: S1
             quote: Built a document question-answering assistant for an insurance claims team
@@ -51,14 +51,14 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the extent of the Python services or their test coverage.
+        limit: This evidence does not show the extent of the Python services or the testing coverage.
         citations:
           - sourceId: S1
             quote: Maintained the Python services that index policy documents
     changes:
       - competencyId: c-retrieval
-        text: Provide examples of retrieval metrics or regression gates used in evaluation.
+        text: Provide the retrieval evaluation notebook or metrics used, showing its impact or integration in release gating.
       - competencyId: c-llm
-        text: Show monitoring data or user feedback for the LLM assistant in production.
+        text: Show monitoring dashboards or logs proving the assistant runs reliably for real users.
       - competencyId: c-python
-        text: Include evidence of tests or code samples for the Python services maintained.
+        text: Provide code or test coverage reports for the Python services maintained.

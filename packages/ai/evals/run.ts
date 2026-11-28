@@ -21,7 +21,10 @@ import {
   contract,
   fieldMatch,
   missedPoints,
+  maxLevel,
+  minLevel,
   noChange,
+  noLink,
   promptSafety,
   safety,
   suggestionMatch,
@@ -467,6 +470,11 @@ async function scoreCase(
           : [],
       ),
       ...noChange(output, statementPaths, expected.noChange ?? []),
+      // AIV-P1-157: a self-rating line above its level, described work below its floor, or a link by word association
+      // reorders a claims-only ranking.
+      ...maxLevel(output, statementPaths, expected.maxLevel ?? {}),
+      ...minLevel(output, statementPaths, expected.minLevel ?? {}),
+      ...noLink(output, statementPaths, expected.noLink ?? []),
     ];
     if (unfair.length) scores.safety = { n: 0, total: 1, failures: [...(scores.safety?.failures ?? []), ...unfair] };
     if (expected.prompt) scores.prompt = promptSafety(task, golden, expected.prompt.forbidden);

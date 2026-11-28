@@ -27,31 +27,32 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@4
-  promptHash: 120398f9e37d
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: d137bf6493de
   output:
     links:
       - competencyId: c-python
         strength: supporting
         label: submitted
         level: 1
-        limit: This evidence does not show the scale, complexity, or impact of the Python services written or maintained.
+        limit:
+          This evidence does not show the candidate wrote or maintains the Python service code beyond declarations and test
+          presence.
         citations:
           - sourceId: S1
             quote: 'Python in requirements.txt (manifest, declaration): declares fastapi'
-      - competencyId: c-retrieval
+      - competencyId: c-python
         strength: supporting
         label: submitted
         level: 1
-        limit: This evidence does not show specific retrieval metrics, eval harness, or regression gate built by the candidate.
+        limit:
+          This evidence does not show the candidate wrote or maintains the Python service code beyond declarations and test
+          presence.
         citations:
           - sourceId: S1
-            quote: claims-indexer
+            quote: 'Python in tests/test_index.py (path, declaration): Python file under a test folder'
     changes:
       - competencyId: c-python
-        text: Provide evidence of Python service code authored and maintained beyond manifest declarations, such as
-          implementation files and tests.
+        text: Provide evidence of the candidate authoring or maintaining Python service code with tests, not just declarations.
       - competencyId: c-retrieval
-        text:
-          Provide evidence of retrieval evaluation artifacts such as an eval harness, retrieval metrics, or regression gates
-          built by the candidate.
+        text: Provide evidence of the candidate building an evaluation harness, retrieval metrics, or a regression gate.

@@ -77,14 +77,14 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@4
-  promptHash: eb95c123cab5
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: 65672b1787c7
   output:
     links:
       - competencyId: c-ui-automation
-        strength: claim
+        strength: supporting
         label: claim
-        level: 4
+        level: 3
         limit: This evidence does not show the full size or coverage details of the UI test suite.
         citations:
           - sourceId: S1
@@ -93,10 +93,10 @@ recorded:
             end: 424
         claim: true
       - competencyId: c-ci
-        strength: claim
+        strength: supporting
         label: claim
-        level: 4
-        limit: This evidence does not specify the scale or impact of the CI integration beyond requiring checks on merges.
+        level: 3
+        limit: This evidence does not specify the exact nature of the tests gated or the pipeline details.
         citations:
           - sourceId: S1
             quote: Added the Playwright suite as a required check on every merge request
@@ -104,10 +104,10 @@ recorded:
             end: 513
         claim: true
       - competencyId: c-strategy
-        strength: claim
+        strength: supporting
         label: claim
-        level: 4
-        limit: This evidence does not detail the full test strategy or its outcomes.
+        level: 3
+        limit: This evidence does not detail the contents or outcomes of the test strategy.
         citations:
           - sourceId: S1
             quote: Wrote the test strategy for the card onboarding flow and owned its release sign-off
@@ -115,10 +115,10 @@ recorded:
             end: 330
         claim: true
       - competencyId: c-mobile
-        strength: claim
+        strength: supporting
         label: claim
-        level: 3
-        limit: This evidence does not show automated mobile testing or coverage extent.
+        level: 2
+        limit: This evidence does not show automation or coverage extent for mobile app testing.
         citations:
           - sourceId: S1
             quote: Tested the Android and iOS releases by hand before automation was in place
@@ -129,6 +129,6 @@ recorded:
       - competencyId: c-ui-automation
         text: Provide details on the size, coverage, and maintenance of the Playwright UI test suite.
       - competencyId: c-api-testing
-        text: Show examples or metrics of API test coverage and complexity in Postman collections.
-      - competencyId: c-ci
-        text: Demonstrate the impact of CI integration on release quality or speed, including metrics.
+        text: Show examples or reports of automated API tests running and their impact on quality.
+      - competencyId: c-performance
+        text: Include evidence of designing or running performance or load tests with measurable limits found.

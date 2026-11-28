@@ -232,6 +232,64 @@ export const noChange = (output: unknown, statementPaths: string[], competencyId
     );
 
 /**
+ * AIV-P1-157: a statement linking a competency at a level above the case's limit for it (`maxLevel`). Names the path,
+ * the competency and the levels only (AGENTS.md 1.2).
+ */
+export const maxLevel = (output: unknown, statementPaths: string[], limits: Readonly<Record<string, number>>) =>
+  statementPaths
+    .flatMap((path) => entriesAt(output, path))
+    .flatMap(({ at, value }) => {
+      if (!isRecord(value)) return [];
+      const id = String(value['competencyId']);
+      const limit = Object.hasOwn(limits, id) ? limits[id] : undefined;
+      const level = value['level'];
+      return limit !== undefined && typeof level === 'number' && level > limit
+        ? [`${at}: level ${level} for ${id}, at most ${limit}`]
+        : [];
+    });
+
+/**
+ * AIV-P1-157: a listed competency whose best link stays below its floor (`minLevel`): described work mapped as low as
+ * a self-rating reorders a claims-only ranking. Names the competency and the floor only.
+ */
+export function minLevel(
+  output: unknown,
+  statementPaths: string[],
+  floors: Readonly<Record<string, number>>,
+): string[] {
+  const links = statementPaths
+    .flatMap((path) => entriesAt(output, path))
+    .flatMap(({ value }) => (isRecord(value) ? [value] : []));
+  return Object.entries(floors).flatMap(([id, floor]) => {
+    const levels = links.filter((l) => String(l['competencyId']) === id).map((l) => l['level']);
+    const best = Math.max(0, ...levels.filter((level): level is number => typeof level === 'number'));
+    return best >= floor ? [] : [`${id}: no link at level ${floor} or above`];
+  });
+}
+
+/**
+ * AIV-P1-157: a statement for a competency citing a source line the case says shows something else (`noLink`), matched
+ * as the citation contract matches (findQuote), either way round. Names the path and the competency only.
+ */
+export const noLink = (
+  output: unknown,
+  statementPaths: string[],
+  pairs: readonly { competencyId: string; line: string }[],
+): string[] =>
+  statementPaths
+    .flatMap((path) => entriesAt(output, path))
+    .flatMap(({ at, value }) => {
+      if (!isRecord(value)) return [];
+      const lines = pairs.filter((p) => p.competencyId === String(value['competencyId'])).map((p) => p.line);
+      const quotes = citationsOf(value).flatMap((c) =>
+        isRecord(c) && typeof c['quote'] === 'string' ? [c['quote']] : [],
+      );
+      return lines.some((line) => quotes.some((quote) => findQuote(line, quote) || findQuote(quote, line)))
+        ? [`${at}: links ${String(value['competencyId'])} from a line that does not show it`]
+        : [];
+    });
+
+/**
  * No forbidden phrase in the sources as the model reads them (AIV-P2-065): the client's own redaction with the case's
  * identifiers, as the evidence, assistant, assessment, interviews and decisions runners send them; a job task's sources go as
  * written. Plain substring, so Arabic matches.

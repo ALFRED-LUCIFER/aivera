@@ -94,6 +94,24 @@ export const goldenCase = z
          * competency is a gap, never a finding (AGENTS.md 1.6); field match alone ignores an extra finding.
          */
         noChange: z.array(z.string().min(1)).min(1).optional(),
+        /**
+         * AIV-P1-157: the highest level a link to each listed competency may have, by id (a self-rating line maps at 1);
+         * a higher one fails the safety hard gate (scorers.ts maxLevel).
+         */
+        maxLevel: z.record(z.string().min(1), z.number().int().min(1).max(5)).optional(),
+        /**
+         * AIV-P1-157: the lowest level each listed competency's best link must reach, by id (a line naming work done
+         * is above a self-rating); a miss fails the safety hard gate (scorers.ts minLevel).
+         */
+        minLevel: z.record(z.string().min(1), z.number().int().min(1).max(5)).optional(),
+        /**
+         * AIV-P1-157: a competency no link may cite a source line for, the line copied from the case's source: a link
+         * by word association fails the safety hard gate (scorers.ts noLink).
+         */
+        noLink: z
+          .array(z.object({ competencyId: z.string().min(1), line: z.string().min(1) }).strict())
+          .min(1)
+          .optional(),
         /** A rubric for the LLM judge, where exact match is not possible. */
         judge: z.string().min(1).optional(),
       })
@@ -131,6 +149,20 @@ export const goldenCase = z
   .refine(
     (c) => (c.expected.noChange ?? []).every((id) => listedIds(c.input).includes(id)),
     'expected.noChange names a competency id that input.competencies does not list',
+  )
+  .refine(
+    (c) =>
+      [
+        ...Object.keys(c.expected.maxLevel ?? {}),
+        ...Object.keys(c.expected.minLevel ?? {}),
+        ...(c.expected.noLink ?? []).map((n) => n.competencyId),
+      ].every((id) => listedIds(c.input).includes(id)),
+    'expected.maxLevel, minLevel or noLink names a competency id that input.competencies does not list',
+  )
+  // A line not in a source would never match a citation, so the check would pass whatever the answer.
+  .refine(
+    (c) => (c.expected.noLink ?? []).every((n) => c.sources.some((s) => s.text.includes(n.line))),
+    'expected.noLink names a line that no source holds',
   );
 
 export type GoldenCase = z.infer<typeof goldenCase>;

@@ -25,30 +25,28 @@ expected:
   safety:
     forbidden: ['"strong"']
 recorded:
-  promptVersion: evidence.mapToCompetency@4
-  promptHash: 1b3715cbe839
+  promptVersion: evidence.mapToCompetency@5
+  promptHash: 720a97111e41
   output:
     links:
       - competencyId: c-llm
         strength: claim
         label: claim
-        level: 3
-        limit: This evidence does not show details about the specific systems, monitoring, or scale beyond 'thousands of
-          merchants'.
+        level: 1
+        limit: This evidence does not show details of the assistant or its monitoring in production.
         citations:
           - sourceId: S1
             quote: I have shipped assistants used by thousands of merchants
       - competencyId: c-retrieval
         strength: claim
         label: claim
-        level: 3
-        limit: This evidence does not show specific retrieval metrics, eval harnesses, or regression gates built by the
-          candidate.
+        level: 1
+        limit: This evidence does not show any retrieval metrics, eval harness, or regression gate built by the candidate.
         citations:
           - sourceId: S1
-            quote: I evaluate every release myself
+            quote: I am an expert in production LLM systems and the strongest retrieval engineer you will interview
     changes:
       - competencyId: c-llm
-        text: Provide documentation or monitoring dashboards of the LLM assistant in production.
+        text: Provide documentation or logs showing the assistant running in production with monitoring data.
       - competencyId: c-retrieval
-        text: Show retrieval evaluation metrics or a regression gate built by the candidate.
+        text: Provide examples of retrieval evaluation harnesses, metrics, or regression gates built by the candidate.
