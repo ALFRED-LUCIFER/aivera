@@ -66,6 +66,17 @@ describe('Job header stage lines (AIV-P1-011)', () => {
     expect(line(0)?.line).toEqual({ key: 'notStarted' });
   });
 
+  it('AIV-P1-165: "Bring in candidates" and "Assess evidence" tick once every application is assessed', () => {
+    const approved = header({ approved: version(2, 'approved') });
+    const done = (assessed: number, imported: number) =>
+      jobHeaderView(approved, null, assessed, null, imported, false)
+        .stages.filter((s) => s.done)
+        .map((s) => s.page);
+    expect(done(6, 6)).toEqual(['description', 'rubric', 'import', 'candidates']);
+    expect(done(5, 6)).toEqual(['description', 'rubric']);
+    expect(done(0, 0)).toEqual(['description', 'rubric']);
+  });
+
   it('AIV-P2-011: the Decision stage reads "Shortlist ready" while the job has an undecided pack', () => {
     const approved = header({ approved: version(2, 'approved') });
     expect(jobHeaderView(approved, null, 3, null, 3, true).stages[5]?.line).toEqual({ key: 'shortlistReady' });
