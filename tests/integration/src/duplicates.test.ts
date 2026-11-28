@@ -599,3 +599,124 @@ describe('Undo moves back exactly what the merge moved (intake applicationRecord
     expect(await sourcesOf(youssef.personId)).toEqual([]);
   });
 });
+
+// AIV-P1-165 §8: the recruiter corrects a name read wrongly from a CV. Here because this suite wires the candidates
+// module with the audit log, as the app does.
+const renames = (personId: string, workspaceId = w1) =>
+  rows<{ actor_type: string; actor_id: string; note: string; before: unknown; after: unknown; occurred_at: string }>(
+    sql`select actor_type, actor_id, note, before, after, occurred_at from audit.entry
+        where subject_type = 'candidate' and subject_id = ${personId} and action = 'candidate.renamed'
+        order by seq`,
+    workspaceId,
+  );
+const nameOf = async (personId: string, workspaceId = w1) =>
+  (
+    await rows<{ n: string }>(sql`select display_name as n from candidates.person where id = ${personId}`, workspaceId)
+  )[0]?.n;
+
+describe('Scenario: The recruiter can correct a name, audited (AIV-P1-165)', () => {
+  const REASON = 'Typo in read name';
+
+  it('Ayesha corrects "Maria Santo" to "Maria Santos": the name shows wherever the candidate is listed, and the audit log holds who, when and why, never a name', async () => {
+    clock = new Date(NOW.getTime() + DAY);
+    const job = await newJob('QA Automation Engineer');
+    const other = await newJob('QA Lead');
+    const maria = await arrive(job, 'Maria Santo', 'linkedin', { cv: 9181 });
+    await arrive(other, 'Maria Santo', 'referral', { cv: 9181 });
+
+    await as(MARIA, w1, (ctx) =>
+      candidates.correctName(ctx, maria.personId, { name: '  Maria   Santos ', reason: ` ${REASON} ` }),
+    );
+
+    // One person record names her on every job's list: intake reads the name from it, and stores none of its own.
+    for (const jobId of [job, other]) {
+      const listed = await as(MARIA, w1, (ctx) => intake.listApplicationsForJob(ctx, jobId));
+      expect(listed.map((a) => a.displayName)).toEqual(['Maria Santos']);
+    }
+    const entries = await renames(maria.personId);
+    expect(entries.map((e) => ({ ...e, occurred_at: new Date(e.occurred_at) }))).toEqual([
+      { actor_type: 'user', actor_id: MARIA, note: REASON, before: null, after: null, occurred_at: clock },
+    ]);
+    // SAFETY: mutation check: wrote `after: { displayName: name }` on the audit entry -> the audit module refused it
+    // (`personal_data`) and this test failed; no name, old or new, is in the append-only log (AGENTS.md 1.2).
+    expect(JSON.stringify(entries)).not.toMatch(/Santo/);
+  });
+
+  // SAFETY: mutation check: wrote the audit entry before the rename and swallowed its failure -> this test failed (the
+  // name changed with nothing on record).
+  it('the audit write is last in its transaction: when it fails, the name is not changed', async () => {
+    const job = await newJob('QA Analyst');
+    const daniel = await arrive(job, 'DANIEL NOVAK', 'linkedin', { cv: 9182 });
+    const failing = createCandidates(workspaces, now, {
+      audit: { record: async () => Promise.reject(new Error('audit down')) },
+      applications: applicationRecords,
+      evidence: createEvidenceRecords(now),
+    });
+    await expect(
+      as(MARIA, w1, (ctx) => failing.correctName(ctx, daniel.personId, { name: 'Daniel Novak', reason: REASON })),
+    ).rejects.toThrow('audit down');
+    expect(await nameOf(daniel.personId)).toBe('DANIEL NOVAK');
+    expect(await renames(daniel.personId)).toEqual([]);
+  });
+
+  it('refuses a correction with no reason or no name, changing nothing', async () => {
+    const job = await newJob('QA Engineer');
+    const priya = await arrive(job, 'Priya Nair – Senior AI Engineer', 'linkedin', { cv: 9183 });
+    for (const [input, code] of [
+      [{ name: 'Priya Nair', reason: '   ' }, 'name_reason'],
+      [{ name: 'Priya Nair', reason: 'x'.repeat(501) }, 'name_reason'],
+      [{ name: ' ', reason: REASON }, 'display_name'],
+      [{ name: 'P'.repeat(201), reason: REASON }, 'name_too_long'],
+    ] as const)
+      await expect(as(MARIA, w1, (ctx) => candidates.correctName(ctx, priya.personId, input))).rejects.toMatchObject({
+        code,
+      });
+    expect(await nameOf(priya.personId)).toBe('Priya Nair – Senior AI Engineer');
+    expect(await renames(priya.personId)).toEqual([]);
+  });
+
+  // SAFETY: mutation check: removed `authorize(ctx, 'candidate.rename')` from the use case -> this test failed (the
+  // interviewer renamed the candidate).
+  it('an interviewer is refused; admins and recruiters only', async () => {
+    const job = await newJob('SDET');
+    const omar = await arrive(job, 'Omar Al Suwaidi', 'linkedin', { cv: 9184 });
+    await expect(
+      as(LINA, w1, (ctx) => candidates.correctName(ctx, omar.personId, { name: 'Omar', reason: REASON })),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(await nameOf(omar.personId)).toBe('Omar Al Suwaidi');
+    await as(ALEX, w1, (ctx) =>
+      candidates.correctName(ctx, omar.personId, { name: 'Omar Al-Suwaidi', reason: REASON }),
+    );
+    expect(await nameOf(omar.personId)).toBe('Omar Al-Suwaidi');
+  });
+
+  // SAFETY: mutation check: dropped `eq(person.workspaceId, workspaceId)` from the store's `rename` -> the first
+  // assertion still held, by row-level security alone; with the policy also dropped the name changed. Both layers hold.
+  it("another workspace's person is not found, by the workspace filter and by row-level security", async () => {
+    const job = await newJob('Test Engineer');
+    const sara = await arrive(job, 'Sara Al Qahtani', 'linkedin', { cv: 9185 });
+    // ALEX is an admin of both workspaces.
+    await expect(
+      as(ALEX, w2, (ctx) => candidates.correctName(ctx, sara.personId, { name: 'Someone Else', reason: REASON })),
+    ).rejects.toMatchObject({ code: 'person_not_found' });
+    // With no repository filter at all, row-level security still hides the row from W2's transaction.
+    const touched = await rows(
+      sql`update candidates.person set display_name = 'Someone Else' where id = ${sara.personId} returning id`,
+      w2,
+    );
+    expect(touched).toEqual([]);
+    expect(await nameOf(sara.personId)).toBe('Sara Al Qahtani');
+    expect(await renames(sara.personId, w2)).toEqual([]);
+  });
+
+  it('a person merged into another is not renamed: the survivor carries the name', async () => {
+    const job = await newJob('Release Engineer');
+    const other = await newJob('Build Engineer');
+    const kept = await arrive(job, 'Kristine Dela Cruz', 'linkedin', { cv: 9186 });
+    const dup = await arrive(other, 'Kristine Dela Cruz', 'referral', { cv: 9187 });
+    await as(MARIA, w1, (ctx) => candidates.mergePeople(ctx, kept.personId, dup.personId, 'Same person, two CVs'));
+    await expect(
+      as(MARIA, w1, (ctx) => candidates.correctName(ctx, dup.personId, { name: 'Kristine D.', reason: REASON })),
+    ).rejects.toMatchObject({ code: 'person_not_found' });
+  });
+});

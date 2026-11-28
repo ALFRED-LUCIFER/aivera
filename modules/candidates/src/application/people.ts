@@ -3,6 +3,8 @@ import type { Action, WorkspaceContext } from '@credalent/workspaces';
 import { AUTO_MERGE_NOTES, exactReason } from '../domain/duplicates.ts';
 import {
   CandidateError,
+  MERGE_REASON_MAX,
+  NAME_MAX,
   normaliseIdentifier,
   normaliseIdentifiers,
   type Identifier,
@@ -29,6 +31,8 @@ export type CandidateStore = {
   listPeople(workspaceId: string): Promise<Person[]>;
   /** Sets the name only while it is still `UNNAMED_APPLICANT`; false when the person is named, merged away or missing. */
   nameUnnamed(workspaceId: string, personId: string, name: string): Promise<boolean>;
+  /** Sets the name of a person not merged into another; false, with nothing written, when there is no such person. */
+  rename(workspaceId: string, personId: string, name: string): Promise<boolean>;
   /** Each listed person's id and display name; ids the workspace does not have are left out. */
   displayNames(workspaceId: string, personIds: string[]): Promise<{ id: string; displayName: string }[]>;
   /** Deletes every merge, person and identifier in the workspace; false, with nothing deleted, if any person is not synthetic. */
@@ -161,6 +165,32 @@ export function peopleUseCases({
       await authorize(ctx, 'candidate.view');
       return storeFor(ctx.tx).listPeople(ctx.workspaceId);
     },
+  };
+}
+
+export type CorrectNameInput = { name: string; reason: string };
+
+/**
+ * A person corrects a candidate's display name (AIV-P1-165 §8): admins and recruiters (`candidate.rename`), with a
+ * reason. The audit entry, written last, holds the member, the time and the reason, never either name (AGENTS.md 1.2).
+ */
+export function correctNameUseCase(ports: {
+  storeFor: Ports['storeFor'];
+  authorize: Ports['authorize'];
+  /** Appends `candidate.renamed` to the audit log in `ctx.tx`, as the member. */
+  audit(ctx: WorkspaceContext, personId: string, reason: string): Promise<void>;
+}) {
+  return async (ctx: WorkspaceContext, personId: string, input: CorrectNameInput): Promise<void> => {
+    await ports.authorize(ctx, 'candidate.rename');
+    const name = input.name.trim().replace(/\s+/g, ' ');
+    const reason = input.reason.trim();
+    if (!name) throw new CandidateError('display_name');
+    if (name.length > NAME_MAX) throw new CandidateError('name_too_long');
+    if (!reason || reason.length > MERGE_REASON_MAX) throw new CandidateError('name_reason');
+    if (!(await ports.storeFor(ctx.tx).rename(ctx.workspaceId, personId, name)))
+      throw new CandidateError('person_not_found');
+    // The last statement before commit (AGENTS.md 3.6).
+    await ports.audit(ctx, personId, reason);
   };
 }
 

@@ -72,6 +72,8 @@ const MATRIX: Record<Action, [string, string, string, string]> = {
   // SAFETY: mutation check: added interviewer to candidate.merge -> this matrix failed (AIV-P1-018)
   'candidate.merge': ['YYY', 'YYY', '---', '---'],
   'candidate.unmerge': ['YYY', '---', '---', '---'],
+  // SAFETY: mutation check: added interviewer to candidate.rename -> this matrix failed (AIV-P1-165)
+  'candidate.rename': ['YYY', 'YYY', '---', '---'],
   'scorecard.submit': ['YYY', 'YYY', 'Y--', 'Y--'],
   // SAFETY: mutation check: added interviewer to interview.schedule -> this matrix failed (AIV-P2-001)
   'interview.schedule': ['YYY', 'YYY', '---', '---'],

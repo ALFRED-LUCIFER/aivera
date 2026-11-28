@@ -42,6 +42,28 @@ export function needSummary(rows: readonly NeedRow[]): { meets: number; gaps: nu
 /** The radar's geometry, as the Candidate artboard draws it: a 540 by 340 box, level 5 at 110 from the centre. */
 export const RADAR = { width: 540, height: 340, cx: 270, cy: 170, r: 110, levels: 5 } as const;
 
+/** Characters of a competency name one line of an axis label has room for beside the radar, at the label's 13 px. */
+export const LABEL_LINE = 18;
+
+const cut = (line: string) => (line.length > LABEL_LINE ? `${line.slice(0, LABEL_LINE - 1).trimEnd()}…` : line);
+
+/**
+ * An axis label as one or two lines of at most `LABEL_LINE` characters, broken between words, so the whole label
+ * stays inside the chart's box (AIV-P1-165 §11). A name too long for two lines ends in "…"; the rows beside the radar
+ * and its text equivalent carry every name in full.
+ */
+export function radarLabel(name: string): string[] {
+  const lines: string[] = [];
+  for (const word of name.trim().split(/\s+/)) {
+    const last = lines.at(-1);
+    if (last !== undefined && `${last} ${word}`.length <= LABEL_LINE) lines[lines.length - 1] = `${last} ${word}`;
+    else lines.push(word);
+  }
+  const [first = '', second, ...rest] = lines;
+  if (second === undefined) return [cut(first)];
+  return [cut(first), cut(rest.length > 0 ? `${second} ${rest.join(' ')}` : second)];
+}
+
 const round = (v: number) => Math.round(v * 10) / 10;
 
 /** The point on axis `i` of `n` at `distance` from the centre; axis 0 points up and the axes run clockwise. */

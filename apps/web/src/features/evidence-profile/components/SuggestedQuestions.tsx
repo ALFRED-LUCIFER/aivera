@@ -41,8 +41,8 @@ export function SuggestedQuestions({ view, problem, pending, onSuggest }: Sugges
   const stale = view.status === 'suggested' && view.stale;
   return (
     <Card>
-      <section aria-labelledby="questions-title" className="flex flex-col gap-3">
-        <h2 id="questions-title" className="font-display text-section text-text">
+      <section aria-labelledby="questions" className="flex flex-col gap-3">
+        <h2 id="questions" tabIndex={-1} className="scroll-mt-6 font-display text-section text-text">
           {t('title')}
         </h2>
         {view.status === 'no_gaps' ? (

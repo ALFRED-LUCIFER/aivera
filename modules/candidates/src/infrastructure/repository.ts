@@ -165,6 +165,14 @@ export function candidateStore(tx: Tx): CandidateStore & MergeStore {
         .returning({ id: person.id });
       return updated.length > 0;
     },
+    async rename(workspaceId, personId, name) {
+      const updated = await tx
+        .update(person)
+        .set({ displayName: name })
+        .where(and(eq(person.workspaceId, workspaceId), eq(person.id, personId), isNull(person.mergedIntoId)))
+        .returning({ id: person.id });
+      return updated.length > 0;
+    },
     listPeople(workspaceId) {
       return tx
         .select()

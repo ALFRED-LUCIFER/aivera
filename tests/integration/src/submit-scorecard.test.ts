@@ -13,7 +13,7 @@ import type { EvidenceContract } from '@credalent/evidence';
 import { createEvidence, readEvidenceForJobAsSystem } from '@credalent/evidence/composition';
 import type { IntakeContract } from '@credalent/intake';
 import { createCandidateJobResolver, createIntake, findApplication } from '@credalent/intake/composition';
-import type { InterviewsContract, ScorecardDraft } from '@credalent/interviews';
+import { NOT_SHOWN_REASON, type InterviewsContract, type ScorecardDraft } from '@credalent/interviews';
 import { createInterviews } from '@credalent/interviews/composition';
 import type { Competency, JobsContract } from '@credalent/jobs';
 import { createApprovedRubricReads, createJobs } from '@credalent/jobs/composition';
@@ -366,6 +366,76 @@ describe('Scenario: Every change is logged', () => {
       before: { competencyId: RETRIEVAL, strength: 'supporting', backedScore: 55 },
       after: { competencyId: RETRIEVAL, strength: 'medium', backedScore: 67, interviewId: d.interviewId },
     });
+  });
+});
+
+describe('Scenario: Rate only what was tested (AIV-P1-165)', () => {
+  it('submits with one competency rated: the one left unrated has no change, evidence or entry and stays where it was', async () => {
+    const d = await daniel();
+    const before = await latest(d.candidateId);
+    const draft: ScorecardDraft = {
+      competencies: [
+        { competencyId: RETRIEVAL, rating: 'clearly_shown', note: NOTE, questions: [{ text: '', mark: null }] },
+        { competencyId: COST, rating: null, note: '', questions: [{ text: '', mark: null }] },
+      ],
+      recommendation: null,
+    };
+    expect(await submit(d.interviewId, await prepared(d.interviewId, draft))).toEqual({ updated: true });
+    const after = await latest(d.candidateId);
+    const cost = (a: typeof after) => a?.competencies.find((c) => c.competencyId === COST)?.proven;
+    expect(cost(after)).toEqual(cost(before));
+    const changed = await admin.execute<{ competency: string }>(
+      sql`select competency_id as competency from assessment.interview_change where candidate_id = ${d.candidateId}`,
+    );
+    expect([...changed]).toEqual([{ competency: RETRIEVAL }]);
+  });
+
+  // SAFETY: mutation check: sent the empty note as the change's reason -> this test failed (the assessment refuses an
+  // empty reason, so the submit threw and nothing was logged).
+  it('"Not shown" with no note is applied and logged with a stated reason, and records no interview note', async () => {
+    const d = await daniel();
+    const before = (await audit.listFor(w1, { type: 'candidate', id: d.candidateId })).length;
+    const draft: ScorecardDraft = {
+      competencies: [
+        { competencyId: RETRIEVAL, rating: 'not_shown', note: '', questions: [{ text: '', mark: null }] },
+        { competencyId: COST, rating: null, note: '', questions: [{ text: '', mark: null }] },
+      ],
+      recommendation: null,
+    };
+    await submit(d.interviewId, await prepared(d.interviewId, draft));
+    const entries = (await audit.listFor(w1, { type: 'candidate', id: d.candidateId })).slice(before);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      action: 'score.changed',
+      actor: { type: 'user', id: LINA },
+      occurredAt: NOW,
+      note: NOT_SHOWN_REASON,
+      after: { competencyId: RETRIEVAL, strength: 'claim', rating: 'not_shown' },
+    });
+    const notes = await admin.execute(
+      sql`select 1 from evidence.source where candidate_id = ${d.candidateId} and kind = 'interview_note'`,
+    );
+    expect([...notes]).toEqual([]);
+    // A claim already counts zero: the backed score is where it was.
+    expect((await latest(d.candidateId))?.backedScore).toBe(55);
+  });
+
+  it('a scorecard with nothing rated and nothing marked is refused, and nothing is written', async () => {
+    const d = await daniel();
+    const before = await written(d.candidateId, d.interviewId);
+    const draft: ScorecardDraft = {
+      competencies: [RETRIEVAL, COST].map((competencyId) => ({
+        competencyId,
+        rating: null,
+        note: '',
+        questions: [{ text: '', mark: null }],
+      })),
+      recommendation: null,
+    };
+    await expect(submit(d.interviewId, await prepared(d.interviewId, draft))).rejects.toMatchObject({
+      code: 'scorecard_incomplete',
+    });
+    expect(await written(d.candidateId, d.interviewId)).toEqual(before);
   });
 });
 

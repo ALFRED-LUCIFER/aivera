@@ -1,7 +1,7 @@
 // An interview tests specific evidence: one candidate's application on one job, one round, one interviewer, and the
 // competencies of the job's approved rubric it must investigate (AIV-P2-001).
 
-/** Labels: `interviews.round.*` in packages/i18n (Round 1, structured screen; Round 2, evidence defence; Round 3, panel). */
+/** Labels: `interviews.round.*` in packages/i18n (Round 1, Round 2, Round 3: plain words, AIV-P1-165 §12). */
 export const ROUNDS = ['structured_screen', 'evidence_defence', 'panel'] as const;
 export type Round = (typeof ROUNDS)[number];
 
@@ -96,7 +96,7 @@ const MESSAGES = {
   // The scorecard submit (AIV-P2-006).
   scorecard_submitted: 'Already submitted',
   scorecard_incomplete:
-    'Rate every competency or mark its questions as not tested, and write what you saw or heard for each rating.',
+    'Rate at least one competency or mark its questions as not tested, and write what you saw or heard for each rating but Not shown.',
   not_synthetic: 'Only a synthetic demo workspace can be purged.',
   // The meeting summary (AIV-P1-115).
   summary_empty: 'Paste the meeting summary first.',
