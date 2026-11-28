@@ -106,6 +106,7 @@ describe('Scenario Outline: Personal data is redacted', () => {
       'credalent.ai.attempts': 3,
       'credalent.ai.cost_usd_micros': 41,
       'credalent.ai.template_version': 'jobs.draftCompetencies@1+citations@2+untrusted@1',
+      'credalent.ai.citation_failures': 1,
       'gen_ai.usage.input_tokens': 90,
       'gen_ai.usage.output_tokens': 4,
     };

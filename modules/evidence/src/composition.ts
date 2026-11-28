@@ -549,13 +549,15 @@ export function createEvidenceMappingHandlers(config: {
     mappingStoreFor: mappingStore,
     approvedRubric: config.approvedRubric,
     mapToCompetencies: async (workspaceId, competencies, sources) => {
+      let uncited = 0;
       const { links, changes } = await config.ai.generateStructured({
         ...mapToCompetencyRequest(competencies, sources),
         workspaceId,
         identifiers,
+        onDropped: (count) => (uncited = count),
       });
       // Quotes come back as the stored text; a limit or a check the model wrote may carry the placeholder.
-      return named({ links, changes });
+      return { ...named({ links, changes }), uncited };
     },
     compareExcerpts: async (workspaceId, sources, pairs) => {
       try {
@@ -599,6 +601,7 @@ export function createEvidenceMappingHandlers(config: {
           'credalent.evidence.gaps': counts.gaps,
           'credalent.evidence.contradictions': counts.contradictions,
           'credalent.evidence.uncited_changes': counts.uncitedChanges,
+          'credalent.evidence.uncited_links': counts.uncitedLinks,
           'credalent.evidence.too_long': counts.tooLong,
           'credalent.evidence.compared.sent': compared.sent,
           'credalent.evidence.compared.flagged': compared.flagged,

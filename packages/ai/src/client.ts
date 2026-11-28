@@ -276,6 +276,8 @@ export function createAiClient(options: {
        * instead of rejecting the answer (citations.ts checkOutput). A missing citation or a schema error still rejects.
        */
       dropInvalidCitations?: boolean;
+      /** With `dropInvalidCitations`: told how many elements the accepted answer lost, so the caller can store it. */
+      onDropped?: (count: number) => void;
       /**
        * The candidate's name, emails and phones from the candidate record, replaced in every source before the prompt
        * is built (identifiers.ts, ADR-006 point 7). Required whenever a source is not a job description.
@@ -303,10 +305,11 @@ export function createAiClient(options: {
       const full = `${prompt}\n\nSources:\n${formatSources((redaction?.sources ?? sources).slice(0, sources.length))}`;
       // The model is given the schema; we parse its text ourselves, so a mismatch and an uncited answer are told apart.
       const output = { ...Output.object({ schema }), parseCompleteOutput: async ({ text }: { text: string }) => text };
+      const template = `${input.promptVersion}+${CITATION_RULES_VERSION}+${UNTRUSTED_CONTENT_RULES_VERSION}+${RETRY_RULES_VERSION}${input.catalogueVersion !== undefined ? `+catalogue@${input.catalogueVersion}` : ''}`;
       return withSpan(`ai structured ${task}`, async () => {
         annotateSpan({
           'credalent.ai.task': task,
-          'credalent.ai.template_version': `${input.promptVersion}+${CITATION_RULES_VERSION}+${UNTRUSTED_CONTENT_RULES_VERSION}+${RETRY_RULES_VERSION}${input.catalogueVersion !== undefined ? `+catalogue@${input.catalogueVersion}` : ''}`,
+          'credalent.ai.template_version': template,
           'workspace.id': input.workspaceId,
         });
         // What the second attempt is told about the first: the same request again gets the same rejected answer
@@ -360,9 +363,17 @@ export function createAiClient(options: {
               redaction,
             );
             outcome('ok', { 'credalent.ai.attempts': attempts, 'credalent.ai.citation_failures': dropped });
-            // The count and the task only: never the statement or its quote (AGENTS.md 1.2).
+            // The count, the task and its prompt only: never the statement or its quote (AGENTS.md 1.2).
             if (dropped)
-              log.warn({ 'credalent.ai.task': task, 'credalent.ai.citation_failures': dropped }, 'ai citation failure');
+              log.warn(
+                {
+                  'credalent.ai.task': task,
+                  'credalent.ai.template_version': template,
+                  'credalent.ai.citation_failures': dropped,
+                },
+                'ai citation failure',
+              );
+            input.onDropped?.(dropped);
             return value;
           } catch (error) {
             // checkOutput throws only the contract's three errors, whose messages hold no output.

@@ -108,12 +108,15 @@ export const mapping = evidence
         .array()
         .notNull()
         .default(sql`'{}'`),
+      // Links dropped because their quote is not in their source (AIV-P1-156); a count, never the quote.
+      uncitedLinkCount: integer('uncited_link_count').notNull().default(0),
       createdAt: timestamp('created_at', tz).notNull(),
     },
     (t) => [
       unique('mapping_workspace_id_key').on(t.workspaceId, t.id),
       index('mapping_candidate_job_idx').on(t.workspaceId, t.candidateId, t.jobId, t.createdAt),
       check('mapping_changes_check', sql`jsonb_array_length(${t.changes}) <= 3`),
+      check('mapping_uncited_link_count_check', sql`${t.uncitedLinkCount} >= 0`),
       tenantPolicy('mapping_tenant_isolation', t.workspaceId),
     ],
   )

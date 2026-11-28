@@ -89,6 +89,7 @@ function answers(...outputs: unknown[]) {
       catalogueVersion?: number;
       sources?: Source[];
       dropInvalidCitations?: boolean;
+      onDropped?: (count: number) => void;
     } = {},
   ) =>
     ai.generateStructured({
@@ -437,8 +438,15 @@ describe('Scenario: Extraction that cites text not in the CV is rejected (AIV-P1
 
   // SAFETY: mutation check: rethrew InvalidCitation in drop mode (keep() always throws) -> this test failed
   it('drops only the statement whose quote is not in the CV and counts it on the span, with no CV text', async () => {
-    const output = await answers(two).run({ sources: [S1, S2], dropInvalidCitations: true });
+    const counts: number[] = [];
+    const output = await answers(two).run({
+      sources: [S1, S2],
+      dropInvalidCitations: true,
+      onDropped: (n) => counts.push(n),
+    });
     expect(output.strengths.map((s) => s.citations[0]?.quote)).toEqual(['cut cost per request by 40%']);
+    // AIV-P1-156: the caller is told the count once, for the answer it gets, so it can store it on its run.
+    expect(counts).toEqual([1]);
     expect(output.strengths[0]?.claim).toBe(true);
     expect(structuredSpan()?.attributes).toMatchObject({ 'credalent.ai.citation_failures': 1 });
     expect(JSON.stringify(structuredSpan()?.attributes)).not.toMatch(candidateText);
