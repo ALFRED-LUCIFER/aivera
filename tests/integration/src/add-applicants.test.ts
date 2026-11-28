@@ -10,7 +10,7 @@ import { createCandidates, displayNamesInWorkspace } from '@credalent/candidates
 import { createDb, withWorkspace, type Db } from '@credalent/db';
 import type { FilesContract } from '@credalent/files';
 import { createBlobStore, createFiles, type BlobStore } from '@credalent/files/composition';
-import { IntakeError, type IntakeContract, type Source } from '@credalent/intake';
+import { IntakeError, MAX_BATCH_ARRIVALS, type IntakeContract, type Source } from '@credalent/intake';
 import { createIntake } from '@credalent/intake/composition';
 import type { JobsContract } from '@credalent/jobs';
 import { createJobs } from '@credalent/jobs/composition';
@@ -247,6 +247,23 @@ describe('Scenario: Manual upload with a source', () => {
     expect(second).toMatchObject({ applicationId: first?.applicationId, created: false });
     expect((await sourcesOf(first?.applicationId ?? '')).map((s) => s.source)).toEqual(['referral', 'email']);
   });
+});
+
+describe('Scenario Outline: Several files at once, each validated (AIV-P1-165)', () => {
+  // SAFETY: mutation check: removed the MAX_BATCH_ARRIVALS check from receiveBatch -> this test failed (201 applications were written)
+  it('200 CVs in one save are 200 applications; a 201st in the same save is refused and nothing is written', async () => {
+    const uploaded = [];
+    for (let n = 0; n <= MAX_BATCH_ARRIVALS; n++) uploaded.push((await upload(cvOf(1000 + n))).fileId);
+    expect(uploaded).toHaveLength(201);
+    const before = [await count('intake.import_batches'), await count('intake.application')];
+    const refused = addApplicants(ALEX, 'referral', uploaded);
+    await expect(refused).rejects.toMatchObject({ code: 'batch_too_large' });
+    expect([await count('intake.import_batches'), await count('intake.application')]).toEqual(before);
+
+    const filed = await addApplicants(ALEX, 'referral', uploaded.slice(0, MAX_BATCH_ARRIVALS));
+    expect(filed?.filter((a) => a.created)).toHaveLength(200);
+    expect(await count('intake.application')).toBe((before[1] ?? 0) + 200);
+  }, 120_000);
 });
 
 describe('Scenario: Only clean files are linked to an application source', () => {

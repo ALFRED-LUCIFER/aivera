@@ -16,6 +16,7 @@ export {
   CHOICE_REASON_MAX,
   chosenOrDecided,
   IntakeError,
+  MAX_BATCH_ARRIVALS,
   PERSONAL_DATA_FIELDS,
   SOURCES,
   STAGES,
@@ -53,7 +54,8 @@ export interface IntakeContract {
    * Adds the CVs of one save of "Add applicants" under one confirmation (AIV-P1-104): records the batch (who, when, job,
    * wording version, count), receives each arrival with its `batchId`, and audits `intake.batch_confirmed` last, all in
    * the caller's transaction. Admins and recruiters. Throws `IntakeError('confirmation_required')` unless
-   * `rightToProcessConfirmed` is `true` and `IntakeError('job_not_found')`, writing nothing. The worker reads only
+   * `rightToProcessConfirmed` is `true`, `IntakeError('batch_too_large')` past `MAX_BATCH_ARRIVALS` CVs and
+   * `IntakeError('job_not_found')`, writing nothing. The worker reads only
    * arrivals that carry a batch.
    */
   receiveBatch(

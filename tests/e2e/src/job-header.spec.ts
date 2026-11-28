@@ -29,7 +29,7 @@ test('Scenario: Senior AI Engineer header', async ({ page }) => {
     'Job descriptionSaved 3 Nov',
     'Competencies and rubricApproved, version 2',
     // Intake's count (AIV-P1-101); other specs on this database may add applicants, so any number.
-    /^Bring in candidates(Not started|\d+ imported)$/,
+    /^Add CVs(Not started|\d+ imported)$/,
     /^Evidence and ranking(Not started|\d+ assessed)$/,
     'InterviewsNot started',
     'DecisionNot started',
@@ -41,7 +41,7 @@ test('Scenario: A job waiting for approval', async ({ page }) => {
   await openJob(page, 'Senior Product Designer');
   await expect(page.getByText('Draft, needs approval', { exact: true })).toBeVisible();
   // People can be brought in before approval (AIV-P1-101); seed.ts gives this job none.
-  await expect(stages(page).nth(2)).toHaveText('Bring in candidatesNot started');
+  await expect(stages(page).nth(2)).toHaveText('Add CVsNot started');
   await expect(stages(page).nth(3)).toHaveText('Evidence and rankingStarts after rubric approval');
   // A stage not reached stays reachable and says why it is empty.
   await stages(page).nth(3).click();

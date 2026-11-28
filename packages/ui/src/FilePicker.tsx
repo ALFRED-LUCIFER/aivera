@@ -18,7 +18,10 @@ export type FilePickerProps = {
   hint: string;
   /** The input's `accept`, e.g. ".pdf,.docx". The server checks again: this only filters the browser's dialog. */
   accept: string;
-  onSelect: (file: File) => void;
+  /** The chosen files: one, or with `multiple` every file of one pick, in the order the browser gives them. */
+  onSelect: (files: File[]) => void;
+  /** Several files in one pick (AIV-P1-165, Add CVs). */
+  multiple?: boolean;
   disabled?: boolean;
   /** 0 to 100 while uploading, otherwise null. */
   progress?: number | null;
@@ -29,7 +32,17 @@ export type FilePickerProps = {
 };
 
 /** A real button opening the browser's file dialog; a native file input keeps its accessibility and mobile pickers. */
-export function FilePicker({ label, hint, accept, onSelect, disabled, progress, status, error }: FilePickerProps) {
+export function FilePicker({
+  label,
+  hint,
+  accept,
+  onSelect,
+  multiple,
+  disabled,
+  progress,
+  status,
+  error,
+}: FilePickerProps) {
   const input = useRef<HTMLInputElement>(null);
   const id = useId();
   return (
@@ -50,13 +63,14 @@ export function FilePicker({ label, hint, accept, onSelect, disabled, progress, 
           ref={input}
           type="file"
           accept={accept}
+          multiple={multiple}
           hidden
           tabIndex={-1}
           onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
+            const files = [...(event.currentTarget.files ?? [])];
             // Cleared, so choosing the same file again after an error fires again.
             event.currentTarget.value = '';
-            if (file) onSelect(file);
+            if (files.length > 0) onSelect(files);
           }}
         />
       </div>

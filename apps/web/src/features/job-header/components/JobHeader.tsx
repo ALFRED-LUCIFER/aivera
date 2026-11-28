@@ -1,5 +1,5 @@
 import { useTranslations } from '@credalent/i18n/react';
-import { buttonClassName, StatusBadge, UploadIcon } from '@credalent/ui';
+import { StatusBadge } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -12,29 +12,25 @@ const check = (
   </svg>
 );
 
-// The way into "Bring in candidates" (AIV-P1-101): the Rubric artboard's "Import candidates" and the Candidates
-// artboard's "Add candidates", in the header's actions.
-const IMPORT_LINKS: Partial<Record<JobPage, 'importCandidates' | 'addCandidates'>> = {
-  rubric: 'importCandidates',
-  candidates: 'addCandidates',
-};
+// "Add CVs" in the header's actions (AIV-P1-101, AIV-P1-165): the Rubric artboard's "Import candidates" and the
+// Candidates artboard's "Add candidates", one name for the action. It opens the Add CVs dialog over the job page.
+const ADD_CVS_PAGES: readonly JobPage[] = ['rubric', 'candidates'];
 
 /** Every job page's header (AIV-P1-011): breadcrumb, title, where the job stands, and its stages as links. */
 export function JobHeader({
   view,
   current,
   ownerAction,
-  canImport = false,
+  addCvs,
 }: {
   view: JobHeaderView;
   current: JobPage | null;
   /** The admin's "Change hiring owner" control, shown beside the meta line (AIV-P1-097). */
   ownerAction?: ReactNode;
-  /** Admins and recruiters may bring candidates in; the add-applicants action checks it again. */
-  canImport?: boolean;
+  /** The Add CVs dialog and its button, for admins and recruiters only; the add-applicants action checks it again. */
+  addCvs?: ReactNode;
 }) {
   const t = useTranslations();
-  const importLink = canImport && current ? IMPORT_LINKS[current] : undefined;
   const meta = [
     view.team,
     view.location,
@@ -62,13 +58,7 @@ export function JobHeader({
               status={view.rubric.approved ? 'supported' : 'needsValidation'}
               label={t(`jobsList.rubric.${rubricLabel(view.rubric)}`)}
             />
-            {importLink && (
-              <Link href={jobPageHref(view.jobId, 'import') as Route} className={buttonClassName('secondary')}>
-                {/* The Rubric artboard draws the upload arrow; the Candidates artboard's "Add candidates" has none. */}
-                {importLink === 'importCandidates' && <UploadIcon />}
-                {t(`jobHeader.${importLink}`)}
-              </Link>
-            )}
+            {current && ADD_CVS_PAGES.includes(current) && addCvs}
           </div>
         </div>
       </div>

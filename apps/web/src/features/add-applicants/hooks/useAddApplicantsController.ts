@@ -1,70 +1,98 @@
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
-import { useDirectUpload } from '@/features/files';
+import { useRef, useState, useTransition } from 'react';
+import { uploadFile } from '@/features/files';
+import { acceptFor, type DirectUpload } from '@/features/files/domain/files.ts';
+import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import { saveFailure, type SaveFailure } from '@/features/shell/domain/saveFailure.ts';
-import type { AddApplicantsResult, UploadSource } from '../domain/addApplicants.ts';
+import { withinSave, type AddApplicantsResult, type CvRow, type UploadSource } from '../domain/addApplicants.ts';
 import { addApplicants } from '../services/addApplicants.ts';
 
-export type UploadedCv = { fileId: string; name: string };
+// A few uploads at a time: each is a handful of server actions plus a status poll every 2 s, and Next.js runs a tab's
+// server actions one after another, so 30 at once would queue every other request of the tab behind them.
+const AT_ONCE = 3;
 
 /**
- * The "Add applicants" dialog for one job: CVs uploaded one at a time through the files module, each kept once it is
- * clean, then all of them filed with the chosen source. The file name stays in the browser for the list only.
+ * The Add CVs dialog for one job (AIV-P1-019, AIV-P1-165): several CVs per pick, each uploaded straight to Blob storage
+ * through the files module and listed by its name with its own result, then the clean ones filed with the chosen
+ * source in one save of up to 200. The file names stay in the browser for the list only.
  */
-export function useAddApplicantsController(jobId: string, services = { addApplicants }) {
-  const upload = useDirectUpload('cv');
+export function useAddApplicantsController(jobId: string, services = { addApplicants, uploadFile }) {
   const router = useRouter();
-  const selected = useRef('');
+  // Bumped when the dialog closes: uploads still running stop, and their results are dropped.
+  const session = useRef(0);
+  const keys = useRef(0);
   const [open, setOpen] = useState(false);
-  const [source, setSource] = useState<UploadSource>('linkedin');
-  const [cvs, setCvs] = useState<UploadedCv[]>([]);
-  // Unticked every time: each save is its own batch and its own confirmation (AIV-P1-104).
+  // No default: the recruiter says where these CVs came from (AIV-P1-165).
+  const [source, setSource] = useState<UploadSource | null>(null);
+  const [rows, setRows] = useState<CvRow[]>([]);
+  const [over, setOver] = useState(0);
+  // Ticked once, it stays ticked for this dialog session, every save a batch of its own; reopened, it is unticked.
   const [confirmed, setConfirmed] = useState(false);
   const [result, setResult] = useState<AddApplicantsResult | null>(null);
   // The save threw (a 403, the network): the CVs and source stay chosen (AIV-P2-064).
   const [failure, setFailure] = useState<SaveFailure | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // Runs once per settled upload: the upload state is a new object on every change.
-  useEffect(() => {
-    if (upload.state.phase !== 'done') return;
-    const { fileId } = upload.state;
-    setCvs((list) => (list.some((cv) => cv.fileId === fileId) ? list : [...list, { fileId, name: selected.current }]));
-  }, [upload.state]);
-
-  const busy = upload.state.phase === 'uploading' || upload.state.phase === 'checking';
+  const ready = rows.flatMap((r) =>
+    r.upload.phase === 'done' && !r.added ? [{ key: r.key, fileId: r.upload.fileId }] : [],
+  );
+  const busy = rows.some(
+    (r) => r.upload.phase === 'idle' || r.upload.phase === 'uploading' || r.upload.phase === 'checking',
+  );
 
   return {
     open,
     onOpenChange(next: boolean) {
       setOpen(next);
       if (!next) {
-        setSource('linkedin');
-        setCvs([]);
+        session.current++;
+        setSource(null);
+        setRows([]);
+        setOver(0);
         setConfirmed(false);
         setResult(null);
         setFailure(null);
-        upload.reset();
       }
     },
-    source,
+    source: source ?? '',
     onSourceChange: (value: string) => setSource(value as UploadSource),
-    upload: upload.state,
-    accept: upload.accept,
-    onSelectCv(file: File) {
-      selected.current = file.name;
+    accept: acceptFor('cv'),
+    onSelectCvs(files: File[]) {
+      const { take, over: left } = withinSave(files, rows);
+      const picked = take.map((file) => ({ key: String(keys.current++), file }));
+      const listed: CvRow[] = picked.map(({ key, file }) => ({ key, name: file.name, upload: { phase: 'idle' } }));
+      setRows((list) => [...list, ...listed]);
+      setOver(left);
       setResult(null);
       setFailure(null);
-      void upload.onSelect(file);
+      const mine = session.current;
+      const alive = () => session.current === mine;
+      const patch = (key: string) => (upload: DirectUpload) => {
+        if (alive()) setRows((list) => list.map((r) => (r.key === key ? { ...r, upload } : r)));
+      };
+      const queue = [...picked];
+      const worker = async () => {
+        while (alive()) {
+          const next = queue.shift();
+          if (!next) return;
+          await services.uploadFile('cv', next.file, patch(next.key), alive);
+        }
+      };
+      void Promise.all(Array.from({ length: AT_ONCE }, worker));
     },
-    cvs,
+    rows,
+    over,
+    readyCount: ready.length,
     confirmed,
     onConfirmedChange: setConfirmed,
-    canSubmit: cvs.length > 0 && confirmed && !busy && !pending,
+    canSubmit: ready.length > 0 && source !== null && confirmed && !busy && !pending,
     pending,
     result,
     failure,
+    // After a save, with nothing new waiting, the one primary action is the ranking (AIV-P1-165).
+    rankingHref: rows.some((r) => r.added) && ready.length === 0 && !busy ? jobPageHref(jobId, 'candidates') : null,
     onSubmit() {
+      if (!source) return;
       startTransition(async () => {
         setFailure(null);
         let outcome;
@@ -73,16 +101,24 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
             jobId,
             rightToProcessConfirmed: true,
             source,
-            fileIds: cvs.map((cv) => cv.fileId),
+            fileIds: ready.map((r) => r.fileId),
           });
         } catch (error) {
           return setFailure(saveFailure(error));
         }
         setResult(outcome);
         if (!outcome.ok) return;
-        setCvs([]);
-        setConfirmed(false);
-        // The job header's "Bring in candidates" count, and the ranking, read the new applicants (AIV-P1-101).
+        // Intake answers in the order the CVs were sent.
+        const added = new Map(
+          ready.map((r, i) => [r.key, outcome.applications[i]?.created === false ? 'sourceAdded' : 'created'] as const),
+        );
+        setRows((list) =>
+          list.map((r) => {
+            const outcomeOf = added.get(r.key);
+            return outcomeOf ? { ...r, added: outcomeOf } : r;
+          }),
+        );
+        // The job header's Add CVs count, and the ranking, read the new applicants (AIV-P1-101).
         router.refresh();
       });
     },

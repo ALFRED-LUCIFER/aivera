@@ -16,8 +16,19 @@ describe('FilePicker', () => {
     expect(input.accept).toBe('.pdf,.png');
     const file = new File(['%PDF'], 'eval-set-sample.pdf', { type: 'application/pdf' });
     await userEvent.upload(input, file);
-    expect(onSelect).toHaveBeenCalledWith(file);
+    expect(onSelect).toHaveBeenCalledWith([file]);
     expect(input.value).toBe('');
+    expect(input.multiple).toBe(false);
+  });
+
+  it('with multiple, hands over every file of one pick in order (AIV-P1-165)', async () => {
+    const onSelect = vi.fn();
+    const { container } = render(<FilePicker {...props} multiple onSelect={onSelect} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input.multiple).toBe(true);
+    const files = ['cv-a.pdf', 'cv-b.pdf'].map((name) => new File(['%PDF'], name, { type: 'application/pdf' }));
+    await userEvent.upload(input, files);
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(files);
   });
 
   it('announces progress and status, and ties an error to the button', () => {
