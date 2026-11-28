@@ -488,12 +488,11 @@ describe('CandidateProfile: competency by competency', () => {
     expect(row('authored 412 of 460 commits').queryByText(/Strong|Medium|Supporting/)).toBeNull();
     expect(row('contract tests on every endpoint').getByText('Medium')).toBeTruthy();
     expect(row('contract tests on every endpoint').getByText('Candidate-submitted')).toBeTruthy();
-    // AIV-P1-165 §11: a claim reads "Claim only" in neutral ink, never the strength it is stored with, and has no
-    // warning-coloured pill.
+    // AIV-P1-165 §10/§11: a claim shows the strength it is stored with, as Compare does, and is named a claim in neutral
+    // ink, never a warning-coloured pill.
     const claim = row('Argued against a fully automatic refund bot.');
-    expect(claim.getByText('Claim only')).toBeTruthy();
-    expect(claim.queryByText('Supporting')).toBeNull();
-    expect(card.queryByText('Claim awaiting validation')).toBeNull();
+    expect(claim.getByText('Supporting')).toBeTruthy();
+    expect(claim.getByText('Claim awaiting validation').className).not.toMatch(/\b(?:bg|text|border)-(?:warn|err|ok)/);
     expect(marks()).toEqual([
       'cited evidence authored 412 of 460 commits',
       'cited evidence contract tests on every endpoint',
@@ -501,7 +500,7 @@ describe('CandidateProfile: competency by competency', () => {
   });
 
   // SAFETY: mutation check: the limit line drawn from `card.lead?.strength === 'claim'` again -> this test failed (no "counts zero" line on the Supporting row)
-  // SAFETY: mutation check: `Standing` drew the stored strength for a claim -> this test failed ("Supporting", a filled bar, on a claim)
+  // SAFETY: mutation check: `Standing` dropped the claim words for a claim -> this test failed (a Supporting claim not called a claim)
   it('Scenario: Calm evidence cards: a CV claim stored as Supporting is called a claim, says once that it counts zero, in neutral ink', () => {
     const cost: EvidenceCard = {
       ...arabic,
@@ -510,7 +509,7 @@ describe('CandidateProfile: competency by competency', () => {
       lead: { strength: 'supporting', provenance: 'claim' },
       items: [
         { id: 'i5', excerpt: 'cut cost per request by 40%', highlighted: false, own: null },
-        // A second claim, stored at another strength: it reads under the row's "Claim only", with no label of its own.
+        // A second claim, stored at another strength: it reads under the row's claim label, with no label of its own.
         {
           id: 'i6',
           excerpt: 'ran the on-call rota',
@@ -522,11 +521,10 @@ describe('CandidateProfile: competency by competency', () => {
     };
     show(ready(scored, null, { competencies: [cost] }));
     const card = cardOf('Cost and reliability');
-    expect(card.getAllByText('Claim only')).toHaveLength(1);
-    expect(card.queryByText('Supporting')).toBeNull();
-    // Never the warning-coloured "Claim awaiting validation" pill, nor any status colour on the row.
-    expect(card.queryByText('Claim awaiting validation')).toBeNull();
-    expect(card.getByText('Claim only').closest('article')?.innerHTML).not.toMatch(
+    // The same label Compare shows for this line, named a claim once, with no status colour on the row.
+    expect(card.getAllByText('Supporting')).toHaveLength(1);
+    expect(card.getAllByText('Claim awaiting validation')).toHaveLength(1);
+    expect(card.getByText('Supporting').closest('article')?.innerHTML).not.toMatch(
       /\b(?:bg|text|border)-(?:warn|err|ok)/,
     );
     // One limit line, not two.

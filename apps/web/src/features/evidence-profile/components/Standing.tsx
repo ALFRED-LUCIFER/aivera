@@ -11,16 +11,21 @@ import type { EvidenceCard } from '../domain/evidenceCards.ts';
 type Lead = NonNullable<EvidenceCard['lead']>;
 
 /**
- * A strength with its provenance. A claim is "Claim only" on the neutral meter and nothing else: no warning-coloured
- * pill beside it, and never the strength it is stored with (a CV line is stored as Supporting). `under` is the row's
- * lead when this is one item of the row: a second claim under a claim says nothing the row has not said.
+ * A strength with its provenance. A claim shows the strength it is stored with, the same label Compare shows for the
+ * same line (#677 §10, decided 28 Nov 2026), and is named a claim in neutral ink beside it: no warning-coloured pill.
+ * `under` is the row's lead when this is one item of the row: a second claim under a claim says nothing new.
  */
 export function Standing({ strength, provenance, under }: Lead & { under?: Lead | null }) {
   const t = useTranslations();
   if (provenance === 'claim') {
     if (under?.provenance === 'claim') return null;
-    // SAFETY: a claim is called a claim (AGENTS.md 1.6).
-    return <StrengthMeter strength="claim" label={t('rubric.strength.claim')} />;
+    // SAFETY: a claim is called a claim (AGENTS.md 1.6); its zero is stated once by LimitLine.
+    return (
+      <>
+        <StrengthMeter strength={strength} label={t(`rubric.strength.${strength}`)} />
+        <span className="text-meta text-text-2">{t('evidence.provenance.claim')}</span>
+      </>
+    );
   }
   return (
     <>

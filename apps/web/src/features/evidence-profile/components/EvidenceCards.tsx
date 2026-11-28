@@ -21,9 +21,9 @@ import { LimitLine, Standing } from './Standing.tsx';
 // - an item whose strength or provenance differs from the row's (the strongest proven item's) carries its own
 //   strength and tag beside it, which the artboard, with one item a row, does not draw: no item borrows a stronger
 //   label;
-// - a claim reads "Claim only" on the shared StrengthMeter, in neutral ink, whatever strength it is stored with, and
-//   carries no "Claim awaiting validation" pill: the artboard's warning-coloured pill on every CV-only row read as a
-//   failed check (AIV-P1-165 §11). The row still says it is a claim and that it counts zero (AGENTS.md 1.6);
+// - a claim shows its stored strength on the shared StrengthMeter, the label Compare shows for the same line, with
+//   "Claim awaiting validation" as neutral text, not the artboard's warning-coloured pill, which read as a failed
+//   check (AIV-P1-165 §10, §11). The row still says it is a claim and that it counts zero (AGENTS.md 1.6);
 // - a row states its limit once: a claim-only row the one claim line, any other row its cited items' limits on one
 //   line, where the artboard and the ticket drew one "Limit:" line per limit (AIV-P1-165 §11);
 // - "Awaiting live defence" (the ticket's Gherkin and the artboard) reads "To check in interview": the catalogue's one
