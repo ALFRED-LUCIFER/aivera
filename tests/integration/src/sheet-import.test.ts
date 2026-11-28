@@ -271,6 +271,13 @@ describe('Scenario: Map the columns and import', () => {
       sql`select after from audit.entry where action = 'intake.batch_confirmed'`,
     );
     expect(batch?.after.cvs).toBe(12);
+    // SAFETY: mutation check: dropped `rows: null` from addSheetImport's move to added -> this test failed (12 rows kept)
+    // The sheet's names, emails and links are not kept once the applications hold them (AGENTS.md 1.9).
+    const [stored] = await admin.execute<{ rows: unknown }>(
+      sql`select rows from intake.sheet_imports where id = ${id}`,
+    );
+    expect(stored?.rows).toBeNull();
+    expect(await view(id)).toMatchObject({ status: 'added', rows: [] });
     await expect(addPeople(id)).rejects.toThrow(new IntakeError('sheet_not_ready'));
     expect(await applicationsOnJob()).toBe(12);
   });

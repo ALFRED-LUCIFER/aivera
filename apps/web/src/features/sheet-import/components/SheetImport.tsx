@@ -49,6 +49,8 @@ export type SheetImportStepProps = {
   onConfirmedChange: (confirmed: boolean) => void;
   /** Rejects on a refusal, so the preview says nothing changed. */
   onAdd: () => Promise<void>;
+  /** How many people the add just added; null until then (and on a reload: the added import keeps no rows). */
+  added: number | null;
   onStartOver: () => void;
   pending: boolean;
   error: SheetActionError | null;
@@ -73,7 +75,7 @@ export function SheetImport(props: Props) {
 function Step(p: Exclude<Props, { readOnly: true }>) {
   const t = useTranslations('sheetImport');
   const view = p.view;
-  const added = view?.status === 'added' ? peopleOf(view).length : null;
+  const added = view?.status === 'added' ? p.added : null;
   return (
     <>
       {/* Mounted empty on every step, so the message is announced when it arrives (SuccessBanner). */}

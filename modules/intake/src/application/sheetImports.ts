@@ -174,8 +174,11 @@ export function sheetImportUseCases(p: SheetPorts) {
       const sheet = await own(ctx, input.sheetImportId);
       const people = (sheet.rows ?? []).filter((r) => r.problem === null);
       if (sheet.status !== 'ready' || people.length === 0) throw new IntakeError('sheet_not_ready');
-      // Moved first, so a second confirm (another tab) adds nobody twice; a refused batch rolls this back too.
-      if (!(await p.sheetStoreFor(ctx.tx).move(ctx.workspaceId, sheet.id, 'ready', { status: 'added' })))
+      // Moved first, so a second confirm (another tab) adds nobody twice; a refused batch rolls this back too. The rows
+      // (names, emails, phones, links) are dropped with it: the applications now hold what was added (AGENTS.md 1.9).
+      // shortcut: an import abandoned before this keeps its rows, and the CVs its links fetched stay in Blob tied to no
+      // application; purge both after a retention period once the workspace data-deletion job exists.
+      if (!(await p.sheetStoreFor(ctx.tx).move(ctx.workspaceId, sheet.id, 'ready', { status: 'added', rows: null })))
         throw new IntakeError('sheet_not_ready');
       const synthetic = await p.isSyntheticWorkspace(ctx);
       return p.receiveBatch(ctx, {

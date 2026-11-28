@@ -4,6 +4,7 @@ import { useDirectUpload } from '@/features/files';
 import {
   completeMapping,
   isWaiting,
+  peopleOf,
   POLL_MS,
   type SheetActionError,
   type SheetField,
@@ -24,6 +25,8 @@ export function useSheetImportController(jobId: string, view: SheetImportView | 
   const [mapping, setMapping] = useState(view?.mapping ?? null);
   const [mappingOf, setMappingOf] = useState(view?.id);
   const [confirmed, setConfirmed] = useState(false);
+  // Counted before adding: once added, the stored import no longer holds its rows (AGENTS.md 1.9).
+  const [added, setAdded] = useState<number | null>(null);
   const [error, setError] = useState<SheetActionError | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -85,10 +88,13 @@ export function useSheetImportController(jobId: string, view: SheetImportView | 
     /** The preview's confirm: rejects on a refusal, so the preview says nothing changed. */
     async onAdd() {
       if (!view) return;
+      const count = peopleOf(view).length;
       const result = await services.addSheetImport({ sheetImportId: view.id, rightToProcessConfirmed: true });
       if (!result.ok) throw new Error(result.error);
+      setAdded(count);
       router.refresh();
     },
+    added,
     /** Back to choosing a file; the abandoned import adds nobody. */
     onStartOver() {
       upload.reset();
