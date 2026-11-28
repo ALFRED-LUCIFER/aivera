@@ -33,8 +33,10 @@ import {
 //   when and why); the artboard records at once and asks for no reason;
 // - "Back to ranking" stays at the foot of the pack, where AIV-P2-010 put it, not beside "Record decisions";
 // - a recruiter, an admin or another hiring owner sees the choices read-only with "Only the hiring owner can record
-//   decisions"; on a job with no hiring owner an admin is offered "Record decisions yourself", which names them the
-//   hiring owner after a preview with a reason (owner decision (b), AIV-P1-165); a decided pack shows them read-only with who recorded them and when (the ticket's scenarios).
+//   decisions"; a decided pack shows them read-only with who recorded them and when (the ticket's scenarios);
+// - on a job with no hiring owner an admin reads "This job has no hiring owner yet…" and is offered "Record decisions
+//   yourself" (a secondary button, then the shared preview-confirm banner with a required reason), which names them the
+//   hiring owner (owner decision (b), AIV-P1-165): the artboard assumes a hiring owner is named and draws neither.
 
 const focusOnMount = (element: HTMLElement | null) => element?.focus();
 

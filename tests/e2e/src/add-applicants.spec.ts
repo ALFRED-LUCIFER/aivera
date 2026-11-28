@@ -78,8 +78,10 @@ test('Scenario: The add button waits for the confirmation: an unticked box, with
   await expect(add).toHaveAccessibleDescription('Choose where they came from to add them.');
   await dialog.getByRole('radio', { name: 'Referral' }).check();
   await expect(add).toHaveAccessibleDescription('Confirm the line above to add these CVs.');
-  // Source radios, Choose CV files, then the box: Space ticks it and the hint goes.
+  // Source radios, Choose CV files, "From a CSV or Excel file" (AIV-P1-165), then the box: Space ticks it and the hint goes.
   await dialog.getByRole('button', { name: 'Choose CV files' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('link', { name: 'From a CSV or Excel file' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(box).toBeFocused();
   await page.keyboard.press('Space');

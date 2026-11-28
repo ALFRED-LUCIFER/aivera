@@ -79,6 +79,8 @@ import { StageLine } from './StageLine.tsx';
 //   CV's file name; "Assessing N CVs" sits above the table while any CV is read or assessed, and the footer counts
 //   every row ("5 of 6 assessed");
 // - the intro sits under the stages, not under the title: the job header is shared by every job page (AIV-P1-011);
+// - when every assessed candidate's backed score is 0, a "Not verified" banner above the intro says the order rests on
+//   claims, and the intro states that rule (AIV-P1-165 §9, owner decision (a) open): the artboard draws no such state;
 // - no Credalent assistant panel: the assistant is AIV-P2-028 (#142);
 // - admins and recruiters see a row's duplicates under the name (AIV-P1-018; deviations in DuplicateActions.tsx).
 
