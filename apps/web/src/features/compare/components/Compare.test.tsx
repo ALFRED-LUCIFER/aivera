@@ -271,7 +271,7 @@ describe('Scenario: Trade-offs cite evidence', () => {
     expect(link.querySelector('mark')?.textContent).toContain(EXCERPT);
     expect(items[1]?.textContent).toContain('Source: arabic-ocr');
     expect(
-      screen.getByText(/7 points separate the 2 candidates\. The open claims are large enough to change this order\./),
+      screen.getByText(/7 points separate the 2 candidates\. If the open claims hold, they can change this order\./),
     ).toBeTruthy();
     expect(screen.getByText('Observed')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();

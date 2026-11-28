@@ -195,7 +195,10 @@ describe('Scenario: The recruiter can correct a name (AIV-P1-165 §8)', () => {
     show(ready(scored), false, undefined, { rename: blank });
     const dialog = within(screen.getByRole('dialog', { name: "Correct the candidate's name" }));
     expect(dialog.getByLabelText('Name')).toHaveProperty('value', 'Maria Santo');
-    expect(dialog.getByLabelText('Reason, recorded in the audit log')).toHaveProperty('required', true);
+    expect(dialog.getByLabelText('Reason, recorded in the audit log (do not write the name here)')).toHaveProperty(
+      'required',
+      true,
+    );
     expect(dialog.getByRole('button', { name: 'Save name' })).toHaveProperty('disabled', true);
     cleanup();
     const filled = rename({ open: true, name: 'Maria Santos', reason: 'Typo in read name', valid: true });

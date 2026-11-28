@@ -79,7 +79,7 @@ test('Scenario: Trade-offs cite evidence, asked for by keyboard', async ({ page 
   await expect(work.locator('mark')).toHaveText('cited evidence authored 412 of 460 commits');
   await expect(work).toContainText('Source: llm-eval-harness');
   await expect(tradeoffs(page)).toContainText(
-    '7 points separate the 3 candidates. The open claims are large enough to change this order.',
+    '7 points separate the 3 candidates. If the open claims hold, they can change this order.',
   );
   await work.getByRole('link').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Sara Al Qahtani' })).toBeVisible();

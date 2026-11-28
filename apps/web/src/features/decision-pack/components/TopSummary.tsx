@@ -25,6 +25,8 @@ export function TopSummary({ members }: { members: PackPreview['members'] }) {
             {source.itemId === null
               ? t('decisionPack.summary.assessment')
               : t('decisionPack.summary.source', { label: source.label })}
+            {/* SAFETY: a statement resting on the candidate's own words is called a claim here too (AGENTS.md 1.6). */}
+            {source.claim && ` · ${t('evidence.provenance.claim')}`}
           </span>
         )}
       </p>

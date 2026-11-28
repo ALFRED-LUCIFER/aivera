@@ -50,8 +50,8 @@ export const UNHANDLED_QUEUE = 'candidates';
 
 /**
  * The consumer of `UNHANDLED_QUEUE` (AIV-P1-165): completes each event, so none stays active and unconsumed until its
- * 14-day time to live dead-letters it. The event is not lost: its row stays in its module's outbox, marked sent, for
- * the consumer a later ticket adds. A body that is not an envelope is dead-lettered.
+ * 14-day time to live dead-letters it. Its row stays in its module's outbox, marked sent: the relay never resends a sent
+ * row, so a consumer a later ticket adds (AIV-P3-008) needs a replay. A body that is not an envelope is dead-lettered.
  */
 export async function acknowledgeUnhandled(delivery: Delivery): Promise<void> {
   const envelope = envelopeSchema.safeParse(delivery.body);

@@ -198,6 +198,7 @@ describe('DecisionPack', () => {
 
   // AIV-P1-165 section 13 "Ordered, summarised and the recruiter's": the page shows members in the order it is given
   // (loadPack orders them by backed score).
+  // SAFETY: mutation check: the `source.claim` line removed from TopSummary -> this test failed (a CV-cited risk read as backed)
   it("Scenario: Ordered, summarised and the recruiter's: the top summary lists each person with scores, one cited strength and one risk, and what separates them", () => {
     show(
       page([
@@ -213,7 +214,7 @@ describe('DecisionPack', () => {
       .getAllByRole('listitem')
       .map((li) => li.textContent);
     expect(rows).toEqual([
-      'Daniel Novak · 55 backed by evidence · up to 78 if claims holdHighest backed score in this pack.Strength: Checked evidence on the heaviest competencies; 412 of 460 commits in her eval harness. · Source: llm-eval-harnessRisk: Cost reduction and Arabic work are claims with nothing to inspect. · Source: CV',
+      'Daniel Novak · 55 backed by evidence · up to 78 if claims holdHighest backed score in this pack.Strength: Checked evidence on the heaviest competencies; 412 of 460 commits in her eval harness. · Source: llm-eval-harnessRisk: Cost reduction and Arabic work are claims with nothing to inspect. · Source: CV · Claim awaiting validation',
       expect.stringContaining(
         'Priya Nair · 49 backed by evidence · up to 77 if claims hold6 points below Daniel Novak on backed score.',
       ),

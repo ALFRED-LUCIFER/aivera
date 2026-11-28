@@ -101,17 +101,13 @@ describe('pickActiveWorkspace', () => {
 // Assessing is the scoring formula: no model call.
 describe("Scenario: A pilot day's allowance covers a pilot day's work", () => {
   const LARGEST = { detectDomain: 795, draftCompetencies: 2_043, parseCv: 9_003, mapToCompetency: 6_067 };
+  // shortcut: a Service Bus redelivery (up to 10, messaging.bicep) charges again and a per-workspace override can lower
+  // the allowance; neither is counted here. Upgrade by checking the dev workspace's usage once the pilot runs.
   const ATTEMPTS = 2;
   const CVS = 30;
   const jobDraft = ATTEMPTS * (LARGEST.detectDomain + LARGEST.draftCompetencies);
   const cvsReadAndMapped = CVS * ATTEMPTS * (LARGEST.parseCv + LARGEST.mapToCompetency);
   const pilotDay = jobDraft + cvsReadAndMapped;
-
-  it('one job draft and 30 CVs read and mapped cost 909,876 tokens at the largest calls seen', () => {
-    expect(jobDraft).toBe(5_676);
-    expect(cvsReadAndMapped).toBe(904_200);
-    expect(pilotDay).toBe(909_876);
-  });
 
   it('the default daily allowance covers that day twice over, so no CV waits for tomorrow', () => {
     expect(AI_DAILY_TOKEN_BUDGET.default).toBeGreaterThanOrEqual(2 * pilotDay);

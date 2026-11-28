@@ -410,7 +410,7 @@ test('Scenario: The recruiter can correct a name, audited, by keyboard', async (
   }).toPass();
   await dialog.getByLabel('Name', { exact: true }).fill('Maria Santos');
   await page.keyboard.press('Tab');
-  await expect(dialog.getByLabel('Reason, recorded in the audit log')).toBeFocused();
+  await expect(dialog.getByLabel('Reason, recorded in the audit log (do not write the name here)')).toBeFocused();
   await page.keyboard.type('Typo in read name');
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');

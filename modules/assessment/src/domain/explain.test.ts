@@ -40,6 +40,20 @@ describe('citedLead', () => {
     expect(citedLead(snapshot)).toEqual({ competencyId: 'c-eval', itemId: 'cv-eval', level: 4, claim: true });
   });
 
+  // SAFETY: mutation check: `assess` sorting cited items by id only again -> this test failed (it cited the level-2 commit).
+  it('cites the item that sets the proven level, not the first by id', () => {
+    const snapshot = assess(RUBRIC, [
+      link('a-commit', 'c-eval', 2, 'submitted'),
+      link('z-repo', 'c-eval', 4, 'submitted'),
+    ]);
+    expect(citedLead(snapshot)).toEqual({ competencyId: 'c-eval', itemId: 'z-repo', level: 4, claim: false });
+    const claims = assess(RUBRIC, [
+      link('a-cv', 'c-eval', 2, 'claim', 'supporting'),
+      link('z-cv', 'c-eval', 4, 'claim', 'supporting'),
+    ]);
+    expect(citedLead(claims)).toEqual({ competencyId: 'c-eval', itemId: 'z-cv', level: 4, claim: true });
+  });
+
   it('cites nothing when the snapshot cites nothing', () => {
     expect(citedLead(assess(RUBRIC, []))).toBeNull();
   });

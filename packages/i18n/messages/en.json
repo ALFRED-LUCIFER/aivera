@@ -2205,7 +2205,7 @@
       "title": "Correct the candidate's name",
       "description": "The new name shows everywhere for this candidate. The correction is recorded in the audit log with your name, the time and your reason.",
       "label": "Name",
-      "reason": "Reason, recorded in the audit log",
+      "reason": "Reason, recorded in the audit log (do not write the name here)",
       "save": "Save name",
       "saving": "Saving…",
       "cancel": "Cancel",
@@ -2484,7 +2484,7 @@
       "notScored": "The trade-offs compare scored candidates. Fewer than 2 here are scored.",
       "notScoredYet": "{name} is not scored yet.",
       "closing": "{points, plural, one {# point separates} other {# points separate}} the {count} {partial, select, true {scored candidates} other {candidates}}.",
-      "couldChange": "The open claims are large enough to change this order."
+      "couldChange": "If the open claims hold, they can change this order."
     }
   }
 }

@@ -155,7 +155,7 @@ function StageCell({ row }: { row: JobRow }) {
 function Figure({ value, percent = false }: { value: number | null; percent?: boolean }) {
   const t = useTranslations('jobsList');
   if (value === null) return <ValueBasis basis="not-available" label={t('notYetAvailable')} />;
-  // Zero is nothing observed yet: the bare figure, no "Observed" chip (AIV-P1-165).
+  // A zero count is shown bare, with no "Observed" chip (AIV-P1-165 §5).
   if (value === 0 && !percent) return <span className="tabular-nums">{t('count', { count: 0 })}</span>;
   return (
     <span className="inline-flex items-center gap-2 tabular-nums">

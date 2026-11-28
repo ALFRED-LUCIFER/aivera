@@ -11,7 +11,6 @@ import {
   Input,
   Label,
   LevelMeter,
-  ProvenanceTag,
   Select,
   StatusBadge,
   SuccessBanner,
@@ -510,7 +509,8 @@ function ReasonLine({
   const t = useTranslations();
   return (
     <span className="mt-1 flex max-w-[64ch] flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-text-2">
-      {reason.claim && <ProvenanceTag provenance="claim" label={t('evidence.provenance.claim')} />}
+      {/* Neutral words, as on the profile and in Compare: the amber pill read as a failed check (#677 §10, §11). */}
+      {reason.claim && <span className="font-semibold text-text">{t('evidence.provenance.claim')}</span>}
       <span>
         {t(reason.claim ? 'ranking.reason.claim' : 'ranking.reason.backed')}{' '}
         {/* Built from opaque ids, which typed routes cannot check. */}
