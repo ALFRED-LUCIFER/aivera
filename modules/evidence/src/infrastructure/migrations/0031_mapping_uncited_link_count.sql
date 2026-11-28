@@ -1,0 +1,2 @@
+ALTER TABLE "evidence"."mapping" ADD COLUMN "uncited_link_count" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "evidence"."mapping" ADD CONSTRAINT "mapping_uncited_link_count_check" CHECK ("evidence"."mapping"."uncited_link_count" >= 0);

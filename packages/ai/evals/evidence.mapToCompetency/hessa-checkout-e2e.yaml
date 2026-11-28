@@ -22,7 +22,7 @@ expected:
     links[*].label: [submitted]
     links[*].strength: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@3
+  promptVersion: evidence.mapToCompetency@4
   promptHash: 88d89ecccd12
   output:
     links:
@@ -33,9 +33,13 @@ recorded:
         limit: This evidence does not show the specific nature or scope of the test automation suite.
         citations:
           - sourceId: S1
-            quote: |-
-              checkout-e2e
-              authored 148 of 171 commits
+            quote: authored 148 of 171 commits
     changes:
+      - competencyId: c-test
+        text:
+          Provide evidence of the specific test automation suite authored and maintained, such as documentation or examples
+          of test cases.
       - competencyId: c-ci
-        text: Provide evidence of maintaining CI pipelines with run history or metrics showing CI reliability.
+        text:
+          Provide evidence of CI pipelines maintained by the candidate, including run history or descriptions of their role
+          in keeping pipelines green.

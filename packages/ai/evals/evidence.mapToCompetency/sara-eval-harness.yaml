@@ -43,7 +43,7 @@ expected:
     Every link's limit names what its evidence does not show, such as who reviewed the work, its effect on product
     decisions, or that a CV line has nothing to inspect.
 recorded:
-  promptVersion: evidence.mapToCompetency@3
+  promptVersion: evidence.mapToCompetency@4
   promptHash: 88d58689f47d
   output:
     links:
@@ -51,7 +51,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the detailed monitoring or scale of the LLM system.
+        limit: This evidence does not show the monitoring details or scale beyond merchant count.
         citations:
           - sourceId: S2
             quote: Led the merchant assistant used by about 9,000 merchants
@@ -59,7 +59,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the exact measurement methods or ongoing reliability data.
+        limit: This evidence does not show the measurement details or latency improvements.
         citations:
           - sourceId: S2
             quote: Cut cost per request by 40% with response caching
@@ -67,7 +67,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the size or impact of the Arabic evaluation set.
+        limit: This evidence does not show the models or evaluations beyond dataset creation.
         citations:
           - sourceId: S2
             quote: Built a Gulf Arabic evaluation set for the assistant
@@ -75,7 +75,7 @@ recorded:
         strength: strong
         label: submitted
         level: 4
-        limit: This evidence does not show the scale or impact of the evaluation harness in production.
+        limit: This evidence does not show the scale or impact of the eval harness.
         citations:
           - sourceId: S1
             quote: llm-eval-harness
@@ -83,17 +83,19 @@ recorded:
         strength: strong
         label: submitted
         level: 4
-        limit: This evidence does not show the candidate's role in maintaining the Python service or its production use.
+        limit: This evidence does not show the candidate's maintenance or testing practices explicitly.
         citations:
           - sourceId: S1
             quote: authored 412 of 460 commits
     changes:
       - competencyId: c-llm
-        text: Provide monitoring data or logs showing the assistant's performance and uptime in production.
+        text: Provide monitoring data or user feedback for the merchant assistant to confirm production use and impact.
       - competencyId: c-cost
-        text: Include detailed cost or latency measurement reports before and after optimizations.
+        text: Show detailed cost or latency measurements before and after optimizations to validate improvements.
       - competencyId: c-arabic
-        text: Show the size, annotation process, or evaluation results of the Gulf Arabic dataset.
+        text:
+          Include examples of models trained or evaluations performed using the Gulf Arabic dataset to demonstrate applied
+          expertise.
   judge:
     pass: true
     reason: Every link's limit names what its evidence does not show, as required by the rubric.

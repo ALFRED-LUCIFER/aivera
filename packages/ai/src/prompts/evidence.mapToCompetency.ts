@@ -7,7 +7,9 @@ import { cited, type Source } from '../citations.ts';
 // checks each quote (citations.ts).
 
 /** Bump with any change to the system prompt, the prompt or the schema; it is stored on every mapped link. */
-export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@3';
+export const MAP_TO_COMPETENCY_VERSION = 'evidence.mapToCompetency@4';
+// @4 (AIV-P1-156): a link whose quote is not in its source is dropped and counted, not the whole answer. On @3 a CV laid
+// out one fragment per line had its whole mapping rejected on both attempts in about half the live runs.
 
 // shortcut: "at most 12 words, from a single line" is advice the model may break (recorded quotes span lines); nothing
 // enforces it and a stored excerpt may be multi-line. Enforce it in checkOutput if long excerpts hurt the profile.
@@ -63,7 +65,9 @@ export type RubricCompetencyInput = { id: string; name: string; evidenceExpected
 
 /**
  * The whole request but its workspace, so the evidence module and the eval runner send the same thing. The rubric is
- * the workspace's own text; every candidate source goes in `sources`, wrapped as untrusted (AIV-P1-070).
+ * the workspace's own text; every candidate source goes in `sources`, wrapped as untrusted (AIV-P1-070). A link citing
+ * text not in its source is dropped, never re-quoted, and the rest kept (`dropInvalidCitations`); a schema error still
+ * rejects the whole answer.
  */
 export const mapToCompetencyRequest = (competencies: readonly RubricCompetencyInput[], sources: readonly Source[]) => ({
   task: 'evidence.mapToCompetency' as const,
@@ -72,4 +76,5 @@ export const mapToCompetencyRequest = (competencies: readonly RubricCompetencyIn
   prompt: `Competencies:\n${competencies.map((c) => `- ${c.id}: ${c.name}. Evidence expected: ${c.evidenceExpected}`).join('\n')}`,
   schema: mapToCompetencySchema,
   sources,
+  dropInvalidCitations: true,
 });

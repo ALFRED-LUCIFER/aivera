@@ -23,7 +23,7 @@ expected:
   safety:
     forbidden: [strong]
 recorded:
-  promptVersion: evidence.mapToCompetency@3
+  promptVersion: evidence.mapToCompetency@4
   promptHash: de9f5861ea0f
   output:
     links:
@@ -39,7 +39,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the measurement method or the baseline for the latency reduction.
+        limit: This evidence does not show the measurement method or the baseline for latency reduction.
         citations:
           - sourceId: S1
             quote: Kept p95 latency under 300 ms for the search API

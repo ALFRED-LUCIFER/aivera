@@ -635,6 +635,93 @@ describe('Feature: Evidence mapping runs in order and stays bounded (AIV-P2-062)
   });
 });
 
+const linkTo = (competencyId: string, quote: string) => ({
+  competencyId,
+  strength: 'supporting',
+  label: 'claim',
+  level: 2,
+  limit: 'On the CV only.',
+  citations: cite('S1', quote),
+});
+// One CV laid out one short fragment per line, as a PDF extraction gives it.
+const recordFragments = (candidateId: string) =>
+  as(ALEX, w1, (ctx) =>
+    evidence.recordEvidence(ctx, {
+      candidateId,
+      source: {
+        kind: 'cv',
+        label: 'CV',
+        url: null,
+        blobFileId: null,
+        capturedAt: NOW,
+        checkedAt: null,
+        checkMethod: null,
+      },
+      items: ['QA Automation Engineer', 'Wrote the Playwright suite', 'Ran it in CI'].map((excerpt) => ({
+        excerpt,
+        excerptSpan: null,
+        provenance: 'claim' as const,
+        strength: 'supporting' as const,
+        limit: CLAIM_LIMIT,
+      })),
+      synthetic: true,
+    }),
+  );
+describe("Feature: One uncited link no longer wipes out a candidate's mapped evidence (AIV-P1-156)", () => {
+  // SAFETY: mutation check: stored uncitedLinkCount 0 in mapEvidence -> this test failed
+  it('Scenario: A link whose quote is not in the CV is dropped and the others are kept', async () => {
+    approved = { [JOB]: V2 };
+    const imran = await newCandidate('Imran Qureshi', 'imran.qureshi@example.com');
+    await recordFragments(imran);
+    completion = JSON.stringify({
+      links: [
+        linkTo(RETRIEVAL, 'Wrote the Playwright suite'),
+        linkTo(PYTHON, 'Ran it in CI'),
+        // Joined from two separate lines: not in the source, so dropped, never re-quoted.
+        linkTo(COST, 'Wrote the Playwright suite in CI'),
+      ],
+      changes: [],
+    });
+    await mapNow(w1, imran, JOB);
+
+    const mapping = await as(ALEX, w1, (ctx) => evidence.getEvidenceMapping(ctx, imran, JOB));
+    expect(mapping?.uncitedLinkCount).toBe(1);
+    const linked = (await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, imran, JOB))).filter(
+      (i) => i.competencies.length,
+    );
+    expect(linked.map((i) => [i.excerpt, i.competencies[0]?.competencyId]).toSorted()).toEqual(
+      [
+        ['Ran it in CI', PYTHON],
+        ['Wrote the Playwright suite', RETRIEVAL],
+      ].toSorted(),
+    );
+    // The run and its event carry no quote: the count is the only trace of the dropped link.
+    const [run] = await rows(w1, sql`select * from evidence.mapping where id = ${mapping?.id ?? ''}`);
+    const [event] = await rows(
+      w1,
+      sql`select payload from evidence.outbox where payload->>'mappingId' = ${mapping?.id ?? ''}`,
+    );
+    expect(JSON.stringify([run, event])).not.toMatch(/Playwright suite in CI|Imran|Qureshi/);
+  });
+
+  it('Scenario: Every link dropped still stores the run, with its count and no link', async () => {
+    approved = { [JOB]: V2 };
+    const noura = await newCandidate('Noura Al Ketbi', 'noura.al.ketbi@example.com');
+    await recordFragments(noura);
+    completion = JSON.stringify({
+      links: [linkTo(RETRIEVAL, 'Wrote the Playwright suite in CI'), linkTo(PYTHON, 'Led a team of 12')],
+      changes: [],
+    });
+    await mapNow(w1, noura, JOB);
+
+    expect((await as(ALEX, w1, (ctx) => evidence.getEvidenceMapping(ctx, noura, JOB)))?.uncitedLinkCount).toBe(2);
+    const listed = await as(ALEX, w1, (ctx) => evidence.listEvidenceForCandidate(ctx, noura, JOB));
+    expect(listed.filter((i) => i.competencies.length)).toEqual([]);
+    // The recorded CV lines stay, unlinked: nothing about her is hidden.
+    expect(listed).toHaveLength(3);
+  });
+});
+
 describe("Feature: A person's linked interview summary is never mapped again (AIV-P1-115)", () => {
   // SAFETY: mutation check: skipped every interview_note item again (the competency-link condition removed) -> this test
   // failed (the unlinked notes were never sent, so nothing linked them to Arabic)
