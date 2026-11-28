@@ -258,6 +258,7 @@ describe('Scenario: Map the columns and import', () => {
       expect(cv.blob_path).toMatch(/^cvs\/w\//);
     }
     // SAFETY: nothing is added before "Add 12 people to this job".
+    // SAFETY: mutation check: getSheetImport added the ready rows through receiveBatch -> this test failed (12, not 0)
     expect(await applicationsOnJob()).toBe(0);
 
     await addPeople(id);
