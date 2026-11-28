@@ -139,9 +139,10 @@ describe('Scenario: Scorecard shows what to test', () => {
     expect(within(retrieval).getByRole('heading', { level: 2 }).textContent).toBe(
       'Retrieval and evaluation · weight 20%',
     );
-    // AIV-P1-165 §11: a CV claim reads "Claim only" in neutral ink, as on the profile, and states its limit once.
-    expect(within(retrieval).getByText('Claim only')).toBeTruthy();
-    expect(within(retrieval).queryByText('Claim awaiting validation')).toBeNull();
+    // AIV-P1-165 §10/§11: a CV claim shows its stored strength, as on the profile and in Compare, is named a claim in
+    // neutral ink, and states its limit once.
+    expect(within(retrieval).getByText('Supporting')).toBeTruthy();
+    expect(within(retrieval).getByText('Claim awaiting validation')).toBeTruthy();
     // SAFETY: a claim's words are shown plain, never highlighted (AGENTS.md 1.6).
     expect(within(retrieval).getByText('raised answer accuracy from 71% to 88%').closest('mark')).toBeNull();
     expect(
