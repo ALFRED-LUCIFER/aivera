@@ -48,7 +48,7 @@ test('Scenario: Scorecard shows what to test', async ({ page }) => {
   await expect(page).toHaveTitle('Interview scorecard · Credalent');
   // "Today, 14:00" on the seed's Gulf day, its date after Gulf midnight (AIV-P1-149).
   await expect(
-    page.getByText(`Senior AI Engineer · structured screen · ${seededInterviewLabels().daniel} · interviewer: you`, {
+    page.getByText(`Senior AI Engineer · ${seededInterviewLabels().daniel} · interviewer: you`, {
       exact: true,
     }),
   ).toBeVisible();
@@ -57,19 +57,21 @@ test('Scenario: Scorecard shows what to test', async ({ page }) => {
   ).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('list', { name: 'Interview rounds' }).getByRole('listitem')).toHaveText([
     `Evidence assessed${SCORE}Observed`,
-    'Round 1, structured screenCurrent round',
-    'Round 2, evidence defenceIf shortlisted',
-    'Round 3, panelIf shortlisted',
+    'Round 1Current round',
+    'Round 2If shortlisted',
+    'Round 3If shortlisted',
   ]);
 
   const retrieval = card(page, 'Retrieval and evaluation');
   await expect(retrieval.getByRole('heading', { level: 2 })).toHaveText('Retrieval and evaluation · weight 20%');
-  await expect(retrieval.getByText('Supporting', { exact: true })).toBeVisible();
-  await expect(retrieval.getByText('Claim awaiting validation', { exact: true })).toBeVisible();
+  // AIV-P1-165 §11: a CV claim reads "Claim only" in neutral ink, as on the profile, with no warning-coloured pill.
+  await expect(retrieval.getByText('Claim only', { exact: true })).toBeVisible();
+  await expect(retrieval.getByText('Claim awaiting validation')).toHaveCount(0);
   // A claim's words are shown plain, never highlighted (AGENTS.md 1.6).
   await expect(retrieval.getByText('raised answer accuracy from 71% to 88%', { exact: true })).toBeVisible();
   await expect(retrieval.locator('mark')).toHaveCount(0);
-  await expect(retrieval.getByText('Claim only. Counts as zero in the backed score.')).toBeVisible();
+  await expect(retrieval.getByText(/^Limit:/)).toHaveCount(1);
+  await expect(retrieval.getByText('A claim, not inspected work. It counts zero in the backed score.')).toBeVisible();
 
   const cost = card(page, 'Cost and reliability');
   await expect(cost.getByRole('heading', { level: 2 })).toHaveText('Cost and reliability · weight 15%');

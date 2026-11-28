@@ -11,8 +11,8 @@ import type { interviewAction, neighbours, primaryAction } from '@/features/evid
 import { IN_PROGRESS } from '@/features/evidence-profile/domain/cvStatus.ts';
 import type { ProfileData } from '@/features/evidence-profile/domain/profile.ts';
 import { useNameController } from '@/features/evidence-profile/hooks/useNameController.ts';
-import { useStartController } from '@/features/interviews';
 import { scorecardHref } from '@/features/interviews/domain/interviews.ts';
+import { useStartController } from '@/features/interviews/hooks/useStartController.ts';
 import { AddToPack } from '@/features/ranking/components/AddToPack.tsx';
 import { ChooseForInterview } from '@/features/ranking/components/ChooseForInterview.tsx';
 import { packHref } from '@/features/ranking/domain/pack.ts';

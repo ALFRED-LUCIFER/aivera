@@ -189,7 +189,8 @@ test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
   const interviews = page.getByRole('table', { name: 'Interviews' });
   for (const name of ['Daniel Novak', 'Priya Nair']) {
     const row = interviews.getByRole('row').filter({ hasText: name });
-    await expect(row).toContainText('Round 1, structured screen');
+    await expect(row).toContainText('Round 1');
+    await expect(row).not.toContainText('structured screen');
     await expect(row).toContainText('Not scheduled yet');
   }
   await expect(interviews.getByRole('row').filter({ hasText: 'Omar Al Suwaidi' })).toHaveCount(0);
@@ -197,7 +198,7 @@ test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
   // AIV-P2-007: schedule Daniel's Round 1 from the Interviews page. Nobody is contacted.
   const daniel = interviews.getByRole('row').filter({ hasText: 'Daniel Novak' });
   await expect(() => daniel.getByRole('button', { name: 'Schedule Daniel Novak' }).click({ timeout: 1000 })).toPass();
-  const dialog = page.getByRole('dialog', { name: 'Schedule Round 1, structured screen' });
+  const dialog = page.getByRole('dialog', { name: 'Schedule Round 1' });
   await expect(dialog).toContainText('Nobody is contacted.');
   await expectAccessible(page);
   // Scenario: Validation. No time yet: nothing is created.
@@ -219,7 +220,7 @@ test('Scenario: Preview, then confirm, by keyboard', async ({ page }) => {
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expect(() => priya.getByRole('button', { name: 'Schedule Priya Nair' }).click({ timeout: 1000 })).toPass();
-    const clash = page.getByRole('dialog', { name: 'Schedule Round 1, structured screen' });
+    const clash = page.getByRole('dialog', { name: 'Schedule Round 1' });
     await clash.getByLabel('Date').fill(nextWeek);
     await clash.getByLabel('Time (Asia/Dubai)').fill('11:30');
     await clash.getByRole('button', { name: 'Schedule', exact: true }).click();

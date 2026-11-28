@@ -690,8 +690,9 @@ describe('Scenario: The recruiter can correct a name, audited (AIV-P1-165)', () 
     expect(await nameOf(omar.personId)).toBe('Omar Al-Suwaidi');
   });
 
-  // SAFETY: mutation check: dropped `eq(person.workspaceId, workspaceId)` from the store's `rename` -> the first
-  // assertion still held, by row-level security alone; with the policy also dropped the name changed. Both layers hold.
+  // SAFETY: mutation check: dropped `eq(person.workspaceId, workspaceId)` from the store's `rename` -> this test
+  // still passed: with the repository filter gone, row-level security alone hides W1's row from W2's transaction
+  // (the second layer, AGENTS.md 1.4). The raw update below asks the database the same thing with no filter at all.
   it("another workspace's person is not found, by the workspace filter and by row-level security", async () => {
     const job = await newJob('Test Engineer');
     const sara = await arrive(job, 'Sara Al Qahtani', 'linkedin', { cv: 9185 });

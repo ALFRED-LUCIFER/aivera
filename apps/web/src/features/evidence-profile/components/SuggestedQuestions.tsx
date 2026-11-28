@@ -7,6 +7,8 @@ import type { QuestionsView } from '../domain/questions.ts';
 // AIV-P1-113: "Needs live verification" of the Candidate artboard (docs/01-design/artboards/Candidate.dc.html): a
 // card with the heading and, under it, what to test live with this candidate.
 // Deviations, each for the ticket, a rule or a later ticket:
+// - the heading is "Interview questions", not the artboard's "Needs live verification": it is what the profile's "On
+//   this page" links name, and the heading takes focus from them (AIV-P1-165 §11);
 // - the artboard draws one line per gap; here each gap is its competency's name with 2 or 3 suggested questions under
 //   it, each with the words it cites, their source and "A strong answer shows" and "A weak answer shows" (the ticket);
 // - a "Suggest interview questions" button, which the artboard does not draw: questions are asked for on demand, one

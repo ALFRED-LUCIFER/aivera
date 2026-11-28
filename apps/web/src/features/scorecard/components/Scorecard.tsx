@@ -53,7 +53,8 @@ import type { ScorecardCompetency, ScorecardData, SubmitOutcome } from '../domai
 // - "Effect on the assessment" is a slot (`effect`) at the top of the right column: the live preview (AIV-P2-005) has
 //   its own controller and component, `ScoreEffect`;
 // - the evidence states its limit once and a claim reads "Claim only" in neutral ink, as on the profile; the rounds
-//   read "Round 1", "Round 2" and "Round 3", and the subtitle no longer says "structured screen" (AIV-P1-165 §11, §12);
+//   read "Round 1", "Round 2" and "Round 3", the subtitle no longer says "structured screen", and the notes placeholder
+//   is "What the candidate said or did", where the artboard draws "Evidence, not impressions" (AIV-P1-165 §11, §12);
 // - "Submit scorecard" (AIV-P2-006) first checks that at least one competency is rated or marked as not tested (rate
 //   only what was tested, AIV-P1-165 §12) and that each rating but "Not shown" has a note (kept with it, logged with any
 //   change it makes, and the words its evidence cites), saying which is not, and is
