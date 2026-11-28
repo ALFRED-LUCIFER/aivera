@@ -17,6 +17,7 @@ export function useChooseController(
 ): ChooseView {
   const router = useRouter();
   const [ids, setIds] = useState<readonly string[] | null>(null);
+  const [opened, setOpened] = useState(0);
   const [reason, setReason] = useState(defaultReason);
   const [error, setError] = useState<ChooseView['error']>(null);
   const [done, setDone] = useState<number | null>(null);
@@ -24,8 +25,10 @@ export function useChooseController(
 
   return {
     preview: ids && choosePreview(rows, ids),
+    opened,
     onPreview(selected) {
       setIds(selected);
+      setOpened((n) => n + 1);
       setReason(defaultReason);
       setError(null);
       setDone(null);
