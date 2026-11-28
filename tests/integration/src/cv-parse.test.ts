@@ -788,6 +788,7 @@ describe('Feature: Retry a CV that failed to parse (AIV-P1-134)', () => {
     // Nobody is contacted: the one new message asks for the parse (its opaque-id payload is asserted above).
     expect(await outboxTypes()).toEqual([...outboxBefore, CvParseRequestedV1.type].toSorted());
     // The action then logs `{ sourceId }` and "cv retry queued" only (retryCv.test.ts); evidence logs nothing personal.
+    // A dead-lettered CV has no extracted text yet, so the file's bytes (`%PDF`) stand for the CV text here.
     expect(telemetry).not.toMatch(/imran|qureshi|cv\.pdf|%PDF/i);
   });
 });
