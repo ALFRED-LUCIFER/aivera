@@ -2,8 +2,8 @@
 # short lines, bullets (•, -, o) and arrows (➢, →), ligatures inside words. Synthetic; it imitates the layout problems of
 # six real QA-engineer CVs (owner's local test, 27 Nov 2026; never stored in the repo) and none of their content.
 # A quote is one unbroken run of the source: it may run across a line break, never into an item a bullet opens.
-# Live, mapToCompetency@4, 9 runs: never rejected, citation validity 100% of kept links; claim labelling and safety
-# failed in 5 of 9 (CV lines labelled submitted or rated Medium or Strong), fixed by AIV-P1-157 (#655).
+# Live, mapToCompetency@4, 10 runs: never rejected, citation validity 100% of kept links; claim labelling and safety
+# failed in 5 of 10 (CV lines labelled submitted or rated Medium or Strong), fixed by AIV-P1-157 (#655).
 id: imran-qureshi-fragments
 people: [Imran Qureshi]
 input:

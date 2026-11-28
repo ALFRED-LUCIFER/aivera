@@ -4,8 +4,8 @@
 # in the repo) and none of their content. A quote joined around an interleaved line is not in the source.
 # gpt-main joins the Postman line around "EDUCATION" on every run, so that link is dropped (dropInvalidCitations) and
 # c-api-testing is not expected; recorded from the product's checked answer (the dropped link left out), as a live run
-# scores it, since the raw answer always holds that quote. Live, mapToCompetency@4, 9 runs: never rejected, citation
-# validity 100% of kept links, every hard gate 9/9; CV lines rated "claim" not "supporting" on every run, so strength is
+# scores it, since the raw answer always holds that quote. Live, mapToCompetency@4, 10 runs: never rejected, citation
+# validity 100% of kept links, every hard gate 10/10; CV lines rated "claim" not "supporting" on every run, so strength is
 # expected by AIV-P1-157 (#655), not here.
 id: kristine-dela-cruz-two-columns
 people: [Kristine Dela Cruz]
