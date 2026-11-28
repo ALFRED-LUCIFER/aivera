@@ -249,20 +249,22 @@ export const maxLevel = (output: unknown, statementPaths: string[], limits: Read
     });
 
 /**
- * AIV-P1-157: each listed competency's best link reaches its floor (`minLevel`), one point per competency: described
- * work must not map as low as a self-rating. Names the competency and the floor only.
+ * AIV-P1-157: a listed competency whose best link stays below its floor (`minLevel`): described work mapped as low as
+ * a self-rating reorders a claims-only ranking. Names the competency and the floor only.
  */
-export function minLevel(output: unknown, statementPaths: string[], floors: Readonly<Record<string, number>>): Ratio {
+export function minLevel(
+  output: unknown,
+  statementPaths: string[],
+  floors: Readonly<Record<string, number>>,
+): string[] {
   const links = statementPaths
     .flatMap((path) => entriesAt(output, path))
     .flatMap(({ value }) => (isRecord(value) ? [value] : []));
-  const ids = Object.keys(floors);
-  const failures = ids.flatMap((id) => {
+  return Object.entries(floors).flatMap(([id, floor]) => {
     const levels = links.filter((l) => String(l['competencyId']) === id).map((l) => l['level']);
     const best = Math.max(0, ...levels.filter((level): level is number => typeof level === 'number'));
-    return best >= (floors[id] ?? 0) ? [] : [`${id}: no link at level ${floors[id]} or above`];
+    return best >= floor ? [] : [`${id}: no link at level ${floor} or above`];
   });
-  return { n: ids.length - failures.length, total: ids.length, failures };
 }
 
 /**

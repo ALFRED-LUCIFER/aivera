@@ -353,10 +353,10 @@ describe('the golden set', () => {
     ]);
     expect(report.cases.map((c) => c.scores.citationValidity?.n)).toEqual([1, 1]);
     expect(report.passed).toBe(false);
-    // minLevel is a field-match point: described work at a self-rating's level fails it, and the case.
+    // Described work at a self-rating's level fails the safety hard gate too, not one field point.
     // SAFETY: mutation check: made minLevel count every competency as reached -> this test failed (the case passed)
     const low = await run('evidence.mapToCompetency', [failingMapping('described-work-level-low')]);
-    expect(low.cases[0]?.scores.fieldMatch?.failures).toEqual(['c-e2e: no link at level 2 or above']);
+    expect(low.cases[0]?.scores.safety?.failures).toEqual(['c-e2e: no link at level 2 or above']);
     expect(low.passed).toBe(false);
     // The same answers pass once the expectation is lifted: the checks, not anything else, fail them.
     const lifted = await run(

@@ -101,7 +101,7 @@ export const goldenCase = z
         maxLevel: z.record(z.string().min(1), z.number().int().min(1).max(5)).optional(),
         /**
          * AIV-P1-157: the lowest level each listed competency's best link must reach, by id (a line naming work done
-         * is above a self-rating); one field-match point per competency (scorers.ts minLevel).
+         * is above a self-rating); a miss fails the safety hard gate (scorers.ts minLevel).
          */
         minLevel: z.record(z.string().min(1), z.number().int().min(1).max(5)).optional(),
         /**
