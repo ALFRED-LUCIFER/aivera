@@ -11,6 +11,7 @@ import {
   Input,
   Label,
   LevelMeter,
+  ProvenanceTag,
   Select,
   StatusBadge,
   SuccessBanner,
@@ -20,14 +21,15 @@ import {
 } from '@credalent/ui';
 import type { Route } from 'next';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
-import { profileHref } from '@/features/evidence-profile/domain/profile.ts';
+import type { KeyboardEvent, ReactNode } from 'react';
+import { evidenceAnchor, profileHref } from '@/features/evidence-profile/domain/profile.ts';
 import { scorecardHref } from '@/features/interviews/domain/interviews.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
 import type { DuplicatesView } from '../domain/duplicates.ts';
 import type { CvRetryView } from '@/features/evidence-profile/domain/cvStatus.ts';
 import {
   HIDEABLE_COLUMNS,
+  TOP_COMPARED,
   rowName,
   type CandidateRow,
   type CandidateScore,
@@ -71,7 +73,19 @@ import { StageLine } from './StageLine.tsx';
 //   yet available": evidence requests (AIV-P1-039, #103) and the interview guide (AIV-P2-003, "Guide ready") are not
 //   built yet, and no value is invented (AGENTS.md 1.7);
 // - "Stage: all" and "Missing evidence: any" are native selects, and the Columns menu a disclosure of checkboxes: no
-//   menu or popover component exists in @credalent/ui, and a native control keeps its keyboard path;
+//   menu or popover component exists in @credalent/ui, and a native control keeps its keyboard path; Escape closes it
+//   and returns focus to "Columns" (AIV-P1-165 §17);
+// - the table opens on "#", name, backed score, meets need and next action; "Weight on Strong evidence" (the artboard's
+//   "Confidence": it is the share of the rubric's weight proven by Strong evidence, and says so), "Missing critical
+//   evidence" (a count that opens to the competencies) and "Last scored" are in the Columns menu (AIV-P1-165 §9), so the
+//   table fits 1280 px without sideways scroll;
+// - under each assessed name, one line says what the rank rests on, linking to the cited item on the profile: the
+//   competency that adds most to the backed score, or with nothing proven the largest claim, tagged "Claim awaiting
+//   validation" (AIV-P1-165 §9, AGENTS.md 1.6); the artboard draws no such line;
+// - a candidate not yet scored has one cell saying where the CV is, and the other cells are empty, not seven "Not yet
+//   available" pills (AIV-P1-165 §9);
+// - "Compare top 3" beside the filters opens the comparison of the three highest ranked (AIV-P1-165 §9), a secondary
+//   button: the artboard's primary "Compare 3 selected" is the bulk bar's Compare;
 // - a line under the filters gives the scores' basis, "Observed" (AGENTS.md 1.7), which the artboard does not draw;
 // - candidates not yet assessed stay listed after the ranked ones (AGENTS.md 1.5), each saying where its CV is with an
 //   icon and a word ("Reading the CV…", "We could not read this CV. Try again." with a secondary "Try again",
@@ -111,6 +125,8 @@ export type RankingTableView =
       onShowAll: () => void;
       hidden: HideableColumn[];
       onToggleColumn: (column: HideableColumn) => void;
+      /** "Compare top 3": the comparison of the three highest ranked; null while it is not offered. */
+      compareTopHref: Route | null;
       /** Null when this member has no bulk action: no checkboxes and no bar (AIV-P1-036). */
       selection: {
         selectedIds: string[];
@@ -127,8 +143,9 @@ type ColumnId = keyof Messages['ranking']['columns'];
 /** What a bulk action hands the bar's onPreview: which action, and the ids it acts on. */
 type BulkPreview = { action: 'choose' | 'pack' | 'compare'; ids: readonly string[] };
 
+// A row not yet scored says where its CV is once, in the score cell; its other cells stay empty (AIV-P1-165 §9).
 const scored = (render: (score: CandidateScore) => ReactNode) => (row: CandidateRow) =>
-  row.score ? render(row.score) : <NotYet />;
+  row.score ? render(row.score) : null;
 
 // Module-level cell renderers (stable across renders); the component adds the translated headers.
 const cells: (Omit<DataTableColumn<CandidateRow>, 'header'> & { id: ColumnId })[] = [
@@ -142,7 +159,11 @@ const cells: (Omit<DataTableColumn<CandidateRow>, 'header'> & { id: ColumnId })[
   { id: 'lastScored', cell: scored((s) => <ScoredCell score={s} />) },
   // shortcut: only packs and "Chosen for interview" so far; evidence requests (AIV-P1-039) and later rounds
   // (AIV-P2-007) add theirs.
-  { id: 'nextAction', cell: (row) => <NextActionCell row={row} /> },
+  {
+    id: 'nextAction',
+    cell: (row) =>
+      row.score || row.inPack || row.interview || chosenOrDecided(row.stage) ? <NextActionCell row={row} /> : null,
+  },
 ];
 
 /**
@@ -371,9 +392,16 @@ function Toolbar({ view }: { view: Extract<RankingTableView, { status: 'ready' }
             ))}
           </Select>
         </span>
-        {/* shortcut: a native disclosure, so Escape and a click outside do not close it; use a menu component once
+        {view.compareTopHref && (
+          <Link href={view.compareTopHref} className={`${buttonClassName('secondary')} ms-auto`}>
+            {t('compareTop', { count: TOP_COMPARED })}
+          </Link>
+        )}
+        {/* shortcut: a native disclosure, so a click outside does not close it; use a menu component once
             @credalent/ui has one. */}
-        <details className="relative ms-auto">
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape bubbles up from the
+            summary and the checkboxes inside; the disclosure itself takes no other input */}
+        <details className={view.compareTopHref ? 'relative' : 'relative ms-auto'} onKeyDown={closeOnEscape}>
           <summary className={buttonClassName('secondary')}>
             <svg {...icon} className="size-4">
               <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -416,6 +444,14 @@ const iconAt = 'pointer-events-none absolute start-3 top-3 z-10 size-4 text-text
 const filterLines = <path d="M4 6h16M7 12h10M10 18h4" />;
 const isHideable = (id: string): id is HideableColumn => HIDEABLE_COLUMNS.some((column) => column === id);
 
+/** Escape closes the Columns menu and returns focus to its button (AIV-P1-165 §17). */
+function closeOnEscape(event: KeyboardEvent<HTMLDetailsElement>) {
+  const menu = event.currentTarget;
+  if (event.key !== 'Escape' || !menu.open) return;
+  menu.open = false;
+  menu.querySelector('summary')?.focus();
+}
+
 // The candidate cell with the job its profile link opens for and the rows' duplicate actions, built outside render's
 // component definitions.
 const nameCell = (jobId: string, duplicates?: DuplicatesView) => (row: CandidateRow) => (
@@ -450,10 +486,43 @@ function NameCell({
       <span className="block text-meta text-text-2">
         <StageLine row={row} />
       </span>
+      {jobId && row.score?.reason && <ReasonLine reason={row.score.reason} personId={row.personId} jobId={jobId} />}
       {row.duplicates && duplicates && (
         <DuplicateActions rowId={row.id} duplicates={row.duplicates} view={duplicates} />
       )}
     </>
+  );
+}
+
+/**
+ * Why the row ranks where it does, in one line citing the evidence item on the profile (AIV-P1-165 §9). A claim is
+ * tagged a claim and said to count 0: it never reads as backing (AGENTS.md 1.6).
+ */
+function ReasonLine({
+  reason,
+  personId,
+  jobId,
+}: {
+  reason: NonNullable<CandidateScore['reason']>;
+  personId: string;
+  jobId: string;
+}) {
+  const t = useTranslations();
+  return (
+    <span className="mt-1 flex max-w-[64ch] flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-text-2">
+      {reason.claim && <ProvenanceTag provenance="claim" label={t('evidence.provenance.claim')} />}
+      <span>
+        {t(reason.claim ? 'ranking.reason.claim' : 'ranking.reason.backed')}{' '}
+        {/* Built from opaque ids, which typed routes cannot check. */}
+        <Link
+          href={`${profileHref(personId, jobId)}#${evidenceAnchor(reason.itemId)}` as Route}
+          className="text-text underline underline-offset-2"
+        >
+          {reason.competency}
+        </Link>
+        {t(reason.claim ? 'ranking.reason.claimLevel' : 'ranking.reason.backedLevel', { level: reason.level })}
+      </span>
+    </span>
   );
 }
 
@@ -475,10 +544,19 @@ function ConfidenceCell({ score }: { score: CandidateScore }) {
 
 function MissingCell({ score }: { score: CandidateScore }) {
   const t = useTranslations('ranking');
+  if (score.missing.length === 0) return <span className="text-meta text-text-2">{t('noneMissing')}</span>;
+  // A native disclosure: the count opens to the competencies, by mouse or keyboard (AIV-P1-165 §9).
   return (
-    <span className="block min-w-36 text-meta text-text-2">
-      {score.missing.length > 0 ? score.missing.join('; ') : t('noneMissing')}
-    </span>
+    <details className="min-w-36 text-meta text-text-2">
+      <summary className="cursor-pointer rounded-xs text-text underline underline-offset-2">
+        {t('missingCount', { count: score.missing.length })}
+      </summary>
+      <ul className="mt-1 flex flex-col gap-0.5">
+        {score.missing.map((name) => (
+          <li key={name}>{name}</li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

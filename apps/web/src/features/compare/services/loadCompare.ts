@@ -2,6 +2,10 @@ import { JOB_SCOPED_ROLES } from '@credalent/workspaces';
 import { z } from 'zod';
 import { evidenceCards } from '@/features/evidence-profile/domain/evidenceCards.ts';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
+import { toCandidateRows } from '@/features/ranking/domain/ranking.ts';
+import { bulkActionsFor } from '@/features/ranking/domain/selection.ts';
+import { getDecisions } from '@/server/decisions';
+import { enabledFlags } from '@/server/flags';
 import { getAssessment } from '@/server/assessment';
 import { getEvidence } from '@/server/evidence';
 import { getIntake } from '@/server/intake';
@@ -10,8 +14,8 @@ import { inActiveWorkspace } from '@/server/workspace';
 import {
   MAX_COMPARE,
   MIN_COMPARE,
+  cellOf,
   parseIds,
-  withoutContacts,
   type CompareColumn,
   type CompareData,
   type CompareRow,
@@ -77,23 +81,14 @@ export async function loadCompare(
         name: displayName,
         score: row ? { backed: row.backedScore, upTo: row.upperBound } : null,
         cells: Object.fromEntries(
-          results.map((r) => {
-            const card = cards.get(r.competencyId);
-            return [
-              r.competencyId,
-              {
-                proven: r.proven.level,
-                lead: card?.lead ?? null,
-                claimOnly: card?.claimOnly ?? false,
-                // SAFETY: an excerpt is the evidence's own words and may hold a contact detail; model-cited quotes
-                // (trade-offs, pack) cannot, as @credalent/ai refuses a quote of redacted text.
-                summary: card?.items[0] ? withoutContacts(card.items[0].excerpt) : null,
-              },
-            ];
-          }),
+          results.map((r) => [r.competencyId, cellOf(r.proven.level, cards.get(r.competencyId))]),
         ),
       });
     }
+    // `pack.view`: admins, recruiters and hiring owners; an interviewer may not read packs (as the job header does).
+    const packs = ctx.role === 'interviewer' ? [] : await getDecisions().listPacks(ctx, jobId);
+    // Decided here from the member's role, not in the browser (AGENTS.md 1.3); the action re-checks on Confirm.
+    const mayAdd = bulkActionsFor(ctx.role, enabledFlags).includes('addToPack');
     return {
       ...base,
       status: 'ready',
@@ -101,6 +96,15 @@ export async function loadCompare(
       rubricVersion: numbered?.id === versionId ? numbered.version : null,
       rows,
       columns,
+      hasPack: packs.some((p) => p.candidateIds.length > 0),
+      pack: mayAdd
+        ? {
+            rows: toCandidateRows(chosen, ranking.status === 'ranked' ? ranking.rows : [], (id) => names.get(id)),
+            packs: packs
+              .filter((p) => p.status === 'ready')
+              .map(({ id, name, candidateIds }) => ({ id, name, candidateIds })),
+          }
+        : null,
     };
   });
   return result && result.value;

@@ -1,8 +1,8 @@
 import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n';
 import type { Metadata } from 'next';
 import { forbidden, notFound } from 'next/navigation';
-import { Compare } from '@/features/compare/components/Compare.tsx';
 import { loadCompare } from '@/features/compare/services/loadCompare.ts';
+import { CompareClient } from './CompareClient.tsx';
 import { CompareTradeoffs } from './CompareTradeoffs.tsx';
 
 // The title names the page, never the people compared: it reaches the browser's history (AGENTS.md 1.2).
@@ -22,16 +22,17 @@ export default async function ComparePage({ params, searchParams }: PageProps<'/
   if (compare === 'forbidden') forbidden();
   if (compare === 'notFound') notFound();
   return (
-    <Compare view={compare}>
+    <CompareClient view={compare}>
       {compare.status === 'ready' && compare.rows.length > 0 && (
         // Keyed by the selection: another selection (only `?ids=` changes) starts with nothing written.
         <CompareTradeoffs
           key={compare.columns.map((c) => c.candidateId).join()}
           jobId={jobId}
-          candidateIds={compare.columns.map((c) => c.candidateId)}
-          columns={compare.columns.map(({ score }) => ({ score }))}
+          // The trade-offs are of the scored candidates; anyone not scored yet is named instead (AIV-P1-165 §10).
+          candidateIds={compare.columns.filter((c) => c.score).map((c) => c.candidateId)}
+          columns={compare.columns.map(({ candidateId, name, score }) => ({ candidateId, name, score }))}
         />
       )}
-    </Compare>
+    </CompareClient>
   );
 }

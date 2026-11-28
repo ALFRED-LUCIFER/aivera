@@ -4,6 +4,7 @@ import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { PackView } from '@/features/ranking/domain/pack.ts';
 import type { CompareColumn, CompareData, TradeoffsView } from '../domain/compare.ts';
 import { Compare, type CompareView } from './Compare.tsx';
 import { Tradeoffs } from './Tradeoffs.tsx';
@@ -44,20 +45,43 @@ const sara: CompareColumn = {
     },
   },
 };
-const ready = (columns: CompareColumn[]): CompareData => ({
+const ready = (
+  columns: CompareColumn[],
+  packs: Pick<Extract<CompareData, { status: 'ready' }>, 'hasPack' | 'pack'> = { hasPack: true, pack: null },
+): CompareData => ({
   ...base,
   status: 'ready',
   preparedAt: new Date('2026-11-27T21:30:00Z'),
   rubricVersion: 2,
   rows: [{ competencyId: 'arabic', name: 'Arabic and bilingual NLP', weightPercent: 10, needed: 2 }],
   columns,
+  ...packs,
 });
-const show = (view: CompareView) =>
+const show = (view: CompareView, pack?: PackView) =>
   render(
     <IntlProvider {...intl}>
-      <Compare view={view} />
+      <Compare view={view} pack={pack} />
     </IntlProvider>,
   );
+/** The pack preview-confirm as the controller hands it over, closed. */
+const packView = (onPreview = vi.fn()): PackView => ({
+  packs: [],
+  preview: null,
+  opened: 0,
+  onPreview,
+  target: 'new',
+  onTargetChange: vi.fn(),
+  name: '',
+  onNameChange: vi.fn(),
+  reason: 'Shortlist for the hiring decision',
+  onReasonChange: vi.fn(),
+  reasonValid: true,
+  canConfirm: false,
+  error: null,
+  done: null,
+  onConfirm: vi.fn(),
+  onCancel: vi.fn(),
+});
 const cellOf = (row: string, column: number) =>
   within(screen.getByRole('row', { name: new RegExp(`^${row}`) })).getAllByRole('cell')[column];
 
@@ -67,7 +91,7 @@ describe('Scenario: Candidates side by side', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Compare candidates');
     expect(screen.getByText(/^Senior AI Engineer · rubric v2\. The same competency, side by side/)).toBeTruthy();
     const [, first, second] = screen.getAllByRole('columnheader');
-    expect(first?.textContent).toBe('Sara Al Qahtani68up to 84 if claims hold');
+    expect(first?.textContent).toBe('Sara Al Qahtani68up to 84 if claims holdClaim awaiting validation');
     expect(second?.textContent).toBe('Layla Haddad61up to 82 if claims hold');
     expect(
       within(first as HTMLElement)
@@ -84,11 +108,36 @@ describe('Scenario: Candidates side by side', () => {
     );
   });
 
-  // SAFETY: mutation check: Cell drew cell.lead.strength for a claim-only cell -> this test failed ("Supporting" was shown)
-  it("never shows a competency resting only on a claim under the claim's stored strength", () => {
+  // AIV-P1-165 §10 replaces the earlier rule (a claim-only cell read "Claim only" whatever the claim's stored strength):
+  // the cell now shows the strength the profile shows for the same line, and says the claim counts 0.
+  // SAFETY: mutation check: the claim-only branch removed from Cell -> this test failed (the cell read "Supporting", a
+  // verdict and the excerpt, with nothing saying the claim counts 0).
+  it('shows a claim-only cell as the quoted line, then one status line saying the claim counts 0', () => {
     show(ready([sara, layla]));
     expect(cellOf('Arabic', 0)?.textContent).toBe(
-      'Claim onlyBelow the need · 0 against 2Claim awaiting validationDescribes a Gulf Arabic evaluation set.',
+      '“Describes a Gulf Arabic evaluation set.”SupportingClaim. Counts 0 against 2.',
+    );
+  });
+
+  it('says "Claim awaiting validation" once per column, in neutral ink, and never "Claim only"', () => {
+    show(ready([sara, layla]));
+    const tags = screen.getAllByText('Claim awaiting validation');
+    expect(tags).toHaveLength(1);
+    expect(tags[0]?.className).toBe('text-meta text-text-2');
+    expect(screen.queryByText('Claim only')).toBeNull();
+  });
+
+  it('says what a column\'s claim-only cells are, whatever kind of claim: "To check in interview" for a note awaiting defence', () => {
+    const spoken = {
+      ...sara,
+      cells: { arabic: { ...sara.cells['arabic'], lead: { strength: 'claim', provenance: 'awaiting-defence' } } },
+    } as CompareColumn;
+    show(ready([spoken, layla]));
+    expect(screen.getAllByRole('columnheader')[1]?.textContent).toBe(
+      'Sara Al Qahtani68up to 84 if claims holdTo check in interview',
+    );
+    expect(cellOf('Arabic', 0)?.textContent).toBe(
+      '“Describes a Gulf Arabic evaluation set.”Claim onlyClaim. Counts 0 against 2.',
     );
   });
 
@@ -104,6 +153,37 @@ describe('Scenario: Candidates side by side', () => {
     show(ready([sara, layla]));
     expect(screen.getByRole('link', { name: 'Change selection' }).getAttribute('href')).toBe(base.selectionHref);
     expect(screen.getByRole('link', { name: 'Open decision pack' }).getAttribute('href')).toBe(`/app/jobs/${JOB}/pack`);
+  });
+});
+
+const secondary = () => screen.getByRole('link', { name: 'Change selection' }).className;
+
+describe('Scenario: The primary action creates the pack when none exists', () => {
+  const adding = {
+    rows: [{ id: 'a1', personId: 'p1', name: 'Sara Al Qahtani', stage: 'new' as const, score: null }],
+    packs: [],
+  };
+
+  it('offers "Add these to a decision pack" as the primary action, opening its preview for the compared candidates', async () => {
+    const onPreview = vi.fn();
+    show(ready([sara, layla], { hasPack: false, pack: adding }), packView(onPreview));
+    expect(screen.queryByRole('link', { name: 'Open decision pack' })).toBeNull();
+    const add = screen.getByRole('button', { name: 'Add these to a decision pack' });
+    expect(add.className).not.toBe(secondary());
+    await userEvent.click(add);
+    expect(onPreview).toHaveBeenCalledWith(['a1']);
+  });
+
+  it('shows "Open decision pack" only when a pack with members exists, then as the one primary action', () => {
+    show(ready([sara, layla], { hasPack: true, pack: adding }), packView());
+    expect(screen.getByRole('link', { name: 'Open decision pack' }).className).not.toBe(secondary());
+    expect(screen.getByRole('button', { name: 'Add these to a decision pack' }).className).toBe(secondary());
+  });
+
+  it('offers no "Add these…" to a member the server gave no pack action', () => {
+    show(ready([sara, layla], { hasPack: false, pack: null }));
+    expect(screen.queryByRole('button', { name: 'Add these to a decision pack' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Open decision pack' })).toBeNull();
   });
 });
 
@@ -191,7 +271,7 @@ describe('Scenario: Trade-offs cite evidence', () => {
     expect(link.querySelector('mark')?.textContent).toContain(EXCERPT);
     expect(items[1]?.textContent).toContain('Source: arabic-ocr');
     expect(
-      screen.getByText(/7 points separate the 2 candidates\. Claims still to check could change this order\./),
+      screen.getByText(/7 points separate the 2 candidates\. The open claims are large enough to change this order\./),
     ).toBeTruthy();
     expect(screen.getByText('Observed')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
@@ -210,7 +290,7 @@ describe('Scenario: Trade-offs cite evidence', () => {
       { ...sara, score: { backed: 40, upTo: 60 } },
     ]);
     expect(screen.getByText(/40 points separate the 2 candidates\.$/)).toBeTruthy();
-    expect(screen.queryByText(/could change/)).toBeNull();
+    expect(screen.queryByText(/change this order/)).toBeNull();
   });
 });
 
@@ -221,9 +301,33 @@ describe('Scenario: Trade-offs unavailable', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
   });
 
-  it('is not offered while a candidate here is not scored', () => {
+  it('is not offered with fewer than 2 scored candidates', () => {
     tradeoffs(null, [sara, { candidateId: 'p9', name: null, score: null, cells: {} }]);
-    expect(screen.getByText('The trade-offs can be shown once every candidate here is scored.')).toBeTruthy();
+    expect(screen.getByText('The trade-offs compare scored candidates. Fewer than 2 here are scored.')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
+  });
+});
+
+describe('Scenario: Trade-offs for whoever is scored', () => {
+  const priya: CompareColumn = { candidateId: 'p7', name: 'Priya Nair', score: null, cells: {} };
+
+  it('is offered for the 2 scored of 3, and names the one who is not scored yet', async () => {
+    const onWrite = tradeoffs(null, [sara, layla, priya]);
+    expect(screen.getByText('Priya Nair is not scored yet.')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Show the trade-offs' }));
+    expect(onWrite).toHaveBeenCalledOnce();
+  });
+
+  it('writes the statements for the scored, each citing its evidence, and counts only them', () => {
+    tradeoffs(writtenWith([fact, work]), [sara, layla, priya]);
+    const items = within(screen.getByRole('list', { name: 'Layla Haddad' })).getAllByRole('listitem');
+    expect(
+      within(items[1] as HTMLElement)
+        .getByRole('link')
+        .getAttribute('href'),
+    ).toBe(`${PROFILE}#evidence-i4`);
+    expect(screen.queryByRole('list', { name: 'Priya Nair' })).toBeNull();
+    expect(screen.getByText('Priya Nair is not scored yet.')).toBeTruthy();
+    expect(screen.getByText(/7 points separate the 2 scored candidates\./)).toBeTruthy();
   });
 });

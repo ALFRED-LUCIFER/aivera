@@ -52,6 +52,10 @@
     "completion": "{\"candidates\":[{\"candidate\":\"C1\",\"statements\":[{\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"is the only one compared with independently checked work on\"}]},{\"citations\":[{\"sourceId\":\"S2\",\"quote\":\"412 of 460\"}]}]},{\"candidate\":\"C2\",\"statements\":[{\"citations\":[{\"sourceId\":\"S4\",\"quote\":\"is the only one compared with independently checked work on\"}]}]},{\"candidate\":\"C3\",\"statements\":[{\"citations\":[{\"sourceId\":\"S6\",\"quote\":\"is the only one compared with independently checked work on\"}]},{\"citations\":[{\"sourceId\":\"S7\",\"quote\":\"public and documented\"}]}]}]}"
   },
   {
+    "when": "C1: facts S1, excerpts S2.\\nC2: facts S3.",
+    "completion": "{\"candidates\":[{\"candidate\":\"C1\",\"statements\":[{\"citations\":[{\"sourceId\":\"S1\",\"quote\":\"is the only one compared with independently checked work on\"}]},{\"citations\":[{\"sourceId\":\"S2\",\"quote\":\"512 of 540\"}]}]},{\"candidate\":\"C2\",\"statements\":[{\"citations\":[{\"sourceId\":\"S3\",\"quote\":\"still rests on claims for\"}]}]}]}"
+  },
+  {
     "when": "C1: facts S1, excerpts S2.",
     "status": 503
   }

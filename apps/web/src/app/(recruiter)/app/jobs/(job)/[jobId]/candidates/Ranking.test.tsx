@@ -123,8 +123,18 @@ const table = () => screen.getByRole('table', { name: 'Ranked candidates' });
 const bodyRows = () => within(table()).getAllByRole('row').slice(1);
 
 describe('Scenario: The ranking for Senior AI Engineer', () => {
-  it('row 1 shows rank, name, stage, "68" with "up to 84 if claims hold", "4 of 6", High, the missing evidence and the date', () => {
+  it('row 1 shows rank, name, stage, "68" with "up to 84 if claims hold" and "4 of 6"; the Columns menu adds the rest', async () => {
     showRanking(nine);
+    expect(
+      within(table())
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['#', 'Candidate', 'Backed score', "Meets the job's need", 'Next action']);
+    expect(bodyRows()[0]?.textContent).toBe('1Sara Al QahtaniNew68up to 84 if claims hold4 of 6Not yet available');
+    // AIV-P1-165 §9: the other three columns are one click away, in the Columns menu.
+    await userEvent.click(screen.getByText('Columns'));
+    for (const name of ['Weight on Strong evidence', 'Missing critical evidence', 'Last scored'])
+      await userEvent.click(screen.getByRole('checkbox', { name }));
     expect(
       within(table())
         .getAllByRole('columnheader')
@@ -134,13 +144,13 @@ describe('Scenario: The ranking for Senior AI Engineer', () => {
       'Candidate',
       'Backed score',
       "Meets the job's need",
-      'Confidence',
+      'Weight on Strong evidence',
       'Missing critical evidence',
       'Last scored (Asia/Dubai)',
       'Next action',
     ]);
     expect(bodyRows()[0]?.textContent).toBe(
-      '1Sara Al QahtaniNew68up to 84 if claims hold4 of 6HighProduct judgement15 NovNot yet available',
+      '1Sara Al QahtaniNew68up to 84 if claims hold4 of 660% or more1 competencyProduct judgement15 NovNot yet available',
     );
     // AIV-P1-043: the name opens the candidate's profile for this job.
     expect(screen.getByRole('link', { name: 'Sara Al Qahtani' }).getAttribute('href')).toBe(
@@ -159,19 +169,94 @@ describe('Scenario: The ranking for Senior AI Engineer', () => {
     ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Show all 9' }));
     expect(bodyRows()).toHaveLength(9);
-    expect(bodyRows()[8]?.textContent).toMatch(/^Huda RahmanNewNot yet scoredNot yet available/);
+    // One cell says it, not one "Not yet available" in every column (AIV-P1-165 §9).
+    expect(bodyRows()[8]?.textContent).toBe('Huda RahmanNewNot yet scoredNot yet available');
     expect(screen.queryByRole('button', { name: /^Show all/ })).toBeNull();
   });
 
-  it('a score with no open claims reads only its backed value', () => {
+  it('a score with no open claims reads only its backed value', async () => {
     showRanking([scoredRow(1, 'Sara Al Qahtani', 72, 72, [])]);
     expect(screen.getByRole('img', { name: '72 backed by evidence' })).toBeTruthy();
+    await userEvent.click(screen.getByText('Columns'));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Missing critical evidence' }));
     expect(bodyRows()[0]?.textContent).toContain('None');
   });
+});
 
-  it('several missing competencies are separated by "; ", as the artboard does', () => {
+const withReason = (row: CandidateRow, claim: boolean): CandidateRow =>
+  row.score
+    ? {
+        ...row,
+        score: { ...row.score, reason: { competency: 'Evaluation design', itemId: 'item-7', level: 4, claim } },
+      }
+    : row;
+
+describe('AIV-P1-165 §9: reasons, one cell before scoring, shortcuts and counts that open', () => {
+  it('Scenario: Each row gives a one-line cited reason, linking to the evidence item on the profile', () => {
+    showRanking([withReason(scoredRow(1, 'Sara Al Qahtani', 68, 84, []), false)]);
+    expect(bodyRows()[0]?.textContent).toContain(
+      'Largest part of the backed score: Evaluation design, proven at 4 of 5.',
+    );
+    expect(screen.getByRole('link', { name: 'Evaluation design' }).getAttribute('href')).toBe(
+      `/app/candidates/p1?job=${JOB}#evidence-item-7`,
+    );
+    expect(screen.queryByText('Claim awaiting validation')).toBeNull();
+  });
+
+  // SAFETY: mutation check: the claim tag and the claim wording removed from ReasonLine -> this test failed.
+  it('labels a claim in that line a claim, and says it counts 0', () => {
+    showRanking([withReason(scoredRow(1, 'Maria Santos', 0, 60, []), true)]);
+    const cell = within(bodyRows()[0] as HTMLElement).getAllByRole('cell')[1];
+    expect(cell?.textContent).toBe(
+      'Maria SantosNewClaim awaiting validationNo work inspected yet. Largest claim: Evaluation design, claimed at 4 of 5. A claim counts 0.',
+    );
+  });
+
+  it('Scenario: Before scoring, one cell: an unscored row says where its CV is and nothing else', () => {
+    showRanking(six);
+    expect(bodyRows()[5]?.textContent).toBe('cv-f.pdfNewAssessing the evidence…');
+    for (const row of bodyRows().slice(1)) expect(row.textContent).not.toContain('Not yet available');
+  });
+
+  it('Scenario: "Compare top 3" opens Compare with the top three, for a member who may compare', () => {
+    showRanking(nine, false, ['compare']);
+    expect(screen.getByRole('link', { name: 'Compare top 3' }).getAttribute('href')).toBe(
+      `/app/jobs/${JOB}/compare?ids=p1,p2,p3`,
+    );
+    cleanup();
+    showRanking(nine);
+    expect(screen.queryByRole('link', { name: 'Compare top 3' })).toBeNull();
+    cleanup();
+    showRanking(nine.slice(0, 2), false, ['compare']);
+    expect(screen.queryByRole('link', { name: 'Compare top 3' })).toBeNull();
+  });
+
+  it('Scenario: "Missing critical evidence" shows a count that expands to the missing competencies', async () => {
     showRanking([scoredRow(1, 'Sara Al Qahtani', 68, 84, ['Product judgement', 'Retrieval and evaluation'])]);
-    expect(screen.getByText('Product judgement; Retrieval and evaluation')).toBeTruthy();
+    await userEvent.click(screen.getByText('Columns'));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Missing critical evidence' }));
+    const count = within(table()).getByText('2 competencies');
+    const details = count.closest('details');
+    expect(details?.open).toBe(false);
+    await userEvent.click(count);
+    expect(details?.open).toBe(true);
+    expect(
+      within(details as HTMLElement)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['Product judgement', 'Retrieval and evaluation']);
+  });
+
+  it('Scenario: The Columns menu closes with Escape, and focus returns to "Columns"', async () => {
+    showRanking(nine);
+    const button = screen.getByText('Columns');
+    await userEvent.click(button);
+    const menu = button.closest('details');
+    expect(menu?.open).toBe(true);
+    screen.getByRole('checkbox', { name: 'Next action' }).focus();
+    await userEvent.keyboard('{Escape}');
+    expect(menu?.open).toBe(false);
+    expect(document.activeElement).toBe(button);
   });
 });
 
@@ -208,10 +293,10 @@ describe('Scenario: Filter by missing evidence', () => {
   it('the Columns menu hides a column and shows it again', async () => {
     showRanking(nine);
     await userEvent.click(screen.getByText('Columns'));
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Confidence' }));
-    expect(within(table()).queryByRole('columnheader', { name: 'Confidence' })).toBeNull();
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Confidence' }));
-    expect(within(table()).getByRole('columnheader', { name: 'Confidence' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Next action' }));
+    expect(within(table()).queryByRole('columnheader', { name: 'Next action' })).toBeNull();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Next action' }));
+    expect(within(table()).getByRole('columnheader', { name: 'Next action' })).toBeTruthy();
   });
 });
 

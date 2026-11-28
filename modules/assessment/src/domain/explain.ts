@@ -48,6 +48,32 @@ export const listText = (names: string[]) =>
     ? names.join(' and ')
     : `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
 
+/**
+ * What a ranking row's one-line reason cites (AIV-P1-165 §9), from the snapshot alone: the competency that adds most to
+ * the backed score (weight times proven level) and the first item behind its proven level. With nothing proven, the
+ * largest claim (weight times the levels still claimed) and its first item, marked `claim`: it counts zero and the row
+ * must call it a claim (AGENTS.md 1.6). Null when the snapshot cites nothing. Equal parts keep the rubric's order.
+ */
+export type CitedLead = { competencyId: string; itemId: string; level: number; claim: boolean };
+export function citedLead({ competencies }: Pick<Assessment, 'competencies'>): CitedLead | null {
+  const largest = (part: (c: Assessment['competencies'][number]) => number) =>
+    competencies.filter((c) => part(c) > 0).toSorted((a, b) => part(b) - part(a))[0];
+  const proven = largest((c) => c.weightPercent * c.proven.level);
+  if (proven?.proven.itemIds[0])
+    return {
+      competencyId: proven.competencyId,
+      itemId: proven.proven.itemIds[0],
+      level: proven.proven.level,
+      claim: false,
+    };
+  const claimed = largest((c) => (c.claimItemIds.length > 0 ? c.weightPercent * (c.claimedLevel - c.proven.level) : 0));
+  const [itemId] = claimed?.claimItemIds ?? [];
+  // SAFETY: an item that counts only toward the claimed level is never cited as backing (AGENTS.md 1.6).
+  return claimed && itemId
+    ? { competencyId: claimed.competencyId, itemId, level: claimed.claimedLevel, claim: true }
+    : null;
+}
+
 /** Independently checked: a corroborated item among those the proven level cites (AGENTS.md 1.6). */
 export const isChecked = (
   c: Assessment['competencies'][number],
