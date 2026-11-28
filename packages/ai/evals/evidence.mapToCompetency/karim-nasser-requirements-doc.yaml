@@ -1,5 +1,6 @@
 # Karim Nasser's requirements document (AIV-P2-080): submitted work a person can inspect, so Medium (the product's
-# ceiling for a document), labelled submitted; nothing shows pricing, so that competency gets no link.
+# ceiling for a document), labelled submitted; nothing shows pricing, so that competency gets no link. The document
+# does not name him (AIV-P1-156): a quote through the [CANDIDATE] placeholder would not be in the recorded source.
 id: karim-nasser-requirements-doc
 people: [Karim Nasser]
 input:
@@ -15,7 +16,6 @@ sources:
     kind: document
     text: |-
       Card checkout retries: product requirements, version 3
-      Owner: Karim Nasser
       Problem: 4.1% of card checkouts fail on a first-attempt gateway timeout.
       Goal: recover half of them without charging any customer twice.
       Requirement: retry once after 2 seconds with the same idempotency key.
@@ -26,22 +26,24 @@ expected:
     links[*].label: [submitted]
     links[*].strength: [medium]
 recorded:
-  promptVersion: evidence.mapToCompetency@3
-  promptHash: 653c438e10ea
+  promptVersion: evidence.mapToCompetency@4
+  promptHash: 8f023f75738a
   output:
     links:
       - competencyId: c-prd
         strength: medium
         label: submitted
-        level: 4
-        limit: This evidence does not show who reviewed the requirements or the scale of the product impact.
+        level: 3
+        limit: This evidence does not show who reviewed the requirements or how they were implemented.
         citations:
           - sourceId: S1
             quote: |-
+              Card checkout retries: product requirements, version 3
               Problem: 4.1% of card checkouts fail on a first-attempt gateway timeout.
               Goal: recover half of them without charging any customer twice.
               Requirement: retry once after 2 seconds with the same idempotency key.
               Acceptance: no duplicate charge in 10,000 replayed timeouts
     changes:
       - competencyId: c-pricing
-        text: Provide evidence of a pricing change led by the candidate with measured revenue impact.
+        text: Provide a pricing change led by the candidate with measured revenue impact to demonstrate pricing strategy
+          competency.
