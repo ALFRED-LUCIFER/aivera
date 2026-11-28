@@ -117,7 +117,8 @@ const { createDb, isReachable } = await import('@credalent/db');
 const { createConsumer, decide } = await import('@credalent/db/consumer');
 const { createRelay } = await import('@credalent/db/relay');
 const { log } = await import('@credalent/observability');
-const { createScheduler, subscribe, systemConsumer, toMessage } = await import('./serviceBus.ts');
+const { acknowledgeUnhandled, createScheduler, subscribe, systemConsumer, toMessage, UNHANDLED_QUEUE } =
+  await import('./serviceBus.ts');
 
 // The module schemas with an outbox table, and each event type's queue (the consuming module's). A publishing module's
 // ticket adds its schema, its events and their queue (infra/modules/messaging.bicep).
@@ -148,7 +149,8 @@ const model = env.AZURE_OPENAI_RESOURCE_NAME !== undefined || env.AI_PROVIDER ==
 const mapping = mapsEvidence({ model, githubApp: !!githubApp, fileReading });
 const catalogueEval = model && env.CATALOGUE_EVAL === 'on';
 const QUEUES: Record<string, string> = {
-  [PersonCreatedV1.type]: 'candidates',
+  // Nothing handles a new person yet: completed on arrival by `acknowledgeUnhandled`, its row kept in candidates.outbox.
+  [PersonCreatedV1.type]: UNHANDLED_QUEUE,
   [RubricApprovedV1.type]: mapping ? EVIDENCE_QUEUE : ASSESSMENT_QUEUE,
   [EvidenceRecordedV1.type]: mapping ? EVIDENCE_QUEUE : ASSESSMENT_QUEUE,
   [EvidenceMappingRequestedV1.type]: EVIDENCE_QUEUE,
@@ -169,15 +171,15 @@ const QUEUES: Record<string, string> = {
   // shortcut: on the pack summaries' queue like DecisionsRecorded.v1 above, which every environment has; move it to an
   // `intake` queue (infra/modules/messaging.bicep) with the decisions one.
   ...(env.AZURE_STORAGE_BLOB_URL && { [SheetImportRequestedV1.type]: PACK_SUMMARY_QUEUE }),
-  // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they dead-letter after the
-  // 14-day TTL like PersonCreated.v1 above; that ticket's consumer replaces this note.
-  [JobPublishedV1.type]: 'candidates',
-  [JobUnpublishedV1.type]: 'candidates',
+  // shortcut: nothing consumes these yet (applying from the candidate site is AIV-P3-008), so they are completed on
+  // arrival like PersonCreated.v1 above; that ticket's consumer maps them to its own queue.
+  [JobPublishedV1.type]: UNHANDLED_QUEUE,
+  [JobUnpublishedV1.type]: UNHANDLED_QUEUE,
   // shortcut: nothing consumes InterviewScheduled.v1 or InterviewCompleted.v1 (AIV-P2-001; the scorecard submit writes
   // the second, AIV-P2-006, which applies its change in its own transaction) yet, and seeded interviews write them, so
-  // they are parked the same way rather than retried for ever unmapped; their first consumer maps them.
-  [InterviewScheduledV1.type]: 'candidates',
-  [InterviewCompletedV1.type]: 'candidates',
+  // they are completed the same way rather than retried for ever unmapped; their first consumer maps them.
+  [InterviewScheduledV1.type]: UNHANDLED_QUEUE,
+  [InterviewCompletedV1.type]: UNHANDLED_QUEUE,
   [EmailQueuedV1.type]: NOTIFICATIONS_QUEUE,
   // The catalogue draft eval (AIV-P2-048) runs only with a model and CATALOGUE_EVAL=on; otherwise its requests wait in
   // jobs.outbox, and the page says the run could not run once it times out.
@@ -456,6 +458,19 @@ const scanResults =
       })()
     : null;
 
+// The queue of the events nothing handles yet has its consumer too (AIV-P1-165): dev held 29 active messages on it.
+const unhandledReceiver = appBus.createReceiver(UNHANDLED_QUEUE);
+const unhandled = {
+  receiver: unhandledReceiver,
+  subscription: subscribe(
+    unhandledReceiver,
+    systemConsumer(
+      'events with no handler yet: nothing is read or written, and only the event id is logged',
+      acknowledgeUnhandled,
+    ),
+  ),
+};
+
 const consumers = Object.entries(CONSUMERS).map(([queue, handlers]) => {
   const consumer = createConsumer({ db: appDb, queue, handlers, now, signal: stop.signal });
   const receiver = appBus.createReceiver(queue);
@@ -497,11 +512,10 @@ while (!stop.signal.aborted) {
 
 // Shutdown: stop receiving, let messages in flight complete (or abandon those waiting out a back-off), then close.
 // A message whose lock lapses meanwhile is redelivered by Service Bus, never lost.
-await Promise.all(
-  [...consumers, ...(scanResults ? [scanResults] : [])].map(({ subscription }) => subscription.close()),
-);
+const receiving = [...consumers, unhandled, ...(scanResults ? [scanResults] : [])];
+await Promise.all(receiving.map(({ subscription }) => subscription.close()));
 await Promise.all(consumers.map(({ consumer }) => consumer.drain()));
-await Promise.all([...consumers, ...(scanResults ? [scanResults] : [])].map(({ receiver }) => receiver.close()));
+await Promise.all(receiving.map(({ receiver }) => receiver.close()));
 // The relay pass in progress finished above, so every claimed row is marked sent or scheduled for retry.
 await Promise.all([...senders.values()].map((sender) => sender.close()));
 await Promise.all([relayBus.close(), appBus.close()]);
