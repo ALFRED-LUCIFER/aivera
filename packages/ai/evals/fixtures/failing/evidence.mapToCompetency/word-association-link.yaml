@@ -18,7 +18,7 @@ expected:
     - { competencyId: c-bdd, line: Worked in two-week sprints with the delivery team. }
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: a0d968e7d1b4
+  promptHash: 429e3a499f66
   output:
     links:
       - competencyId: c-bdd

@@ -46,14 +46,14 @@ expected:
     decisions, or that a CV line has nothing to inspect.
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: da0f9071e1cf
+  promptHash: b58b0b013b57
   output:
     links:
       - competencyId: c-llm
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the monitoring or scale of the LLM system beyond the merchant count.
+        limit: Does not show monitoring or scale beyond 9,000 merchants.
         citations:
           - sourceId: S2
             quote: Led the merchant assistant used by about 9,000 merchants
@@ -61,7 +61,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the exact measurement methods or reliability improvements.
+        limit: Does not show detailed measurement or reliability improvements beyond cost reduction.
         citations:
           - sourceId: S2
             quote: Cut cost per request by 40% with response caching
@@ -69,7 +69,7 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the scale or impact of the Arabic evaluation set.
+        limit: Does not show models or evaluations beyond dataset creation.
         citations:
           - sourceId: S2
             quote: Built a Gulf Arabic evaluation set for the assistant
@@ -77,14 +77,17 @@ recorded:
         strength: strong
         label: submitted
         level: 4
-        limit: This evidence does not show the scale or production deployment of the Python services.
+        limit: Does not show production deployment or maintenance details beyond commit authorship.
         citations:
           - sourceId: S1
             quote: authored 412 of 460 commits
     changes:
-      - competencyId: c-retrieval
-        text: Provide evidence of building or maintaining an evaluation harness or retrieval metrics for retrieval and
-          evaluation competency.
+      - competencyId: c-llm
+        text: Provide evidence of monitoring or operational metrics for the merchant assistant in production.
+      - competencyId: c-cost
+        text: Show detailed cost or latency measurements and reliability improvements with data.
+      - competencyId: c-arabic
+        text: Include examples of Arabic or bilingual models or evaluation results, not just dataset creation.
   judge:
     pass: true
     reason: Every link's limit names what its evidence does not show, as required by the rubric.

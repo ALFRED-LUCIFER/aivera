@@ -287,11 +287,11 @@ describe('the golden set', () => {
       }
   });
 
-  it('AIV-P1-027: every recorded mapping is valid against the product schema, 45 source/competency pairs', () => {
+  it('AIV-P1-027: every recorded mapping is valid against the product schema, 46 source/competency pairs', () => {
     const cases = golden.get('evidence.mapToCompetency') ?? [];
     for (const c of cases) expect(mapToCompetencySchema.safeParse(c.recorded.output).error, c.id).toBeUndefined();
     const pairs = cases.flatMap((c) => mapToCompetencySchema.parse(c.recorded.output).links);
-    expect(pairs).toHaveLength(45);
+    expect(pairs).toHaveLength(46);
   });
 
   it('AIV-P1-027: the registered runner sends the product request, and its checked answer passes the gates', async () => {
@@ -317,7 +317,7 @@ describe('the golden set', () => {
     expect(report.passed).toBe(false);
   });
 
-  // SAFETY: mutation check: removed the maxLevel/noLink competency refine from goldenCase -> this test failed (c-x parsed)
+  // SAFETY: mutation check: removed the maxLevel/minLevel/noLink competency refine from goldenCase -> this test failed (c-x parsed)
   // SAFETY: mutation check: removed the noLink line refine from goldenCase -> this test failed (the unheld line parsed)
   it('AIV-P1-157: a maxLevel or noLink naming an unlisted competency, or a line no source holds, is refused', () => {
     const c = failingMapping('word-association-link');
@@ -325,9 +325,14 @@ describe('the golden set', () => {
     const shaped = (expected: object) =>
       goldenCaseSchema.safeParse({ ...c, expected }).error?.issues.map((i) => i.message);
     expect(shaped({ noLink: [{ competencyId: 'c-bdd', line }] })).toBeUndefined();
-    expect(shaped({ maxLevel: { 'c-x': 1 } })).toEqual([
-      'expected.maxLevel or expected.noLink names a competency id that input.competencies does not list',
-    ]);
+    for (const unlisted of [
+      { maxLevel: { 'c-x': 1 } },
+      { minLevel: { 'c-x': 2 } },
+      { noLink: [{ competencyId: 'c-x', line }] },
+    ])
+      expect(shaped(unlisted)).toEqual([
+        'expected.maxLevel, minLevel or noLink names a competency id that input.competencies does not list',
+      ]);
     expect(shaped({ noLink: [{ competencyId: 'c-bdd', line: 'Not in the CV.' }] })).toEqual([
       'expected.noLink names a line that no source holds',
     ]);
@@ -348,6 +353,11 @@ describe('the golden set', () => {
     ]);
     expect(report.cases.map((c) => c.scores.citationValidity?.n)).toEqual([1, 1]);
     expect(report.passed).toBe(false);
+    // minLevel is a field-match point: described work at a self-rating's level fails it, and the case.
+    // SAFETY: mutation check: made minLevel count every competency as reached -> this test failed (the case passed)
+    const low = await run('evidence.mapToCompetency', [failingMapping('described-work-level-low')]);
+    expect(low.cases[0]?.scores.fieldMatch?.failures).toEqual(['c-e2e: no link at level 2 or above']);
+    expect(low.passed).toBe(false);
     // The same answers pass once the expectation is lifted: the checks, not anything else, fail them.
     const lifted = await run(
       'evidence.mapToCompetency',

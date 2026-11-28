@@ -108,6 +108,7 @@ describe('evidence.mapToCompetency prompt (AIV-P2-080)', () => {
 
   it('AIV-P1-157 (@5): a self-rating line is level 1, a link names its own subject, a cv is rule 1 whatever its layout', () => {
     expect(MAP_TO_COMPETENCY_VERSION).toBe('evidence.mapToCompetency@5');
+    expect(MAP_TO_COMPETENCY_SYSTEM).toContain('A CV line that only rates the candidate');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('names no work done with it');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain('is level 1, however confident its wording');
     expect(MAP_TO_COMPETENCY_SYSTEM).toContain(

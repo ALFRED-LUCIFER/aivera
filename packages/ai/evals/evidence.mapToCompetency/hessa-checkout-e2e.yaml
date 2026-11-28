@@ -23,19 +23,17 @@ expected:
     links[*].strength: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: c293670c66c7
+  promptHash: fc54bca4b00d
   output:
     links:
       - competencyId: c-test
         strength: strong
         label: submitted
         level: 5
-        limit: This evidence does not show the scale or impact of the test automation suite.
+        limit: Does not show the specific tests or their coverage or maintenance details.
         citations:
           - sourceId: S1
-            quote: |-
-              checkout-e2e
-              authored 148 of 171 commits
+            quote: authored 148 of 171 commits
     changes:
       - competencyId: c-ci
-        text: Provide evidence of maintaining or keeping CI pipelines green, such as commit history or CI run logs.
+        text: Provide evidence of maintaining or keeping CI pipelines green, such as commit history or pipeline logs.

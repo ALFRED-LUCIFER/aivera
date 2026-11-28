@@ -28,19 +28,31 @@ expected:
     forbidden: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: 703db9202476
+  promptHash: d137bf6493de
   output:
     links:
       - competencyId: c-python
         strength: supporting
         label: submitted
         level: 1
-        limit: This evidence does not show the scale, complexity, or impact of the Python services maintained.
+        limit:
+          This evidence does not show the candidate wrote or maintains the Python service code beyond declarations and test
+          presence.
         citations:
           - sourceId: S1
             quote: 'Python in requirements.txt (manifest, declaration): declares fastapi'
+      - competencyId: c-python
+        strength: supporting
+        label: submitted
+        level: 1
+        limit:
+          This evidence does not show the candidate wrote or maintains the Python service code beyond declarations and test
+          presence.
+        citations:
+          - sourceId: S1
+            quote: 'Python in tests/test_index.py (path, declaration): Python file under a test folder'
     changes:
       - competencyId: c-python
-        text: Provide evidence of Python services actually written and maintained, including tests run or defects fixed.
+        text: Provide evidence of the candidate authoring or maintaining Python service code with tests, not just declarations.
       - competencyId: c-retrieval
-        text: Provide evidence of building or maintaining an evaluation harness, retrieval metrics, or a regression gate.
+        text: Provide evidence of the candidate building an evaluation harness, retrieval metrics, or a regression gate.

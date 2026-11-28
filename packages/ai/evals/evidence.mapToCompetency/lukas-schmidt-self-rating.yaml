@@ -34,53 +34,53 @@ expected:
   maxLevel: { c-e2e: 1, c-api: 1, c-ci: 1, c-performance: 1 }
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: 0cffbb0cd95d
+  promptHash: 1b0e24a0c991
   output:
     links:
       - competencyId: c-e2e
         strength: supporting
         label: claim
         level: 1
-        limit: This evidence does not show the size or coverage of the test suites built or maintained.
+        limit: Does not show a browser test suite built or maintained, nor its size or coverage.
         citations:
           - sourceId: S1
-            quote: Expert in Playwright
+            quote: Expert in Playwright.
       - competencyId: c-e2e
         strength: supporting
         label: claim
         level: 1
-        limit: This evidence does not show the size or coverage of the test suites built or maintained.
+        limit: Does not show a browser test suite built or maintained, nor its size or coverage.
         citations:
           - sourceId: S1
-            quote: Advanced user of Cypress
+            quote: Advanced user of Cypress.
       - competencyId: c-api
         strength: supporting
         label: claim
         level: 1
-        limit: This evidence does not show automated tests written against real REST APIs.
+        limit: Does not show automated tests written against real REST APIs.
         citations:
           - sourceId: S1
-            quote: Skilled in REST API testing with Postman
+            quote: Skilled in REST API testing with Postman.
       - competencyId: c-ci
         strength: supporting
         label: claim
         level: 1
-        limit: This evidence does not show tests wired into CI to gate merges or releases.
+        limit: Does not show tests wired into CI to gate merges or releases.
         citations:
           - sourceId: S1
-            quote: Strong command of CI pipelines in GitHub Actions
+            quote: Strong command of CI pipelines in GitHub Actions.
       - competencyId: c-performance
         strength: supporting
         label: claim
         level: 1
-        limit: This evidence does not show a load test designed or the limits it found.
+        limit: Does not show a load test designed or limits found.
         citations:
           - sourceId: S1
-            quote: Well versed in JMeter load testing
+            quote: Well versed in JMeter load testing.
     changes:
       - competencyId: c-e2e
-        text: Provide evidence of a browser test suite built and maintained, including its size and coverage.
+        text: Provide evidence of a browser test suite built and maintained, with details on size and coverage.
       - competencyId: c-api
-        text: Show automated REST API tests written and run against real APIs.
+        text: Show automated REST API tests written and executed against real APIs.
       - competencyId: c-ci
         text: Demonstrate tests integrated into CI pipelines that gate merges or releases.

@@ -29,7 +29,7 @@ expected:
     forbidden: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: 3aa571c82bcc
+  promptHash: ebd344c81222
   output:
     links:
       - competencyId: c-retrieval
@@ -52,14 +52,14 @@ recorded:
         strength: supporting
         label: claim
         level: 3
-        limit: This evidence does not show the extent of tests or maintenance practices.
+        limit: This evidence does not show the extent of the Python services or the testing coverage.
         citations:
           - sourceId: S1
             quote: Maintained the Python services that index policy documents
     changes:
       - competencyId: c-retrieval
-        text: Provide the retrieval evaluation notebook or metrics reports showing the evaluation results and regression gating.
+        text: Provide the retrieval evaluation notebook or metrics used, showing its impact or integration in release gating.
       - competencyId: c-llm
-        text: Provide monitoring dashboards or logs demonstrating the assistant's performance in production.
+        text: Show monitoring dashboards or logs proving the assistant runs reliably for real users.
       - competencyId: c-python
-        text: Provide code repositories or test suites for the Python services maintained.
+        text: Provide code or test coverage reports for the Python services maintained.

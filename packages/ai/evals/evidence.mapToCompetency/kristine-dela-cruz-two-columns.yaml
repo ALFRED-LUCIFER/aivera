@@ -78,13 +78,13 @@ expected:
     forbidden: [strong]
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: a99604762215
+  promptHash: 65672b1787c7
   output:
     links:
       - competencyId: c-ui-automation
         strength: supporting
         label: claim
-        level: 4
+        level: 3
         limit: This evidence does not show the full size or coverage details of the UI test suite.
         citations:
           - sourceId: S1
@@ -95,8 +95,8 @@ recorded:
       - competencyId: c-ci
         strength: supporting
         label: claim
-        level: 4
-        limit: This evidence does not show the scale or impact of the CI integration beyond the Playwright suite.
+        level: 3
+        limit: This evidence does not specify the exact nature of the tests gated or the pipeline details.
         citations:
           - sourceId: S1
             quote: Added the Playwright suite as a required check on every merge request
@@ -106,10 +106,8 @@ recorded:
       - competencyId: c-strategy
         strength: supporting
         label: claim
-        level: 4
-        limit:
-          This evidence does not show the full test strategy document or its broader application beyond the card onboarding
-          flow.
+        level: 3
+        limit: This evidence does not detail the contents or outcomes of the test strategy.
         citations:
           - sourceId: S1
             quote: Wrote the test strategy for the card onboarding flow and owned its release sign-off
@@ -119,8 +117,8 @@ recorded:
       - competencyId: c-mobile
         strength: supporting
         label: claim
-        level: 3
-        limit: This evidence does not show automated mobile testing or coverage details, only manual testing before automation.
+        level: 2
+        limit: This evidence does not show automation or coverage extent for mobile app testing.
         citations:
           - sourceId: S1
             quote: Tested the Android and iOS releases by hand before automation was in place
@@ -131,6 +129,6 @@ recorded:
       - competencyId: c-ui-automation
         text: Provide details on the size, coverage, and maintenance of the Playwright UI test suite.
       - competencyId: c-api-testing
-        text: Show examples or reports of automated API tests running against real services with results.
-      - competencyId: c-reliability
-        text: Document any flaky tests found and fixed, including impact on pass rates.
+        text: Show examples or reports of automated API tests running and their impact on quality.
+      - competencyId: c-performance
+        text: Include evidence of designing or running performance or load tests with measurable limits found.

@@ -39,14 +39,14 @@ expected:
     - { competencyId: c-api, line: Wrote Gherkin feature files for the checkout flows. }
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: cf4bf8b131a3
+  promptHash: b7471b1e79f6
   output:
     links:
       - competencyId: c-bdd
         strength: supporting
         label: claim
         level: 2
-        limit: This evidence does not show the candidate wrote or ran step definitions or used a BDD tool.
+        limit: Does not show step definitions or running the BDD tool, only writing feature files.
         citations:
           - sourceId: S1
             quote: Wrote Gherkin feature files for the checkout flows.
@@ -54,14 +54,14 @@ recorded:
         strength: supporting
         label: claim
         level: 2
-        limit:
-          This evidence does not show the scale or impact of the regression cycles or the candidate's role in planning
-          them.
+        limit: Does not show planning or automation of regression cycles, only running manual cycles.
         citations:
           - sourceId: S1
             quote: Ran manual regression cycles on the shipment tracking web portal before each release.
     changes:
       - competencyId: c-bdd
-        text: Provide evidence of writing and running step definitions with a BDD tool.
-      - competencyId: c-regression
-        text: Show involvement in planning regression cycles or their impact on release quality.
+        text: Provide evidence of writing step definitions and running BDD tests with a tool.
+      - competencyId: c-mobile
+        text: Provide evidence of writing automated tests for Android or iOS apps.
+      - competencyId: c-api
+        text: Provide evidence of writing automated tests against real REST APIs.

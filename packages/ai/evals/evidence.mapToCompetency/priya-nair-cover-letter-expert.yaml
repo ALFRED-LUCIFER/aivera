@@ -26,7 +26,7 @@ expected:
     forbidden: ['"strong"']
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: 7845bd3cb45b
+  promptHash: 720a97111e41
   output:
     links:
       - competencyId: c-llm
@@ -41,7 +41,7 @@ recorded:
         strength: claim
         label: claim
         level: 1
-        limit: This evidence does not show any retrieval metrics, eval harness, or regression gate built.
+        limit: This evidence does not show any retrieval metrics, eval harness, or regression gate built by the candidate.
         citations:
           - sourceId: S1
             quote: I am an expert in production LLM systems and the strongest retrieval engineer you will interview
@@ -49,4 +49,4 @@ recorded:
       - competencyId: c-llm
         text: Provide documentation or logs showing the assistant running in production with monitoring data.
       - competencyId: c-retrieval
-        text: Submit retrieval evaluation metrics or a regression gate built by the candidate.
+        text: Provide examples of retrieval evaluation harnesses, metrics, or regression gates built by the candidate.

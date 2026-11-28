@@ -23,13 +23,14 @@ expected:
     changes[*].competencyId: [c-python]
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: 89dde61d38df
+  promptHash: 45657476b69c
   output:
     links: []
     changes:
       - competencyId: c-python
-        text: Provide evidence of Python services written and maintained, with tests, to show Python service engineering.
-      - competencyId: c-llm
         text:
-          Provide evidence of an LLM system or assistant running for real users with monitoring to show LLM systems in
-          production.
+          Provide evidence of Python services written and maintained with tests, such as code repositories or project
+          descriptions.
+      - competencyId: c-llm
+        text: Provide evidence of LLM systems in production, such as deployed assistants or LLM features with monitoring
+          details.

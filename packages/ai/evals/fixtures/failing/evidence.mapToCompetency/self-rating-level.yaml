@@ -17,7 +17,7 @@ expected:
   maxLevel: { c-e2e: 1 }
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: cb7fb29b0a8f
+  promptHash: a6ef425aeb2e
   output:
     links:
       - competencyId: c-e2e

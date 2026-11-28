@@ -25,14 +25,14 @@ expected:
     links[*].strength: [medium]
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: f2e92a7a46dc
+  promptHash: dc72f331e78e
   output:
     links:
       - competencyId: c-python
         strength: medium
         label: submitted
         level: 3
-        limit: This evidence does not show the scale, impact, or maintenance of the Python services written.
+        limit: This evidence does not show the scale, impact, or maintenance of the Python services.
         citations:
           - sourceId: S1
             quote: 'Python in notebooks/eval_runner.py (path, code): Python source file'
@@ -40,12 +40,15 @@ recorded:
         strength: medium
         label: submitted
         level: 3
-        limit: This evidence does not show the specific retrieval metrics or regression gates built by the candidate.
+        limit: This evidence does not show specific retrieval metrics or regression gates built by the candidate.
         citations:
           - sourceId: S1
             quote: rag-eval-notebooks
     changes:
       - competencyId: c-retrieval
-        text: Provide explicit evidence of an evaluation harness or retrieval metrics implemented by the candidate.
+        text:
+          Provide an eval harness or retrieval metrics authored by the candidate to demonstrate retrieval and evaluation
+          skills.
       - competencyId: c-python
-        text: Show evidence of Python services written and maintained by the candidate, including tests.
+        text: Show Python services written and maintained by the candidate, including tests, to confirm Python service
+          engineering skills.

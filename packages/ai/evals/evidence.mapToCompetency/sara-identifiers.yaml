@@ -29,14 +29,14 @@ expected:
     forbidden: ['sara.al.qahtani@example.com', '900123', 'qahtani']
 recorded:
   promptVersion: evidence.mapToCompetency@5
-  promptHash: 0486f0b425ac
+  promptHash: 8d24f781b3e8
   output:
     links:
       - competencyId: c-retrieval
         strength: medium
         label: submitted
         level: 4
-        limit: This evidence does not show the scale of the system or its impact beyond blocking releases.
+        limit: This evidence does not show the scale of the system or its impact on production releases.
         citations:
           - sourceId: S1
             quote: The eval harness replays 460 golden cases before every release.
@@ -44,10 +44,10 @@ recorded:
         strength: medium
         label: submitted
         level: 4
-        limit: This evidence does not show the scale of the system or its impact beyond blocking releases.
+        limit: This evidence does not show the scale of the system or its impact on production releases.
         citations:
           - sourceId: S1
             quote: The scorer blocks a release when answer accuracy drops below 92%.
     changes:
       - competencyId: c-llm
-        text: Provide evidence of an LLM system or assistant running in production with monitoring.
+        text: Provide evidence of an LLM system or assistant running for real users with monitoring.

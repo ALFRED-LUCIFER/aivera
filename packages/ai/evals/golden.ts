@@ -100,6 +100,11 @@ export const goldenCase = z
          */
         maxLevel: z.record(z.string().min(1), z.number().int().min(1).max(5)).optional(),
         /**
+         * AIV-P1-157: the lowest level each listed competency's best link must reach, by id (a line naming work done
+         * is above a self-rating); one field-match point per competency (scorers.ts minLevel).
+         */
+        minLevel: z.record(z.string().min(1), z.number().int().min(1).max(5)).optional(),
+        /**
          * AIV-P1-157: a competency no link may cite a source line for, the line copied from the case's source: a link
          * by word association fails the safety hard gate (scorers.ts noLink).
          */
@@ -147,10 +152,12 @@ export const goldenCase = z
   )
   .refine(
     (c) =>
-      [...Object.keys(c.expected.maxLevel ?? {}), ...(c.expected.noLink ?? []).map((n) => n.competencyId)].every((id) =>
-        listedIds(c.input).includes(id),
-      ),
-    'expected.maxLevel or expected.noLink names a competency id that input.competencies does not list',
+      [
+        ...Object.keys(c.expected.maxLevel ?? {}),
+        ...Object.keys(c.expected.minLevel ?? {}),
+        ...(c.expected.noLink ?? []).map((n) => n.competencyId),
+      ].every((id) => listedIds(c.input).includes(id)),
+    'expected.maxLevel, minLevel or noLink names a competency id that input.competencies does not list',
   )
   // A line not in a source would never match a citation, so the check would pass whatever the answer.
   .refine(
