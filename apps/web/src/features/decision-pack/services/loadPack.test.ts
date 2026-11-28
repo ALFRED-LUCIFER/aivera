@@ -17,6 +17,7 @@ const fake = vi.hoisted(() => ({
   applicants: vi.fn(),
   getUser: vi.fn(),
   getWorkspace: vi.fn(),
+  clientName: vi.fn(),
   approvedRubric: vi.fn(),
   snapshot: vi.fn(),
 }));
@@ -24,6 +25,7 @@ vi.mock('@/server/workspace', () => ({
   inActiveWorkspace: async (fn: (c: object) => Promise<unknown>) =>
     fake.workspace ? { value: await fn(fake.ctx) } : null,
   getWorkspaces: () => ({ getWorkspace: fake.getWorkspace }),
+  clientName: fake.clientName,
 }));
 vi.mock('@/server/decisions', () => ({ getDecisions: () => ({ getPack: fake.getPack, listPacks: fake.listPacks }) }));
 vi.mock('@/server/jobs', () => ({
@@ -73,6 +75,7 @@ beforeEach(() => {
     { personId: 'p2', displayName: 'Arjun Menon' },
   ]);
   fake.approvedRubric.mockResolvedValue(RUBRIC);
+  fake.clientName.mockResolvedValue(null);
 });
 
 /** Whether `loadPack` offers "Record decisions yourself" to a member of `role` on a job with this hiring owner. */
@@ -83,6 +86,14 @@ const mayNameSelf = async (role: string, hiringOwnerUserId: string | null) => {
   return page !== 'notFound' && page?.mayNameSelf;
 };
 
+const joined = (candidateId: string, backedScore: number, upperBound: number) => ({
+  candidateId,
+  backedScore,
+  upperBound,
+  addedBy: AYESHA,
+  addedAt: at,
+});
+
 describe('loadPack', () => {
   it('the pack with the job, its rubric version, each member by name, and how many others stay in the ranking', async () => {
     expect(await loadPack(JOB, PACK)).toEqual({
@@ -90,6 +101,7 @@ describe('loadPack', () => {
       packId: PACK,
       name: 'Round 2 shortlist',
       job: 'Senior AI Engineer',
+      client: null,
       preparedAt: at,
       rubricVersion: 2,
       role: {
@@ -116,6 +128,26 @@ describe('loadPack', () => {
       decided: null,
     });
     expect(fake.getUser).toHaveBeenCalledWith(AYESHA);
+  });
+
+  // AIV-P1-165 section 13: the cards read in order of backed score, and an agency's pack names the job's client.
+  it('orders the members by backed score, highest first, and names the client of an agency job', async () => {
+    const CLIENT = id(9);
+    fake.getPack.mockResolvedValue({
+      ...stored(),
+      members: [joined('maria', 31, 69), joined('priya', 49, 77), joined('daniel', 55, 78)],
+    });
+    fake.header.mockResolvedValue({
+      job: { title: 'Senior Product Manager, Payments', clientId: CLIENT },
+      approved: null,
+    });
+    fake.clientName.mockResolvedValue('Falcon Pay');
+    const page = await loadPack(JOB, PACK);
+    if (!page || page === 'notFound') throw new Error('The pack did not load.');
+    expect(page.members.map((m) => m.candidateId)).toEqual(['daniel', 'priya', 'maria']);
+    expect(page.client).toBe('Falcon Pay');
+    expect(fake.clientName).toHaveBeenCalledWith(fake.ctx, CLIENT);
+    expect((await loadPackPreview(JOB, PACK)) as object).toMatchObject({ client: 'Falcon Pay' });
   });
 
   // AIV-P1-165, owner decision (b): only an admin, only on a job with no hiring owner, may name themselves to decide.
@@ -254,6 +286,7 @@ describe('card text (AIV-P2-011) and loadPackPreview (AIV-P1-116)', () => {
       workspace: 'Gulf Talent Partners',
       name: 'Round 2 shortlist',
       job: 'Senior AI Engineer',
+      client: null,
       preparedAt: at,
       members: [
         {

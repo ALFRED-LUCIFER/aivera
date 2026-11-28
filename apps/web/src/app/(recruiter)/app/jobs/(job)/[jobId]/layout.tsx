@@ -23,6 +23,7 @@ export default async function JobLayout({ children, params }: LayoutProps<'/app/
             loaded.ownerChange,
             loaded.imported,
             loaded.shortlistReady,
+            loaded.client,
           )}
           canImport={loaded.canImport}
         />

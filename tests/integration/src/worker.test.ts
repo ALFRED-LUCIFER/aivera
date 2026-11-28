@@ -48,6 +48,7 @@ let app: Db;
 let createConsumer: typeof import('@credalent/db/consumer').createConsumer;
 let runs: string[];
 let failuresLeft: number;
+const lineTraces = new Map<string, string | undefined>();
 
 const urlFor = (role: string) =>
   `postgres://${role}:local_dev_only@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
@@ -62,6 +63,8 @@ const handler: Handler<{ applicationId: string }> = {
       throw new Error('timeout');
     }
     runs.push(payload.applicationId);
+    // What `log` would stamp on a line written here: the active span's trace id (packages/observability).
+    lineTraces.set(payload.applicationId, trace.getActiveSpan()?.spanContext().traceId);
   },
 };
 
@@ -276,16 +279,43 @@ describe('Scenario: Shutdown does not lose work', () => {
   });
 });
 
-describe('One trace from server action to worker', () => {
-  it('starts the handler span with the envelope correlation id as parent', async () => {
-    const { m, action } = trace.getTracer('test').startActiveSpan('action requestAssessment', (span) => {
-      const result = { m: message(), action: span.spanContext() };
+// AIV-P1-165 "Each worker message has its own trace id": before, every message continued its server action's trace, and
+// each handler's own events carried it on, so one upload of 30 CVs put every worker log line under one trace id.
+describe('Scenario: Each worker message has its own trace id', () => {
+  // SAFETY: mutation check: started the handler span with the envelope's correlation id as parent again -> this test
+  // failed (both messages' lines carried the action's trace id)
+  it('handles two messages of one server action in two traces, each linked to the action that wrote them', async () => {
+    const { first, second, action } = trace.getTracer('test').startActiveSpan('action addApplicants', (span) => {
+      const result = { first: message(), second: message(), action: span.spanContext() };
       span.end();
       return result;
     });
-    await consumer().handle(delivery(m).d);
-    const handled = spans.getFinishedSpans().find((s) => s.name === 'worker.handle AssessmentRequested.v1');
-    expect(handled?.spanContext().traceId).toBe(action.traceId);
-    expect(handled?.parentSpanContext?.spanId).toBe(action.spanId);
+    expect(first.correlationId).toBe(second.correlationId);
+    // At once, as the receiver delivers them (four at a time): neither handler runs in the other's trace.
+    await Promise.all([consumer().handle(delivery(first).d), consumer().handle(delivery(second).d)]);
+
+    const handled = spans.getFinishedSpans().filter((s) => s.name === 'worker.handle AssessmentRequested.v1');
+    const traceOf = (m: Envelope) =>
+      handled.find((s) => s.attributes['outbox.event_id'] === m.id)?.spanContext().traceId;
+    expect(handled).toHaveLength(2);
+    expect(traceOf(first)).toMatch(/^[0-9a-f]{32}$/);
+    expect(traceOf(second)).toMatch(/^[0-9a-f]{32}$/);
+    expect(traceOf(first)).not.toBe(traceOf(second));
+    expect([traceOf(first), traceOf(second)]).not.toContain(action.traceId);
+    // The trace id the logger stamps on a line (the active span's) is the message's own, inside its handler.
+    expect(lineTraces.get((first.payload as { applicationId: string }).applicationId)).toBe(traceOf(first));
+    expect(lineTraces.get((second.payload as { applicationId: string }).applicationId)).toBe(traceOf(second));
+    // The action stays one step away: a link, not a parent.
+    for (const span of handled) {
+      expect(span.parentSpanContext).toBeUndefined();
+      expect(span.links.map((l) => [l.context.traceId, l.context.spanId])).toEqual([[action.traceId, action.spanId]]);
+    }
+  });
+
+  it('a message with no correlation id still gets a trace of its own, with no link', async () => {
+    await consumer().handle(delivery({ ...message(), correlationId: null }).d);
+    const [handled] = spans.getFinishedSpans().filter((s) => s.name === 'worker.handle AssessmentRequested.v1');
+    expect(handled?.spanContext().traceId).toMatch(/^[0-9a-f]{32}$/);
+    expect(handled?.links).toEqual([]);
   });
 });

@@ -12,6 +12,7 @@ import { packHref } from '@/features/ranking/domain/pack.ts';
 import type { DecisionPackView, NameSelfView, PackPage, RecordView } from '../domain/pack.ts';
 import { Needs, SummaryText } from './CardSummary.tsx';
 import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
+import { TopSummary } from './TopSummary.tsx';
 
 // AIV-P2-010, AIV-P2-011: the decision pack, from the Pack artboard (docs/01-design/artboards/Pack.dc.html). Ported:
 // the pack's name, "prepared <date> · rubric vN", "What the job needs" and "Competencies and weights", one card per
@@ -23,8 +24,11 @@ import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
 // own words (a CV) under the shared "Claim" tag and never highlighted (AGENTS.md 1.6), with its source linked to the
 // item on the candidate's profile, or "Source: the assessment" (the ticket: every sentence links to its evidence); "Preparing
 // summary" while the worker writes a card, and "Summary unavailable" with the assessment's own strengths when no
-// answer with valid citations came; and the empty pack's line. Credalent's recommendation is advice: the pack summary
+// answer with valid citations came; and the empty pack's line. The recommendation is advice: the pack summary
 // moves no stage; recorded decisions do, AIV-P2-012 (AGENTS.md 1.5).
+// AIV-P1-165 section 13 adds: the cards in order of backed score under a top summary (TopSummary.tsx); "Prepared for
+// <client>" on an agency's job; an empty pack that says how to add candidates and offers "Go to ranking"; one cited
+// excerpt and numbered sources per section, and no empty "Round 1 finding" (CardSummary.tsx).
 // Deviations:
 // - the name is an h2 under the shared job header, whose h1 is the job and whose breadcrumb is Jobs / job (AIV-P1-011),
 //   and each member's name an h3;
@@ -37,6 +41,8 @@ import { DecisionChoice, RecordSection } from './RecordDecisions.tsx';
 // - the recommendation reads "advance" or "hold" (decided in code from the snapshot), then "and look into <focus> next"
 //   with the gap the model names ("Product judgement"), not "probe cost in Round 2"; "hold" is not on the artboard,
 //   which only shows advance (Credalent never recommends rejecting: AGENTS.md 1.6);
+// - "Credalent's recommendation" reads "Your recommendation:", marked "Prepared with Credalent" (AIV-P1-165): the pack
+//   is the recruiter's to hand over, and the recommendation theirs to stand behind;
 // - the decision choices and "Record the decision" (AIV-P2-012) are in RecordDecisions.tsx, with their deviations;
 // - "Open comparison" shows for a pack of 2 to 10 candidates, what one comparison holds (AIV-P1-047);
 // - "Preview the client view" reads "Preview as the hiring owner sees it" (AIV-P1-116's wording) and opens the branded
@@ -87,6 +93,12 @@ function Pack({
   const names = new Map(pack.members.map((m) => [m.candidateId, m.name ?? t('ranking.unnamed')] as const));
   // Read-only once recorded, before the page is read again too, and for anyone but the job's hiring owner.
   const readOnly = pack.decided !== null || !pack.mayDecide || Boolean(record?.recordedAt);
+  // jobPageHref builds the path from the job id, which typed routes cannot check.
+  const ranking = (label: string, variant: 'primary' | 'secondary') => (
+    <Link href={jobPageHref(pack.jobId, 'candidates') as Route} className={`self-start ${buttonClassName(variant)}`}>
+      {label}
+    </Link>
+  );
   return (
     <section aria-labelledby="pack-title" className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -99,6 +111,9 @@ function Pack({
               ? t('decisionPack.prepared', { date: pack.preparedAt })
               : t('decisionPack.preparedOn', { date: pack.preparedAt, version: pack.rubricVersion })}
           </p>
+          {pack.client && (
+            <p className="text-meta text-text-2">{t('decisionPack.preparedFor', { client: pack.client })}</p>
+          )}
         </div>
         {/* packHref and compareHref build their paths from opaque ids, which typed routes cannot check. */}
         <div className="flex flex-wrap gap-2">
@@ -139,13 +154,19 @@ function Pack({
         </Card>
       )}
       {pack.members.length === 0 ? (
-        <p className="text-body text-text">{t('decisionPack.empty')}</p>
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-body text-text">{t('decisionPack.empty')}</p>
+          {ranking(t('decisionPack.toRanking'), 'primary')}
+        </div>
       ) : (
-        pack.members.map((m) => (
-          <Member key={m.candidateId} jobId={pack.jobId} member={m}>
-            <DecisionChoice member={m} name={names.get(m.candidateId) ?? ''} record={record} readOnly={readOnly} />
-          </Member>
-        ))
+        <>
+          <TopSummary members={pack.members} />
+          {pack.members.map((m) => (
+            <Member key={m.candidateId} jobId={pack.jobId} member={m}>
+              <DecisionChoice member={m} name={names.get(m.candidateId) ?? ''} record={record} readOnly={readOnly} />
+            </Member>
+          ))}
+        </>
       )}
       {pack.members.length > 0 && <RecordSection pack={pack} record={record} nameSelf={nameSelf} names={names} />}
       <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
@@ -155,13 +176,7 @@ function Pack({
       <p className="text-meta text-text-2">
         {t('decisionPack.shared')} {t('decisionPack.others', { count: pack.others })}
       </p>
-      {/* jobPageHref builds the path from the job id, which typed routes cannot check. */}
-      <Link
-        href={jobPageHref(pack.jobId, 'candidates') as Route}
-        className={`self-start ${buttonClassName('secondary')}`}
-      >
-        {t('decisionPack.back')}
-      </Link>
+      {pack.members.length > 0 && ranking(t('decisionPack.back'), 'secondary')}
     </section>
   );
 }
@@ -211,8 +226,13 @@ function Member({
           {m.summary.status === 'ready' ? (
             <SummaryText
               summary={m.summary.summary}
-              labels={{ strengths: t('decisionPack.summary.strengths'), risks: t('decisionPack.summary.risks') }}
-              hrefFor={(itemId) => `${profile}#${evidenceAnchor(itemId)}`}
+              labels={{
+                strengths: t('decisionPack.summary.strengths'),
+                risks: t('decisionPack.summary.risks'),
+                recommendation: t('decisionPack.summary.yourRecommendation'),
+              }}
+              // A source opens its evidence item on the profile, by opaque id; the assessment's facts open the profile.
+              hrefFor={(itemId) => (itemId ? `${profile}#${evidenceAnchor(itemId)}` : profile)}
             />
           ) : m.summary.status === 'preparing' ? (
             <output className="block text-body text-text-2">{t('decisionPack.summary.preparing')}</output>

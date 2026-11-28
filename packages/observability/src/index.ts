@@ -6,9 +6,10 @@ import { redact } from './redact.ts';
 // Logging and tracing for web and worker (AIV-P0-018). `initTelemetry` (`@credalent/observability/init`) turns export to
 // Application Insights on; without it these are local-only (stdout) and the spans are no-ops.
 //
-// Outbox and worker trace continuation (AIV-P0-014, AIV-P0-015): the outbox row stores the W3C `traceparent` of the
-// active span as the envelope's `correlationId` (`propagation.inject`), and the relay and the worker handler start their
-// spans with it as parent (`propagation.extract`), so one operation id runs from the server action to the worker.
+// Outbox and worker traces (AIV-P0-014, AIV-P0-015, AIV-P1-165): the outbox row stores the W3C `traceparent` of the
+// active span as the envelope's `correlationId` (`propagation.inject`). The relay starts its span with it as parent
+// (`propagation.extract`); the worker handler starts a trace of its own for each message, with it as a span link, so a
+// message's log lines share a trace id with no other message's and the action that caused it is one link away.
 // The outbox half is built in packages/db (outbox.ts, relay.ts); the worker handler half in packages/db/src/consumer.ts.
 
 export { registerPersonalDataKeys } from './redact.ts';

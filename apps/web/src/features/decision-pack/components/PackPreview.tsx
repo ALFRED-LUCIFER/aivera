@@ -9,6 +9,7 @@ import { packHref } from '@/features/ranking/domain/pack.ts';
 import { initials } from '@/features/shell/domain/shell.ts';
 import type { PackPreview as Preview } from '../domain/pack.ts';
 import { Needs, SummaryText } from './CardSummary.tsx';
+import { TopSummary } from './TopSummary.tsx';
 
 // AIV-P1-116: the decision pack as the hiring owner will see it, in the workspace's branding, from the client view of
 // the shortlist (docs/01-design/artboards/ClientPack.dc.html) with the header and "Powered by Credalent" of the shared
@@ -24,9 +25,10 @@ import { Needs, SummaryText } from './CardSummary.tsx';
 //   #127) renders it on its own. So the title is an h2 and each name an h3, under the job header's h1, and the title
 //   keeps the 28 px title size where the artboard draws clamp(28px, 4vw, 36px): a larger h2 would outrank the job
 //   header's 28 px h1;
-// - the logo is the workspace's initials on the default ink accent, as ELayout draws it, beside the workspace's name:
-//   no logo or accent is stored until AIV-P2-077 (#520), so every workspace has the default header. The name is the
-//   body font at 18 px bold, as ELayout draws it;
+// - the logo is the workspace's initials on the default ink accent, as ELayout draws it, beside the workspace's name.
+//   The name is the body font at 18 px bold, as ELayout draws it;
+//   shortcut: no agency logo or accent, so every workspace has the default header; show the stored logo once
+//   AIV-P2-077 (#520) stores it;
 // - the header's line reads "Prepared <date> · Confidential" (the ticket's wording), not "Shared with you by your
 //   recruiter · <date>": nothing is shared yet. ELayout's "Sent by … through Credalent" line and workspace footer
 //   block are left out: they belong to emails (AIV-P2-077, #521);
@@ -42,6 +44,9 @@ import { Needs, SummaryText } from './CardSummary.tsx';
 //   AIV-P2-014 (#128, #129);
 // - the cards' padding is the shared Card's 16 px, not 24 px, and "Powered by Credalent" the 13 px meta size, not 12 px:
 //   @credalent/ui and the tokens have neither;
+// - AIV-P1-165 section 13 adds: the top summary (TopSummary.tsx) above the cards, which come in order of backed score;
+//   "Prepared for <client>" under the title on an agency's job, and nothing about a client in-house; and the
+//   recommendation as the workspace's ("<workspace> recommends:"), marked "Prepared with Credalent";
 // - printed (AIV-P1-165), the line above the frame and "Back to the pack" are left out: the printout is the frame, with
 //   its "Prepared <date> · Confidential", the job in its title, and every card. The browser prints it; nothing is sent.
 
@@ -82,12 +87,18 @@ export function PackPreview({ jobId, packId, preview }: { jobId: string; packId:
             <h2 id="preview-title" className="font-display text-title tracking-tight text-text">
               {t('decisionPack.title', { name: preview.name, job: preview.job })}
             </h2>
+            {preview.client && (
+              <p className="text-body font-semibold text-text">
+                {t('decisionPack.preparedFor', { client: preview.client })}
+              </p>
+            )}
             <p className="max-w-[66ch] text-[16px] leading-6 text-text-2">
               {t('decisionPack.preview.lead', { count: preview.members.length })}
             </p>
           </div>
+          <TopSummary members={preview.members} />
           {preview.members.map((m) => (
-            <Member key={m.candidateId} member={m} />
+            <Member key={m.candidateId} member={m} workspace={preview.workspace} />
           ))}
           <p className="flex flex-wrap items-center gap-2 text-meta text-text-2">
             <ValueBasis basis="observed" label={t('ranking.observed')} />
@@ -103,7 +114,7 @@ export function PackPreview({ jobId, packId, preview }: { jobId: string; packId:
   );
 }
 
-function Member({ member }: { member: Preview['members'][number] }) {
+function Member({ member, workspace }: { member: Preview['members'][number]; workspace: string }) {
   const t = useTranslations();
   const name = member.name ?? t('ranking.unnamed');
   const titleId = `preview-${member.candidateId}`;
@@ -132,7 +143,11 @@ function Member({ member }: { member: Preview['members'][number] }) {
             // The preview has no evidence cards, so a source names its item and links nowhere.
             <SummaryText
               summary={summary.summary}
-              labels={{ strengths: t('decisionPack.preview.strengths'), risks: t('decisionPack.preview.risks') }}
+              labels={{
+                strengths: t('decisionPack.preview.strengths'),
+                risks: t('decisionPack.preview.risks'),
+                recommendation: t('decisionPack.preview.recommends', { workspace }),
+              }}
               hrefFor={undefined}
             />
           ) : summary.status === 'preparing' ? (

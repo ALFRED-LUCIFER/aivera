@@ -1348,6 +1348,7 @@
     "breadcrumb": "Breadcrumb",
     "stagesLabel": "Stages of this job",
     "hiringOwner": "Hiring owner: {name}",
+    "client": "Client: {name}",
     "noHiringOwner": "Hiring owner: not assigned",
     "owner": {
       "assignOne": "Assign one",
@@ -1862,6 +1863,7 @@
     "title": "{name}: {job}",
     "prepared": "Decision pack · prepared {date, date, ::d MMM yyyy}",
     "preparedOn": "Decision pack · prepared {date, date, ::d MMM yyyy} · rubric v{version}",
+    "preparedFor": "Prepared for {client}",
     "members": "{count, plural, one {# candidate} other {# candidates}}",
     "addedBy": "Added by {name} on {date, date, ::d MMM yyyy}",
     "basis": "Backed scores are observed from inspected evidence, as they were when each candidate joined the pack.",
@@ -1871,7 +1873,18 @@
     "loading": "Loading the decision pack…",
     "error": "We could not load the decision pack. Try again.",
     "openPreview": "Preview as the hiring owner sees it",
-    "empty": "This pack has no candidates. Add them from the ranking.",
+    "empty": "This pack has no candidates yet. In the ranking, tick the candidates to decide on, then choose “Add to decision pack”.",
+    "none": "This job has no decision pack yet. In the ranking, tick the candidates to decide on, then choose “Add to decision pack”.",
+    "toRanking": "Go to ranking",
+    "top": {
+      "title": "Summary",
+      "order": "In order of backed score, highest first. A claim counts zero in the backed score.",
+      "first": "Highest backed score in this pack.",
+      "below": "{points, plural, one {# point} other {# points}} below {name} on backed score.",
+      "level": "Level with {name} on backed score. Listed in the order they joined the pack.",
+      "strength": "Strength: {text}",
+      "risk": "Risk: {text}"
+    },
     "shared": "Shared packs show evidence summaries and sources, not raw files.",
     "role": {
       "needs": "What the job needs",
@@ -1883,7 +1896,9 @@
       "risks": "Outstanding risks",
       "round1": "Round 1 finding",
       "none": "None stated in this summary.",
-      "recommendation": "Credalent's recommendation:",
+      "yourRecommendation": "Your recommendation:",
+      "preparedWith": "Prepared with Credalent",
+      "sources": "Sources",
       "action": "{action, select, advance {advance} other {hold}}{hasFocus, select, yes {, and look into {focus} next} other {}}",
       "source": "Source: {label}",
       "assessment": "Source: the assessment",
@@ -1900,6 +1915,7 @@
       "risks": "Still to test in the interview",
       "noStrengths": "No competency meets the job's need on inspected evidence yet.",
       "noRisks": "Every competency meets the job's need on inspected evidence.",
+      "recommends": "{workspace} recommends:",
       "poweredBy": "Powered by Credalent"
     },
     "record": {

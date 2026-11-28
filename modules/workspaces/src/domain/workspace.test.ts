@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AI_DAILY_TOKEN_BUDGET,
   assertCanChangeRole,
   pickActiveWorkspace,
   usageWindow,
@@ -91,5 +92,28 @@ describe('pickActiveWorkspace', () => {
     expect(pickActiveWorkspace('gulf', ['own', 'harbour'])).toBe('own');
     expect(pickActiveWorkspace(null, ['own'])).toBe('own');
     expect(pickActiveWorkspace('gulf', [])).toBeNull();
+  });
+});
+
+// AIV-P1-165 section 7 "A pilot day's allowance covers a pilot day's work". The largest charged call of each task on
+// the Azure dev environment (gpt-main, input plus output tokens, the 30 days to 28 Nov 2026; a rejected attempt
+// reports no count, so every call is counted twice: the first attempt and its informed second one, both charged).
+// Assessing is the scoring formula: no model call.
+describe("Scenario: A pilot day's allowance covers a pilot day's work", () => {
+  const LARGEST = { detectDomain: 795, draftCompetencies: 2_043, parseCv: 9_003, mapToCompetency: 6_067 };
+  const ATTEMPTS = 2;
+  const CVS = 30;
+  const jobDraft = ATTEMPTS * (LARGEST.detectDomain + LARGEST.draftCompetencies);
+  const cvsReadAndMapped = CVS * ATTEMPTS * (LARGEST.parseCv + LARGEST.mapToCompetency);
+  const pilotDay = jobDraft + cvsReadAndMapped;
+
+  it('one job draft and 30 CVs read and mapped cost 909,876 tokens at the largest calls seen', () => {
+    expect(jobDraft).toBe(5_676);
+    expect(cvsReadAndMapped).toBe(904_200);
+    expect(pilotDay).toBe(909_876);
+  });
+
+  it('the default daily allowance covers that day twice over, so no CV waits for tomorrow', () => {
+    expect(AI_DAILY_TOKEN_BUDGET.default).toBeGreaterThanOrEqual(2 * pilotDay);
   });
 });

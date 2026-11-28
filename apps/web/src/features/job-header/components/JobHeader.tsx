@@ -34,6 +34,7 @@ export function JobHeader({
   const meta = [
     view.team,
     view.location,
+    view.client && t('jobHeader.client', { name: view.client }),
     view.hiringOwner ? t('jobHeader.hiringOwner', { name: view.hiringOwner }) : t('jobHeader.noHiringOwner'),
     t('jobHeader.assessed', { count: view.assessed }),
   ].filter(Boolean);

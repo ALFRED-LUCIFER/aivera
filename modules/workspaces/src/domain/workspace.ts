@@ -74,6 +74,8 @@ export const pickActiveWorkspace = (current: string | null, memberOf: string[]):
 /**
  * Input plus output AI tokens a workspace may spend per UTC day (AIV-P0-033, AIV-P2-038): the platform default, and the
  * bounds of an operator's per-workspace override. Mirrored by `workspace_ai_daily_token_budget_check`.
+ * A pilot day (AIV-P1-165): 1 job draft (795 + 2,043) + 30 CVs read and mapped (9,003 + 6,067 each), every call asked
+ * twice = 909,876 tokens, from the largest calls on dev to 28 Nov 2026; the default is 2.2 times that (workspace.test.ts).
  */
 export const AI_DAILY_TOKEN_BUDGET = { default: 2_000_000, min: 100_000, max: 10_000_000 } as const;
 

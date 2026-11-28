@@ -83,6 +83,11 @@ describe('Job header stage lines (AIV-P1-011)', () => {
     expect(jobHeaderView(approved, null, 3, null, 3, false).stages[5]?.line).toEqual({ key: 'notStarted' });
   });
 
+  it('AIV-P1-165: an agency job carries its client for "Client: Falcon Pay"; in-house there is none', () => {
+    expect(jobHeaderView(header({}), null, 0, null, 0, false, 'Falcon Pay').client).toBe('Falcon Pay');
+    expect(jobHeaderView(header({}), null, 0, null, 0, false).client).toBeNull();
+  });
+
   it('only the stage segments are a current page', () => {
     expect(parseJobPage('import')).toBe('import');
     expect(parseJobPage('rubric')).toBe('rubric');
