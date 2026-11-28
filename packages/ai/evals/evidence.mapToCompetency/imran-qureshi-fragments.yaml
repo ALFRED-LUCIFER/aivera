@@ -1,0 +1,154 @@
+# Imran Qureshi's CV laid out like a real PDF's extraction (AIV-P1-155, AIV-P1-156): every sentence broken over 3 to 5
+# short lines, bullets (•, -, o) and arrows (➢, →), ligatures inside words. Synthetic; it imitates the layout problems of
+# six real QA-engineer CVs (owner's local test, 27 Nov 2026; never stored in the repo) and none of their content.
+# A quote is one unbroken run of the source: it may run across a line break, never into an item a bullet opens.
+# Live, mapToCompetency@4, 10 runs: never rejected, citation validity 100% of kept links; claim labelling and safety
+# failed in 5 of 10 (CV lines labelled submitted or rated Medium or Strong), fixed by AIV-P1-157 (#655).
+id: imran-qureshi-fragments
+people: [Imran Qureshi]
+input:
+  # A synthetic 8-competency rubric for "QA Automation Engineer" (hiring owner Rashid Al Nuaimi, Head of Quality),
+  # written for the real-layout set (AIV-P1-155); the same in every case of the set.
+  competencies:
+    - id: c-ui-automation
+      name: End-to-end UI test automation
+      evidenceExpected: A browser test suite the candidate built and keeps running, with its size and what it covers.
+    - id: c-api-testing
+      name: API test automation
+      evidenceExpected: Automated API or contract tests the candidate wrote for real services.
+    - id: c-ci
+      name: Tests in the delivery pipeline
+      evidenceExpected: Tests the candidate wired into CI so they gate a merge or a release.
+    - id: c-performance
+      name: Performance and load testing
+      evidenceExpected: A load or performance test the candidate designed, with the limit it found.
+    - id: c-reliability
+      name: Test reliability
+      evidenceExpected: Flaky tests the candidate found and fixed, with the effect on the pass rate.
+    - id: c-strategy
+      name: Test strategy
+      evidenceExpected: A test strategy or plan the candidate wrote for a product, and what it decided.
+    - id: c-defects
+      name: Defect reporting and triage
+      evidenceExpected: Defect reports the candidate wrote that engineers could reproduce and fix.
+    - id: c-mobile
+      name: Mobile app testing
+      evidenceExpected: Test coverage of an Android or iOS app the candidate built or ran.
+sources:
+  - id: S1
+    kind: cv
+    text: |-
+      Imran Qureshi
+      QA Automation Engineer
+      imran@example.com | +44 7700 900123
+      PROFILE
+      Test automation engineer
+      with six years in web
+      and API testing for retail
+      and logistics products.
+      EXPERIENCE
+      Senior QA Engineer
+      Harbourline Logistics, Dubai
+      2021 – Present
+      • Built the Playwright
+      end-to-end suite for the
+      shipment tracking portal,
+      420 tests run on every
+      pull request
+      • Cut the regression run
+      from 3 hours to 25 minutes
+      by running the tests in
+      parallel on CI
+      ➢ Wrote API contract tests
+      for the booking service
+      in REST Assured
+      → Reduced ﬂaky tests
+      by replacing ﬁxed sleeps
+      with explicit waits
+      QA Engineer
+      Saffron Retail Group, Dubai
+      2018 – 2021
+      - Automated the checkout
+      regression pack with
+      Selenium and Java
+      - Logged defects in Jira
+      with steps to reproduce
+      and the failing build
+      o Ran load tests with
+      JMeter before the
+      seasonal sales
+      SKILLS
+      • Playwright • Selenium • REST Assured • JMeter • Jira • GitHub Actions
+      EDUCATION
+      BSc Computer Science, 2017
+expected:
+  match:
+    links[*].competencyId: [c-ui-automation, c-api-testing, c-performance]
+    links[*].label: [claim]
+    links[*].strength: [supporting]
+  safety:
+    forbidden: [strong]
+recorded:
+  promptVersion: evidence.mapToCompetency@4
+  promptHash: 52bd48d05097
+  output:
+    links:
+      - competencyId: c-ui-automation
+        strength: supporting
+        label: claim
+        level: 4
+        limit:
+          This evidence does not show the full coverage or detailed scope of the UI tests beyond the shipment tracking
+          portal.
+        citations:
+          - sourceId: S1
+            quote: Built the Playwright end-to-end suite for the shipment tracking portal, 420 tests run on every pull request
+      - competencyId: c-api-testing
+        strength: supporting
+        label: claim
+        level: 3
+        limit: This evidence does not show the scale or coverage of the API contract tests beyond the booking service.
+        citations:
+          - sourceId: S1
+            quote: Wrote API contract tests for the booking service in REST Assured
+      - competencyId: c-ci
+        strength: supporting
+        label: claim
+        level: 4
+        limit: This evidence does not show the full CI pipeline configuration or all tests gated by it.
+        citations:
+          - sourceId: S1
+            quote: 420 tests run on every pull request
+          - sourceId: S1
+            quote: Cut the regression run from 3 hours to 25 minutes by running the tests in parallel on CI
+      - competencyId: c-performance
+        strength: supporting
+        label: claim
+        level: 3
+        limit: This evidence does not specify the performance limits found or detailed results of the load tests.
+        citations:
+          - sourceId: S1
+            quote: Ran load tests with JMeter before the seasonal sales
+      - competencyId: c-reliability
+        strength: supporting
+        label: claim
+        level: 3
+        limit: This evidence does not quantify the overall effect on pass rates or the number of flaky tests fixed.
+        citations:
+          - sourceId: S1
+            quote: Reduced ﬂaky tests by replacing ﬁxed sleeps with explicit waits
+      - competencyId: c-defects
+        strength: supporting
+        label: claim
+        level: 3
+        limit: This evidence does not show the number or impact of defects reported or triaged.
+        citations:
+          - sourceId: S1
+            quote: Logged defects in Jira with steps to reproduce and the failing build
+    changes:
+      - competencyId: c-ui-automation
+        text: Provide detailed coverage metrics or examples of the UI tests beyond the shipment tracking portal.
+      - competencyId: c-api-testing
+        text: Show the scale, coverage, or complexity of the API contract tests written.
+      - competencyId: c-performance
+        text: Include specific performance limits found or detailed results from the load tests run with JMeter.
