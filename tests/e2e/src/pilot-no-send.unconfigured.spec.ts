@@ -35,3 +35,14 @@ test('The rubric page offers no send or publish, in reading and in edit mode', a
   // Leaves without saving: nothing changes.
   await page.getByRole('button', { name: 'Cancel' }).click();
 });
+
+// §16 "Add a job, Invite a hiring owner: the Members invitation": Members says invitations are off instead of offering a
+// form that fails on submit (§13: no button that fails silently).
+test('Members says invitations are off, with no invite form', async ({ page }) => {
+  await signIn(page, { email: 'alex@example.com' });
+  await page.goto('/app/settings/members');
+  await expect(page.getByRole('heading', { name: 'Invite someone', level: 2 })).toBeVisible();
+  await expect(page.getByText('Invitations are off during the pilot: no email leaves Credalent.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send invitation' })).toHaveCount(0);
+  await expectAccessible(page);
+});

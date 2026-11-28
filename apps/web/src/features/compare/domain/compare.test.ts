@@ -89,5 +89,7 @@ describe('an excerpt handed off (AIV-P1-165)', () => {
   it('keeps figures, years and dates that are not a contact detail', () => {
     const text = 'About 9,000 merchants, 300 pilot users, 2019-2023, 2024-06-01, latency 120 340 560 ms, 0.82 F1.';
     expect(withoutContacts(text)).toBe(text);
+    const figures = 'Processed 12000000 records, AED 15000000 saved, ticket 20231105.';
+    expect(withoutContacts(figures)).toBe(figures);
   });
 });

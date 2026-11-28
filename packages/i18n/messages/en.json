@@ -1658,6 +1658,7 @@
     },
     "invite": {
       "title": "Invite someone",
+      "off": "Invitations are off during the pilot: no email leaves Credalent.",
       "email": "Email",
       "role": "Role",
       "jobTitle": "Job title",

@@ -145,7 +145,8 @@ export function AddApplicantsDialog(props: AddApplicantsDialogProps) {
               <output className="text-meta text-text-2">{t('ready', { count: props.readyCount })}</output>
               <ul
                 aria-label={t('files', { count: rows.length })}
-                className="flex max-h-64 flex-col gap-1 overflow-y-auto text-body text-text"
+                // No scroll box of its own: the dialog scrolls, and it holds focusable controls (axe scrollable-region-focusable).
+                className="flex flex-col gap-1 text-body text-text"
               >
                 {rows.map((row) => (
                   <li

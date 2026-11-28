@@ -8,7 +8,10 @@ import { withinSave, type AddApplicantsResult, type CvRow, type UploadSource } f
 import { addApplicants } from '../services/addApplicants.ts';
 
 // A few uploads at a time: each is a handful of server actions plus a status poll every 2 s, and Next.js runs a tab's
-// server actions one after another, so 30 at once would queue every other request of the tab behind them.
+// server actions one after another, so 30 at once would queue every other request of the tab behind them. One queue
+// serves every pick of the dialog session, so a second pick does not double it.
+// shortcut: a slot is held through the malware scan's polling, so with scanning on 30 CVs take about ten scan rounds;
+// CVs already clean can be saved meanwhile. Free the slot once the file is stored if pilot uploads prove slow.
 const AT_ONCE = 3;
 
 /**
@@ -21,6 +24,8 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
   // Bumped when the dialog closes: uploads still running stop, and their results are dropped.
   const session = useRef(0);
   const keys = useRef(0);
+  const queue = useRef<{ key: string; file: File }[]>([]);
+  const workers = useRef(0);
   const [open, setOpen] = useState(false);
   // No default: the recruiter says where these CVs came from (AIV-P1-165).
   const [source, setSource] = useState<UploadSource | null>(null);
@@ -46,6 +51,7 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
       setOpen(next);
       if (!next) {
         session.current++;
+        queue.current = [];
         setSource(null);
         setRows([]);
         setOver(0);
@@ -70,22 +76,28 @@ export function useAddApplicantsController(jobId: string, services = { addApplic
       const patch = (key: string) => (upload: DirectUpload) => {
         if (alive()) setRows((list) => list.map((r) => (r.key === key ? { ...r, upload } : r)));
       };
-      const queue = [...picked];
+      queue.current.push(...picked);
       const worker = async () => {
-        while (alive()) {
-          const next = queue.shift();
-          if (!next) return;
-          await services.uploadFile('cv', next.file, patch(next.key), alive);
+        workers.current++;
+        try {
+          while (alive()) {
+            const next = queue.current.shift();
+            if (!next) return;
+            await services.uploadFile('cv', next.file, patch(next.key), alive);
+          }
+        } finally {
+          workers.current--;
         }
       };
-      void Promise.all(Array.from({ length: AT_ONCE }, worker));
+      for (let i = workers.current; i < AT_ONCE; i++) void worker();
     },
     rows,
     over,
     readyCount: ready.length,
     confirmed,
     onConfirmedChange: setConfirmed,
-    canSubmit: ready.length > 0 && source !== null && confirmed && !busy && !pending,
+    // CVs already clean can be saved while others are still uploading or being checked; each save takes the ready ones.
+    canSubmit: ready.length > 0 && source !== null && confirmed && !pending,
     pending,
     result,
     failure,

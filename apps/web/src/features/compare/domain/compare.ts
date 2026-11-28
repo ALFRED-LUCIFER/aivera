@@ -43,10 +43,11 @@ const CONTACT = new RegExp(
   ].join('|'),
   'giu',
 );
-// A phone starts with +, 00, 0 or a bracket, or has a run of four digits; a run of years or an ISO date is not one.
+// A phone starts with +, 00, 0 or a bracket, or is split by hyphens or brackets; a bare figure ("12000000 records",
+// "AED 15000000"), a run of years or an ISO date is not one.
 const contactShaped = (match: string) =>
   /[@/]/.test(match) ||
-  ((/^\(?(?:\+|0)/.test(match) || /\d{4}/.test(match)) && !/^(?:(?:19|20)\d\d[ -]*)+$|^\d{4}-\d\d-\d\d$/.test(match));
+  ((/^\(?(?:\+|0)/.test(match) || /[-()]/.test(match)) && !/^(?:(?:19|20)\d\d[ -]*)+$|^\d{4}-\d\d-\d\d$/.test(match));
 
 /**
  * An excerpt with every email, phone and LinkedIn address cut to "…", as a quote elides: a comparison is handed off

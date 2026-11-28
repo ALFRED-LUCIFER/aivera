@@ -90,3 +90,16 @@ export function InviteForm({ action, state, pending, role, onRoleChange, showPic
     </section>
   );
 }
+
+/** "Invite someone" while outbound email is off (OUTBOUND, AIV-P1-165): one plain line instead of a form that fails. */
+export function InvitesOff() {
+  const t = useTranslations('members');
+  return (
+    <section aria-labelledby="invite-title" className="flex flex-col gap-3">
+      <h2 id="invite-title" className="font-display text-section text-text">
+        {t('invite.title')}
+      </h2>
+      <p className="text-body text-text-2">{t('invite.off')}</p>
+    </section>
+  );
+}

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { loadMembers } from '@/features/members/services/loadMembers.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { requireScreen } from '@/features/shell/services/request.ts';
+import { outboundOn } from '@/server/notifications';
 import { inActiveWorkspace } from '@/server/workspace';
 import { Members } from './Members.tsx';
 
@@ -30,7 +31,7 @@ export default async function MembersPage() {
         }
         title={t('members.title')}
       />
-      <Members {...result.value} />
+      <Members {...result.value} outbound={outboundOn()} />
     </>
   );
 }

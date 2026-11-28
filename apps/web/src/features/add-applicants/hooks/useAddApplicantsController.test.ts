@@ -107,6 +107,41 @@ describe('Scenario Outline: Several files at once, each validated', () => {
     await waitFor(() => expect(result.current.readyCount).toBe(10));
     expect([slow.mock.calls.length, most]).toEqual([10, 3]);
   });
+
+  it('a second pick while uploads run joins the same queue: still at most three at a time', async () => {
+    let running = 0;
+    let most = 0;
+    const slow = vi.fn(async (_p: 'cv', file: File, set: (u: DirectUpload) => void) => {
+      most = Math.max(most, ++running);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      running--;
+      set({ phase: 'done', fileId: idOf(file.name) });
+    });
+    const { result } = setup(undefined, slow);
+    await pick(
+      result,
+      Array.from({ length: 5 }, (_, i) => pdf(i)),
+    );
+    await pick(
+      result,
+      Array.from({ length: 5 }, (_, i) => pdf(i + 5)),
+    );
+    await waitFor(() => expect(result.current.readyCount).toBe(10));
+    // SAFETY: mutation check: started AT_ONCE workers per pick (ignoring workers.current) -> most was 6, this failed
+    expect([slow.mock.calls.length, most]).toEqual([10, 3]);
+  });
+
+  it('CVs already clean can be saved while another is still being checked', async () => {
+    const uploads = vi.fn(async (_p: 'cv', file: File, set: (u: DirectUpload) => void) => {
+      set(file.name.endsWith('-2.pdf') ? { phase: 'checking' } : { phase: 'done', fileId: idOf(file.name) });
+    });
+    const { result } = setup(undefined, uploads);
+    act(() => result.current.onSourceChange('referral'));
+    act(() => result.current.onConfirmedChange(true));
+    await pick(result, [pdf(1), pdf(2)]);
+    await waitFor(() => expect(result.current.readyCount).toBe(1));
+    expect(result.current.canSubmit).toBe(true);
+  });
 });
 
 describe('Scenario: Source and consent are asked once', () => {

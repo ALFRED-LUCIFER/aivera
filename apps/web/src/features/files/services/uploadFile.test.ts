@@ -1,12 +1,11 @@
-/** @vitest-environment jsdom */
 import type { FileStatus } from '@credalent/files';
-import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { useDirectUpload } from './useDirectUpload.ts';
+import type { DirectUpload } from '../domain/files.ts';
+import { uploadFile } from './uploadFile.ts';
 
 // AIV-P0-016: the upload flow with the server actions and the PUT replaced.
 const FILE_ID = '0190d4a2-0000-7000-8000-0000000000f1';
-vi.mock('../services/files.ts', () => ({}));
+vi.mock('./files.ts', () => ({}));
 
 const pdf = (size: number, name = 'eval-set-sample.pdf', type = 'application/pdf') =>
   new File([new Uint8Array(size)], name, { type });
@@ -22,16 +21,17 @@ function services(statuses: (FileStatus | null)[]) {
     completeUpload: vi.fn(async () => first ?? null),
     uploadStatus: vi.fn(async () => later.shift() ?? null),
     pollMs: 0,
+    maxPolls: 90,
   };
 }
 
-const run = async (file: File, s: ReturnType<typeof services>) => {
-  const { result } = renderHook(() => useDirectUpload('portal', s));
-  await act(() => result.current.onSelect(file));
-  return result.current.state;
+const run = async (file: File, s: ReturnType<typeof services>, alive = () => true) => {
+  let state: DirectUpload = { phase: 'idle' };
+  await uploadFile('portal', file, (next) => (state = next), alive, s as never);
+  return state;
 };
 
-describe('useDirectUpload', () => {
+describe('uploadFile', () => {
   it('uploads, waits out the scan, and ends with the clean file id', async () => {
     const s = services(['pending', 'pending', 'clean']);
     expect(await run(pdf(2048), s)).toEqual({ phase: 'done', fileId: FILE_ID });
@@ -75,16 +75,17 @@ describe('useDirectUpload', () => {
   // AIV-P2-064. SAFETY: mutation check: dropped the `slow` state -> this test failed
   it('Scenario: A slow scan is not shown as failed: past the usual wait it says "Still checking" and keeps polling', async () => {
     const s = { ...services(['pending']), maxPolls: 2 };
-    let calls = 0;
-    const scan = Promise.withResolvers<FileStatus>();
-    s.uploadStatus.mockImplementation(() => (++calls <= 3 ? Promise.resolve('pending') : scan.promise));
-    const { result } = renderHook(() => useDirectUpload('cv', s));
-    let upload: Promise<void> = Promise.resolve();
-    act(() => void (upload = result.current.onSelect(pdf(10))));
-    await waitFor(() => expect(result.current.state).toEqual({ phase: 'checking', slow: true }));
-    scan.resolve('clean');
-    await act(() => upload);
-    expect(result.current.state).toEqual({ phase: 'done', fileId: FILE_ID });
+    s.uploadStatus.mockResolvedValueOnce('pending').mockResolvedValueOnce('pending').mockResolvedValueOnce('clean');
+    const states: DirectUpload[] = [];
+    await uploadFile(
+      'cv',
+      pdf(10),
+      (next) => states.push(next),
+      () => true,
+      s as never,
+    );
+    expect(states).toContainEqual({ phase: 'checking', slow: true });
+    expect(states.at(-1)).toEqual({ phase: 'done', fileId: FILE_ID });
   });
 
   it('gives up as failed only after ten times the usual wait', async () => {
@@ -94,15 +95,22 @@ describe('useDirectUpload', () => {
     expect(s.uploadStatus).toHaveBeenCalledTimes(20);
   });
 
-  // SAFETY: mutation check: made reset() only set idle (no run guard) -> this test failed (the old upload landed)
-  it('Scenario: An old error does not return: reset clears the state and drops an upload still polling', async () => {
+  // SAFETY: mutation check: dropped `if (!alive()) return;` from the poll loop -> this test failed (the old upload landed)
+  it('Scenario: An old error does not return: once alive turns false, an upload still polling settles nothing', async () => {
+    let live = true;
     const s = services(['pending', 'clean']);
-    const { result } = renderHook(() => useDirectUpload('cv', s));
-    s.uploadStatus.mockImplementation(async () => {
-      act(() => result.current.reset());
-      return 'clean';
-    });
-    await act(() => result.current.onSelect(pdf(10)));
-    expect(result.current.state).toEqual({ phase: 'idle' });
+    s.uploadStatus.mockImplementation(async () => 'clean');
+    const states: DirectUpload[] = [];
+    await uploadFile(
+      'cv',
+      pdf(10),
+      (next) => {
+        states.push(next);
+        if (next.phase === 'checking') live = false;
+      },
+      () => live,
+      s as never,
+    );
+    expect(states.at(-1)).toEqual({ phase: 'checking' });
   });
 });
