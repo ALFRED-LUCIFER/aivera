@@ -28,6 +28,8 @@ export type JobHeaderView = {
   team: string | null;
   location: string | null;
   hiringOwner: string | null;
+  /** The agency client the job is for; null in-house, and for a reader who may not list clients (AIV-P1-165). */
+  client: string | null;
   assessed: number;
   /** The admin's hiring-owner picker; null for every other role (AIV-P1-097). */
   ownerChange: OwnerChange | null;
@@ -44,6 +46,7 @@ export function jobHeaderView(
   imported: number,
   /** The job has an undecided decision pack (AIV-P2-011): "Shortlist ready". */
   shortlistReady: boolean,
+  client: string | null = null,
 ): JobHeaderView {
   const lines: Record<JobPage, StageLine> = {
     // shortcut: a job is not edited after it is added yet, so "Saved" is when it was added; the job edit ticket adds
@@ -72,6 +75,7 @@ export function jobHeaderView(
     team: job.team,
     location: job.location,
     hiringOwner,
+    client,
     assessed,
     ownerChange,
     rubric: { approved: approved !== null, latest: latest?.status ?? null },

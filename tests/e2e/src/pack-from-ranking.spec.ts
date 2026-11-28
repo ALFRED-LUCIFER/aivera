@@ -30,7 +30,9 @@ import { approvedWorkspace, syntheticUser } from './workspaces.ts';
 // (no worker runs here) with the fake model: a cited answer for Sara, Huda and Daniel, and for Arjun one citing a
 // source he was never given, so his card is "Summary unavailable"; and a member of another workspace, who gets 404.
 // AIV-P1-149 adds what the selection must survive (a server refresh that started before the tick, a reload, the
-// filters) and must not survive (a confirmed bulk action).
+// filters) and must not survive (a confirmed bulk action). AIV-P1-165 section 13 makes the workspace an agency and the
+// job its client Falcon Pay's ("Client: Falcon Pay", "Prepared for Falcon Pay"), and adds the Decision tab before any
+// pack ("Go to ranking"), the top summary, numbered sources and the recommendation as the recruiter's.
 // Serial: the later tests open the pack the first one builds.
 test.describe.configure({ mode: 'serial' });
 
@@ -83,10 +85,13 @@ test.beforeAll(async () => {
     const assessment = createAssessment(workspaces, audit, jobs, undefined, applied);
     const { approvedRubric } = createApprovedRubricReads();
     await workspaces.withWorkspace({ userId: made.creatorUserId }, made.workspaceId, async (ctx) => {
+      await workspaces.setWorkspaceType(ctx, 'agency');
+      const client = await workspaces.addClient(ctx, 'Falcon Pay');
       const job = await jobs.createJob(ctx, {
         title: 'Senior AI Engineer',
         jobType: 'ai_llm_engineering',
         description: 'Senior AI Engineer, synthetic e2e job for building a decision pack.',
+        clientId: client.id,
         synthetic: true,
       });
       jobId = job.id;
@@ -305,6 +310,26 @@ const tick = (page: Page, name: string) =>
   ).toPass();
 
 // SAFETY: mutation check: dropped clearSelection() from usePackController's onConfirm -> this test failed (3 rows stayed checked)
+// AIV-P1-165 section 13.
+test('Scenarios: The empty pack teaches the next step, and the job header names the client, by keyboard', async ({
+  page,
+}) => {
+  await signIn(page, { email: creator });
+  await page.goto(`/app/jobs/${jobId}/pack`);
+  await expect(page.getByText('Client: Falcon Pay', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText(
+      'This job has no decision pack yet. In the ranking, tick the candidates to decide on, then choose “Add to decision pack”.',
+    ),
+  ).toBeVisible();
+  await expectAccessible(page);
+  const go = page.getByRole('link', { name: 'Go to ranking' });
+  await go.focus();
+  expect(await css(go, 'outline-style')).toBe('solid');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveTitle('Senior AI Engineer: Evidence and ranking · Credalent', { timeout: 15_000 });
+});
+
 test('Scenario: Preview, then add, by keyboard; then add to the existing pack', async ({ page }) => {
   const table = await openRanking(page);
   await table.getByRole('checkbox', { name: 'Select all 5 shown' }).focus();
@@ -372,6 +397,8 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
   await expect(page.getByRole('heading', { level: 2, name: 'Round 2 shortlist: Senior AI Engineer' })).toBeVisible();
   packPath = new URL(page.url()).pathname;
   await expect(page.getByText(/^Decision pack · prepared \d{1,2} [A-Z][a-z]{2} \d{4} · rubric v1$/)).toBeVisible();
+  // AIV-P1-165: an agency's pack names the job's client.
+  await expect(page.getByText('Prepared for Falcon Pay', { exact: true })).toBeVisible();
   for (const name of ASSESSED) await expect(page.getByRole('link', { name })).toHaveCount(1);
   // AIV-P1-139: who added each member and when, the three from the new pack and Daniel alike.
   const addedBy = `Added by ${creator.slice(0, creator.indexOf('@'))} on `;
@@ -400,7 +427,7 @@ test('Scenario: Preview, then add, by keyboard; then add to the existing pack', 
 });
 
 // SAFETY: mutation check: DecisionPack passed hrefFor={undefined} -> this test failed (no "Source: rag-service" link)
-test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence by keyboard, Credalent's recommendation, and a rejected answer not shown", async ({
+test('AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence by keyboard, the recommendation, and a rejected answer not shown', async ({
   page,
 }) => {
   await summarisePacks();
@@ -420,19 +447,34 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
   await expect(sara.getByRole('list', { name: 'Outstanding risks' })).toContainText(
     'Retrieval and evaluation rests on a claim with nothing to inspect.',
   );
-  await expect(sara.getByText('Round 1 finding').locator('xpath=following-sibling::*[1]')).toHaveText(
-    'None stated in this summary.',
-  );
+  // AIV-P1-165: an empty "Round 1 finding" is left out.
+  await expect(sara.getByText('Round 1 finding')).toHaveCount(0);
   // Her CV's words are a claim: labelled so, never highlighted as cited evidence (AGENTS.md 1.6).
-  const claim = sara
-    .getByRole('list', { name: 'Outstanding risks' })
-    .getByText('raised answer accuracy from 71% to 88%');
+  const claim = sara.getByText('raised answer accuracy from 71% to 88%');
   await expect(claim).toBeVisible();
   await expect(sara.locator('mark').filter({ hasText: 'raised answer accuracy' })).toHaveCount(0);
-  await expect(sara.getByRole('list', { name: 'Outstanding risks' })).toContainText('Claim awaiting validation');
-  await expect(sara.getByText("Credalent's recommendation:")).toHaveText(
-    "Credalent's recommendation: advance, and look into Cost and reliability next",
+  await expect(claim.locator('xpath=..')).toContainText('Claim awaiting validation');
+  // AIV-P1-165: each sentence names its source by number, and each section lists its numbered sources.
+  await expect(sara.getByRole('list', { name: 'Strengths, backed' })).toContainText('rag-service. [1]');
+  await expect(sara.getByRole('list', { name: 'Sources' })).toHaveText([
+    '[1]Source: rag-service',
+    /^\[1\]Claim awaiting validation ?Source: CV$/,
+    '[1]Source: the assessment',
+  ]);
+  // AIV-P1-165: the recommendation is the recruiter's, marked "Prepared with Credalent".
+  await expect(sara.getByText('Your recommendation:')).toHaveText(
+    'Your recommendation: advance, and look into Cost and reliability next [1]',
   );
+  await expect(sara.getByText('Prepared with Credalent')).toBeVisible();
+  // AIV-P1-165: the top summary, one line per person in the pack's order. Everyone here has 55 backed, so the line
+  // says they are level (the order by backed score is proven in pack.test.ts and loadPack.test.ts).
+  const top = page.getByRole('region', { name: 'Summary' });
+  await expect(top.getByRole('listitem')).toHaveText([
+    /^Sara Al Qahtani · 55 backed by evidence · up to \d+ if claims holdHighest backed score in this pack\.Strength: The candidate authored 301 of 340 commits in rag-service\. · Source: rag-serviceRisk: Retrieval and evaluation rests on a claim with nothing to inspect\. · Source: CV$/,
+    /^Arjun Menon · 55 backed by evidence · up to \d+ if claims holdLevel with Sara Al Qahtani on backed score\. Listed in the order they joined the pack\.Summary unavailable$/,
+    /^Huda Al Mansoori · .*Level with Arjun Menon on backed score\./,
+    /^Daniel Novak · .*Level with Huda Al Mansoori on backed score\./,
+  ]);
   // No decision is chosen: the recommendation decides nothing, and the choices are the hiring owner's (AIV-P2-012).
   await expect(page.locator('[aria-pressed="true"], [aria-checked="true"], input:checked')).toHaveCount(0);
   // The answer citing a source outside Arjun's snapshot is not shown: the assessment's own strengths are.
@@ -441,7 +483,7 @@ test("AIV-P2-011 Scenarios: the role and its weights, a card citing its evidence
   await expect(arjun.getByRole('list', { name: 'Strengths, backed' }).getByRole('listitem')).toHaveText([
     /^Python service engineering/,
   ]);
-  await expect(arjun.getByText("Credalent's recommendation:")).toHaveCount(0);
+  await expect(arjun.getByText('Your recommendation:')).toHaveCount(0);
   // Each sentence links to the evidence item it rests on: by keyboard, to the item on Sara's profile.
   const source = sara.getByRole('link', { name: 'Source: rag-service' });
   // From her name, the stop before her card's sources. From the top of the page Tab crosses the sidebar, the job's
@@ -471,6 +513,11 @@ test('AIV-P2-011: a hiring owner following a source reaches the evidence, never 
 }) => {
   await signIn(page, { email: owner });
   await page.goto(packPath);
+  // A hiring owner may not list the agency's clients (`client.manage`), so the header and the pack name none.
+  // SAFETY: mutation check: removed the role check from clientName -> this test failed (the workspaces module refuses
+  // a hiring owner's read of the clients, so the pack was the 403 page)
+  await expect(page.getByRole('region', { name: 'Sara Al Qahtani' })).toBeVisible();
+  await expect(page.getByText('Falcon Pay')).toHaveCount(0);
   await page
     .getByRole('region', { name: 'Sara Al Qahtani' })
     .getByRole('link', { name: 'Source: rag-service' })
@@ -547,6 +594,9 @@ test('AIV-P1-116 Scenario: Open the preview, by keyboard: each person, score and
   await expect(header).toContainText(workspaceName);
   await expect(header).toContainText(/^P\d/);
   await expect(header.getByText(/^Prepared \d{1,2} [A-Z][a-z]{2} \d{4} · Confidential$/)).toBeVisible();
+  // AIV-P1-165: the agency's client, and the top summary above the cards.
+  await expect(view.getByText('Prepared for Falcon Pay', { exact: true })).toBeVisible();
+  await expect(view.getByRole('region', { name: 'Summary' }).getByRole('listitem')).toHaveCount(4);
   await expect(view.getByText('Powered by Credalent')).toBeVisible();
   await expect(view.getByText('Observed', { exact: true })).toBeVisible();
   for (const name of ASSESSED) {
@@ -571,9 +621,10 @@ test('AIV-P1-116 Scenario: Open the preview, by keyboard: each person, score and
     );
     await expect(card.locator('mark').filter({ hasText: 'authored 301 of 340 commits' })).toBeVisible();
     await expect(card.getByText('Source: rag-service')).toBeVisible();
-    await expect(card.getByText("Credalent's recommendation:")).toHaveText(
-      "Credalent's recommendation: advance, and look into Cost and reliability next",
+    await expect(card.getByText(`${workspaceName} recommends:`)).toHaveText(
+      `${workspaceName} recommends: advance, and look into Cost and reliability next [1]`,
     );
+    await expect(card.getByText('Prepared with Credalent')).toBeVisible();
   }
   // Maria Santos is not in the pack.
   await expect(view.getByRole('region', { name: 'Maria Santos' })).toHaveCount(0);
@@ -638,6 +689,8 @@ for (const theme of themes) {
     await expect(shortlist(page).getByText(/^Prepared \d{1,2} [A-Z][a-z]{2} \d{4} · Confidential$/)).toBeVisible();
     // The top summary and each card, with every citation and value-basis marker shown on screen.
     await expect(shortlist(page).getByText(/^4 candidates, /)).toBeVisible();
+    await expect(shortlist(page).getByText('Prepared for Falcon Pay', { exact: true })).toBeVisible();
+    await expect(shortlist(page).getByRole('region', { name: 'Summary' }).getByRole('listitem')).toHaveCount(4);
     for (const name of ASSESSED) await expect(shortlist(page).getByRole('region', { name })).toBeVisible();
     await expect(shortlist(page).locator('mark:visible')).toHaveCount(marks);
     await expect(shortlist(page).getByText(/^Source: /)).toHaveCount(sources);

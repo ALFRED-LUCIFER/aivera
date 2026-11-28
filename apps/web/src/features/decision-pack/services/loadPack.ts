@@ -9,8 +9,15 @@ import { getIdentity } from '@/server/auth';
 import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
 import { getApprovedRubricReads, getJobs } from '@/server/jobs';
-import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
-import { byNeed, type CardSummary, type PackLink, type PackPage, type PackPreview } from '../domain/pack.ts';
+import { clientName, getWorkspaces, inActiveWorkspace } from '@/server/workspace';
+import {
+  byBackedScore,
+  byNeed,
+  type CardSummary,
+  type PackLink,
+  type PackPage,
+  type PackPreview,
+} from '../domain/pack.ts';
 
 const isId = (id: string) => z.uuid().safeParse(id).success;
 
@@ -35,6 +42,7 @@ export const loadPackPreview = (jobId: string, packId: string): Promise<PackPrev
       workspace: workspace?.name ?? '',
       name: page.name,
       job: page.job,
+      client: page.client,
       preparedAt: page.preparedAt,
       members: page.members.map(({ candidateId, name, backedScore, upperBound, summary }) => ({
         candidateId,
@@ -99,7 +107,8 @@ async function withPack<T>(
       const summaries = new Map(pack.summaries.map((s) => [s.candidateId, s] as const));
       const decisions = new Map(pack.decisions.map((d) => [d.candidateId, d.decision] as const));
       const members: PackPage['members'] = [];
-      for (const m of pack.members) {
+      // In reading order: highest backed score first (AIV-P1-165).
+      for (const m of byBackedScore(pack.members)) {
         const by = m.addedBy && adders.get(m.addedBy);
         members.push({
           candidateId: m.candidateId,
@@ -116,6 +125,7 @@ async function withPack<T>(
         packId,
         name: pack.name,
         job: header?.job.title ?? '',
+        client: await clientName(ctx, header?.job.clientId ?? null),
         preparedAt: pack.preparedAt,
         rubricVersion: header?.approved?.id === pack.rubricVersionId ? header.approved.version : null,
         role: onPack && {
