@@ -168,7 +168,7 @@ describe('Scenario: Every drafted competency cites the description', () => {
     expect([draft.competencies.length, draft.suggestions.length]).toEqual([drafted, suggested]);
     const weights = [...draft.competencies, ...draft.suggestions].map((c) => c.weightPercent);
     expect(weights.reduce((sum, w) => sum + w, 0)).toBe(100);
-    expect(Math.min(...weights)).toBeGreaterThanOrEqual(1);
+    expect(weights.filter((w) => w < 5 || w % 5 !== 0)).toEqual([]);
   });
 
   it('refuses an answer over the cap after one retry, keeping none of it', async () => {
@@ -308,18 +308,20 @@ describe('Scenario: The drafted weights total 100 (AIV-P1-082)', () => {
     };
     const scaled = await setup(heavy).drafting.draftCompetencies(workspaceId, input, CATALOGUE_V1);
     expect(total(scaled)).toBe(100);
-    // Six equal weights end within 1 of each other (largest remainder, earlier first on a tie).
+    // Six equal weights scale to 17 17 17 17 16 16, then to steps of 5 (AIV-P1-165): the earlier largest remainders
+    // get the two steps left over.
+    // SAFETY: mutation check: removed roundWeightsToFives from draftCompetencies -> this test failed (17s, [17, 33, 50])
     expect([...scaled.competencies, ...scaled.suggestions].map((c) => c.weightPercent)).toEqual([
-      17, 17, 17, 17, 16, 16,
+      20, 20, 15, 15, 15, 15,
     ]);
-    // 10, 20 and 30 of 60: 16.67, 33.33 and 50 round down to 99; the largest remainder (.67) gets the point.
+    // 10, 20 and 30 of 60 scale to 17, 33 and 50; in steps of 5 the largest remainder (33) gets the step.
     const light = answer.competencies.slice(0, 3).map((c, i) => ({ ...c, weight: 10 * (i + 1) }));
     const raised = await setup({ ...answer, competencies: light, suggestions: [] }).drafting.draftCompetencies(
       workspaceId,
       input,
       CATALOGUE_V1,
     );
-    expect(raised.competencies.map((c) => c.weightPercent)).toEqual([17, 33, 50]);
+    expect(raised.competencies.map((c) => c.weightPercent)).toEqual([15, 35, 50]);
   });
 
   it('a draft with no stated competency and only suggestions scales the suggestions to 100', async () => {

@@ -12,10 +12,15 @@ import { useSendRubricController } from '@/features/job-new/hooks/useSendRubricC
 type Props = Pick<
   ComponentProps<typeof NewJobForm>,
   'labels' | 'jobTypes' | 'hiringOwners' | 'clients' | 'membersHref'
-> & { defaultJobType: string; catalogue: CatalogueContent; canSend: boolean };
+> & {
+  defaultJobType: string;
+  catalogue: CatalogueContent;
+  canSend: boolean;
+  earlierJobs: ComponentProps<typeof CompetencyDraft>['earlierJobs'];
+};
 
-export function NewJob({ defaultJobType, catalogue, canSend, ...props }: Props) {
-  const job = useNewJobController(defaultJobType);
+export function NewJob({ defaultJobType, catalogue, canSend, earlierJobs, ...props }: Props) {
+  const job = useNewJobController(defaultJobType, catalogue);
   const { result, onDraft, onSaving, onUseStarters, rubric, replacing, onConfirmRedraft, onCancelRedraft, ...draft } =
     useCompetencyDraftController(catalogue);
   const send = useSendRubricController(job.state.rubricVersionId);
@@ -27,7 +32,11 @@ export function NewJob({ defaultJobType, catalogue, canSend, ...props }: Props) 
       membersHref={canSend ? props.membersHref : null}
       {...job}
       errors={result.status === 'invalid' ? result.errors : job.state.errors}
-      onDraft={onDraft}
+      // A new draft collapses the job fields again (AIV-P1-165).
+      onDraft={(form) => {
+        job.onDetailsOpenChange(false);
+        onDraft(form);
+      }}
       replacing={replacing}
       onConfirmRedraft={onConfirmRedraft}
       onCancelRedraft={onCancelRedraft}
@@ -39,6 +48,7 @@ export function NewJob({ defaultJobType, catalogue, canSend, ...props }: Props) 
         <CompetencyDraft
           {...draft}
           result={result}
+          earlierJobs={earlierJobs}
           title={job.title}
           evidence={props.jobTypes.find((t) => t.value === job.jobType)?.evidence ?? null}
           onUseStarters={() => onUseStarters(job.jobType)}

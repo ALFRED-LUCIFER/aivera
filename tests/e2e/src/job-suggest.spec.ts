@@ -36,9 +36,15 @@ for (const theme of themes) {
     const arabic = rowOf(page, 'Arabic and bilingual NLP');
     const cells = arabic.getByRole('cell');
     await expect(cells.nth(0)).toContainText('Suggested by Credalent');
-    await expect(cells.nth(0)).toContainText(
-      'Why: The assistant must answer in Arabic, but the description lists no language requirement.',
+    // AIV-P1-165: the reasoning, and the line it rests on, only behind "Why suggested?", opened from the keyboard.
+    const why = arabic.getByText(
+      'The assistant must answer in Arabic, but the description lists no language requirement.',
     );
+    await expect(why).toBeHidden();
+    await expect(arabic.locator('mark')).toBeHidden();
+    await arabic.getByText('Why suggested?').focus();
+    await page.keyboard.press('Enter');
+    await expect(why).toBeVisible();
     await expect(cells.nth(0)).toContainText(
       'Evidence expected: Work on Arabic or bilingual text: models, evals, tokenisation',
     );
@@ -61,7 +67,8 @@ for (const theme of themes) {
     await expect(page.locator('output.sr-only')).toHaveText('Product judgement removed from this rubric.');
     const restore = page.getByRole('button', { name: 'Restore Product judgement' });
     await expect(restore).toBeFocused();
-    await expect(page.getByText('Weights rebalance when you save')).toBeVisible();
+    // AIV-P1-165: the total is stated, as it is.
+    await expect(page.getByText('Weights total 85%. They rebalance to 100% when you save.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Missing from your description · 1 suggestion' })).toBeVisible();
     await expectAccessible(page);
 

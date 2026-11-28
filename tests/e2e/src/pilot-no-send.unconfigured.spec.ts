@@ -14,8 +14,11 @@ test('Add a job offers no "Invite a hiring owner" to a workspace with no hiring 
   await signIn(page, { email: solo });
   await page.waitForURL(/\/app/);
   await page.goto('/app/jobs/new');
-  await expect(page.getByText('This workspace has no hiring owner yet.')).toBeVisible();
+  await expect(page.getByText('This workspace has no hiring owner, so you approve the rubric yourself.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Invite a hiring owner' })).toHaveCount(0);
+  // "The stepper says the recruiter approves" (#677 section 2), as the pilot runs it.
+  await expect(page.getByText('4. You approve')).toBeVisible();
+  await expect(page.getByText('Hiring owner approves')).toHaveCount(0);
 });
 
 // Alex's "Applied AI Engineer" (seed.ts): rubric version 2 approved, with a hiring owner, not published.

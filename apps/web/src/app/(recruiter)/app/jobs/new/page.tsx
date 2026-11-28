@@ -2,7 +2,7 @@ import { defaultLocale, defaultTimeZone, getTranslations } from '@credalent/i18n
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { defaultJobType, jobTypeOptions } from '@/features/job-new/domain/jobNew.ts';
-import { newJobOptions } from '@/features/job-new/services/newJobOptions.ts';
+import { earlierJobOptions, newJobOptions } from '@/features/job-new/services/newJobOptions.ts';
 import { PageHeader } from '@/features/shell/components/PageHeader.tsx';
 import { requireScreen } from '@/features/shell/services/request.ts';
 import { getCatalogue } from '@/server/jobs';
@@ -18,11 +18,14 @@ const MEMBERS = '/app/settings/members';
 
 export default async function NewJobPage() {
   // `job.create` first, so an interviewer or hiring owner gets "You do not have access to add jobs." (./forbidden.tsx).
-  const result = await inActiveWorkspace(newJobOptions);
+  const result = await inActiveWorkspace(async (ctx) => ({
+    ...(await newJobOptions(ctx)),
+    earlierJobs: await earlierJobOptions(ctx),
+  }));
   // No workspace yet: the recruiter layout shows the create-workspace page instead of this one.
   if (!result) return null;
   await requireScreen('jobs');
-  const { hiringOwners, clients, hiringFocus } = result.value;
+  const { hiringOwners, clients, hiringFocus, earlierJobs } = result.value;
   // The published version only (ADR-013 point 15). A failed read throws to ./error.tsx: never a list from code.
   const { version, jobTypes, regions, packs } = await getCatalogue().getPublishedCatalogue();
   // The entries only, not who published them: this goes to the browser.
@@ -46,11 +49,18 @@ export default async function NewJobPage() {
         jobTypes={jobTypeOptions(catalogue)}
         hiringOwners={hiringOwners}
         clients={clients}
+        earlierJobs={earlierJobs}
         membersHref={MEMBERS}
         canSend={outboundOn()}
         labels={{
           steps: t('jobNew.steps'),
-          stepList: [t('jobNew.step1'), t('jobNew.step2'), t('jobNew.step3'), t('jobNew.step4')],
+          // With no hiring owner in the workspace the recruiter approves the rubric herself (ADR-014, AIV-P1-165).
+          stepList: [
+            t('jobNew.step1'),
+            t('jobNew.step2'),
+            t('jobNew.step3'),
+            t(hiringOwners.length ? 'jobNew.step4' : 'jobNew.step4Self'),
+          ],
           jobType: t('jobNew.jobType'),
           jobTypeHint: t('jobNew.jobTypeHint'),
           chooseJobType: t('jobNew.chooseJobType'),
@@ -68,6 +78,7 @@ export default async function NewJobPage() {
           notChosen: t('jobNew.notChosen'),
           noHiringOwner: t('jobNew.noHiringOwner'),
           inviteHiringOwner: t('jobNew.inviteHiringOwner'),
+          editDetails: t('jobNew.editDetails'),
           submit: t('jobNew.submit'),
           drafting: t('jobNew.drafting'),
           save: t('jobNew.save'),
