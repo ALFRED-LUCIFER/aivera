@@ -78,7 +78,7 @@ export type MappingStore = {
   /** `pairKey`s of every pair the AI comparison flagged in the candidate's earlier runs for the job (AIV-P1-078). */
   aiFlags(workspaceId: string, candidateId: string, jobId: string): Promise<Set<string>>;
   newest(workspaceId: string, candidateId: string, jobId: string): Promise<EvidenceMappingView | null>;
-  /** Records that the candidate's mapping for the job failed for good (AIV-P1-165); a later `insert` ends it. */
+  /** Records that the candidate's mapping for the job failed for good (AIV-P1-165); a later run that maps ends it. */
   fail(workspaceId: string, candidateId: string, jobId: string, at: Date): Promise<void>;
   /** Ends a recorded failure; false when there was none (another retry, or a run that mapped since). */
   clearFailure(workspaceId: string, candidateId: string, jobId: string): Promise<boolean>;
@@ -419,6 +419,9 @@ export async function mapEvidence(
     comparisons,
   );
   await ports.publishMapped(tx, run);
+  // A run that maps ends an earlier failure (AIV-P1-165). Last: a throw after this delete that is not a database error
+  // (one of those aborts the transaction, freeing its locks) would hold the row the handler's own transaction records.
+  await ports.mappingStoreFor(tx).clearFailure(workspaceId, candidateId, jobId);
   const counts: Partial<Record<DiscardReason, number>> = {};
   for (const d of discarded) counts[d.reason] = (counts[d.reason] ?? 0) + 1;
   ports.logMapped({

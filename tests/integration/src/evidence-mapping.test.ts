@@ -7,7 +7,7 @@ import { AiUnavailable, createAiClient, fakeProvider, MAP_TO_COMPETENCY_VERSION,
 import { createAudit } from '@credalent/audit/composition';
 import type { CandidatesContract } from '@credalent/candidates';
 import { createCandidates, readPersonAsSystem } from '@credalent/candidates/composition';
-import { createDb, withWorkspace, type Db } from '@credalent/db';
+import { createDb, withWorkspace, type Db, type Tx } from '@credalent/db';
 import { newEnvelope, type Envelope } from '@credalent/db/outbox';
 import { PermanentFailure, type Handler } from '@credalent/db/consumer';
 import {
@@ -21,7 +21,7 @@ import { RubricApprovedV1 } from '@credalent/jobs';
 import { ForbiddenError, type WorkspaceContext, type WorkspacesContract } from '@credalent/workspaces';
 import { createWorkspaces } from '@credalent/workspaces/composition';
 import type { MockLanguageModelV4 } from 'ai/test';
-import { sql } from 'drizzle-orm';
+import { getTableName, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // AIV-P1-027 acceptance scenarios: the worker job `evidence.mapping` against real PostgreSQL as aivera_app, with the
@@ -737,6 +737,19 @@ const mappingRequests = (candidateId: string) =>
 const failuresCounted = (workspaceId: string) =>
   rows(workspaceId, sql`select count(*)::int as n from evidence.mapping_failure`).then((r) => r[0]?.['n']);
 
+// A publish that throws before any query, so the transaction is not aborted and keeps every lock it took (a database
+// error would abort it and free them).
+const refusingPublish = (tx: Tx): Tx =>
+  new Proxy(tx, {
+    get: (target, key) =>
+      key === 'insert'
+        ? (table: Parameters<Tx['insert']>[0]) => {
+            if (getTableName(table) === 'outbox') throw new Error('publish refused');
+            return target.insert(table);
+          }
+        : Reflect.get(target, key),
+  });
+
 describe('Feature: A mapping that fails permanently shows "could not assess" with retry (AIV-P1-165)', () => {
   // SAFETY: mutation check: removed the own-transaction write of the failure in createEvidenceMappingHandlers -> this
   // test failed (mappingFailed false)
@@ -753,6 +766,37 @@ describe('Feature: A mapping that fails permanently shows "could not assess" wit
     // The delivery rolled back: no run. The failure is there all the same.
     expect(await rows(w1, sql`select id from evidence.mapping where candidate_id = ${hala}`)).toEqual([]);
     expect((await failedFor(w1, hala))[0]?.mappingFailed).toBe(true);
+  });
+
+  // SAFETY: mutation check: moved clearFailure back before publishMapped in mapEvidence -> this test failed (the failure
+  // write waited out lock_timeout on the uncommitted delete and threw 55P03; failed_at kept the old time)
+  it('Scenario: a run that maps but fails to publish still records its failure, with the real error', async () => {
+    approved = { [JOB]: V2 };
+    const rania = await newCandidate('Rania Mansour', 'rania.mansour@example.com');
+    await recordFragments(rania);
+    await admin.execute(sql`insert into evidence.mapping_failure (workspace_id, candidate_id, job_id, failed_at)
+      values (${w1}, ${rania}, ${JOB}, '2026-01-01T00:00:00Z')`);
+    completion = JSON.stringify({ links: [linkTo(RETRIEVAL, 'Wrote the Playwright suite')], changes: [] });
+    const envelope = newEnvelope(EvidenceMappingRequestedV1, {
+      workspaceId: w1,
+      payload: { candidateId: rania, jobId: JOB },
+      occurredAt: NOW,
+    });
+    try {
+      await expect(
+        withWorkspace(app, w1, (tx) =>
+          handlerFor(EvidenceMappingRequestedV1.type).handle(refusingPublish(tx), envelope.payload, envelope),
+        ),
+      ).rejects.toThrow('publish refused');
+    } finally {
+      completion = '{}';
+    }
+    expect(await rows(w1, sql`select id from evidence.mapping where candidate_id = ${rania}`)).toEqual([]);
+    const [failure] = await rows(
+      w1,
+      sql`select failed_at from evidence.mapping_failure where candidate_id = ${rania} and job_id = ${JOB}`,
+    );
+    expect(new Date(String(failure?.['failed_at']))).toEqual(NOW);
   });
 
   // SAFETY: mutation check: dropped the audit call from retryMapping -> this test failed (no evidence.retried entry)

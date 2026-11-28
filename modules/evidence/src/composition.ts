@@ -672,7 +672,7 @@ export function createEvidenceMappingHandlers(config: {
             );
           // Dead-lettered now or on this last delivery: "Could not assess" with "Try again", written in its own
           // transaction since this one rolls back (AIV-P1-165). It holds no lock the delivery holds: a run that maps
-          // deletes the row only on its way to commit.
+          // deletes the row as its last write, after which nothing in mapEvidence can throw.
           if (permanent(error) || (delivery?.last ?? true))
             await withWorkspace(config.db, envelope.workspaceId, (own) =>
               mappingStore(own).fail(envelope.workspaceId, candidateId, jobId, now()),

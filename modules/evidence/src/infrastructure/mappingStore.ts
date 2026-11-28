@@ -29,16 +29,6 @@ export function mappingStore(tx: Tx): MappingStore {
           })),
         );
       if (comparisons.length) await tx.insert(comparison).values(comparisons);
-      // A run that maps ends an earlier failure (AIV-P1-165).
-      await tx
-        .delete(mappingFailure)
-        .where(
-          and(
-            eq(mappingFailure.workspaceId, run.workspaceId),
-            eq(mappingFailure.candidateId, run.candidateId),
-            eq(mappingFailure.jobId, run.jobId),
-          ),
-        );
     },
     async fail(workspaceId, candidateId, jobId, at) {
       await tx
