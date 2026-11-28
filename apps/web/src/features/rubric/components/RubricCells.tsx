@@ -7,6 +7,7 @@ import type { RubricEditorView } from '../domain/rubric.ts';
 export type Row = Competency & { id: string; index: number; editor: RubricEditorView | null };
 
 const LEVELS = [1, 2, 3, 4, 5] as const;
+const isLevel = (level: number): level is (typeof LEVELS)[number] => LEVELS.some((l) => l === level);
 const TYPES = ['mandatory', 'desirable'] as const;
 
 // Module-level cell renderers (stable across renders); the table adds the translated headers.
@@ -84,7 +85,16 @@ function WeightCell({ row }: { row: Row }) {
 
 function LevelCell({ row }: { row: Row }) {
   const t = useTranslations('rubric');
-  if (!row.editor) return t('level', { level: row.levelNeeded });
+  // Read, each level says what it means in one line (AIV-P1-165); the edit select keeps the short "N of 5".
+  if (!row.editor)
+    return (
+      <div className="flex min-w-44 flex-col gap-0.5">
+        <span>{t('levelOf', { level: row.levelNeeded })}</span>
+        {isLevel(row.levelNeeded) && (
+          <span className="text-meta text-text-2">{t(`levelMeaning.${row.levelNeeded}`)}</span>
+        )}
+      </div>
+    );
   const { editor } = row;
   return (
     <Select

@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { log, meter } from '@credalent/observability';
-import { context, propagation, ROOT_CONTEXT, SpanStatusCode, trace } from '@opentelemetry/api';
+import { propagation, ROOT_CONTEXT, SpanStatusCode, trace } from '@opentelemetry/api';
 import type { Db, Tx } from './client.ts';
 import { envelopeSchema, type Envelope, type EventDefinition, type InboxTable } from './outbox.ts';
 import { backoffMs } from './relay.ts';
@@ -67,7 +67,8 @@ const deadLettered = meter.createCounter('credalent.worker.dead_lettered', {
 /**
  * The worker's consumer for one queue: parses the envelope, runs the handler for its type once per message id (the
  * inbox row is written in the handler's workspace transaction, so a duplicate delivery is completed without work),
- * and settles by `decide`. The handler span's parent is the envelope's `correlationId`. Once `signal` aborts, a
+ * and settles by `decide`. Each message is handled in a trace of its own, linked to the span named by the envelope's
+ * `correlationId`. Once `signal` aborts, a
  * message waiting out its back-off is abandoned at once; `drain` resolves when every message in flight is settled.
  */
 export function createConsumer(opts: {
@@ -91,9 +92,16 @@ export function createConsumer(opts: {
     if (!payload.success) return { invalid: 'invalid payload' };
     const message: Envelope = { ...envelope.data, payload: payload.data };
 
-    const parent = propagation.extract(ROOT_CONTEXT, { traceparent: message.correlationId ?? undefined });
-    return context.with(parent, () =>
-      tracer.startActiveSpan(`worker.handle ${message.type}`, async (span) => {
+    // A trace of its own for each message (AIV-P1-165): one server action that adds 30 CVs writes 30 events with one
+    // `correlationId`, and each handler's events carried it on, so every line of the day's work shared one trace id.
+    // The span that wrote the event is kept as a link, so the action that caused the message is one step away.
+    const origin = trace.getSpanContext(
+      propagation.extract(ROOT_CONTEXT, { traceparent: message.correlationId ?? undefined }),
+    );
+    return tracer.startActiveSpan(
+      `worker.handle ${message.type}`,
+      { root: true, links: origin ? [{ context: origin }] : [] },
+      async (span) => {
         // Ids only: telemetry redacts every key not on its allowlist (packages/observability/src/redact.ts).
         span.setAttributes({ 'outbox.event_id': message.id, 'workspace.id': message.workspaceId });
         try {
@@ -123,7 +131,7 @@ export function createConsumer(opts: {
         } finally {
           span.end();
         }
-      }),
+      },
     );
   }
 

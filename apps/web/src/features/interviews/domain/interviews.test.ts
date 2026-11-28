@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inListOrder, parseView, rowAction, sameDay, type InterviewRow } from './interviews.ts';
+import { inListOrder, parseView, rowAction, sameDay, startable, type InterviewRow } from './interviews.ts';
 
 describe('rowAction (AIV-P2-002: action per status)', () => {
   it('an interview in progress opens its scorecard', () => {
@@ -50,5 +50,22 @@ describe('parseView', () => {
     expect(parseView('completed')).toBe('completed');
     expect(parseView('"><script>')).toBe('ongoing');
     expect(parseView(null)).toBe('ongoing');
+  });
+});
+
+describe('startable (AIV-P1-165 §12)', () => {
+  it.each([
+    ['to_schedule', null, false, true],
+    ['scheduled', null, false, true],
+    // Another member's interview: only a member who plans interviews may start it.
+    ['scheduled', 'Lina Haddad', false, false],
+    ['scheduled', 'Lina Haddad', true, true],
+    // Started, due, completed or cancelled: there is nothing to start.
+    ['in_progress', null, true, false],
+    ['scorecard_due', null, true, false],
+    ['completed', null, true, false],
+    ['cancelled', null, true, false],
+  ] as const)('%s, interviewer %s, plans interviews %s -> %s', (status, interviewer, canSchedule, expected) => {
+    expect(startable({ status, interviewer }, canSchedule)).toBe(expected);
   });
 });

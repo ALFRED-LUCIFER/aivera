@@ -5,7 +5,14 @@ import type { Tx } from '@credalent/db';
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { z } from 'zod';
 import { canMove, effectiveStatus, InterviewError, type Interview } from '../domain/interview.ts';
-import { assessedRatings, rebuildDraft, toInterviewNoteEvidence, unexplained, unrated } from '../domain/scorecard.ts';
+import {
+  assessedRatings,
+  nothingAssessed,
+  ratingReason,
+  rebuildDraft,
+  toInterviewNoteEvidence,
+  unexplained,
+} from '../domain/scorecard.ts';
 import { recordAndApply } from './decision.ts';
 import { scorecardHolder, type Ports } from './interviews.ts';
 import type { DecisionPorts, SummaryPorts } from './summary.ts';
@@ -61,7 +68,7 @@ export function submitUseCases(ports: SubmitPorts) {
         })),
         await store.findDraft(ctx.workspaceId, interviewId),
       );
-      if (unrated(draft).length > 0 || unexplained(draft).length > 0) throw new InterviewError('scorecard_incomplete');
+      if (nothingAssessed(draft) || unexplained(draft).length > 0) throw new InterviewError('scorecard_incomplete');
       // A competency not assessed in this round carries no rating, so it changes nothing and stays a gap (AGENTS.md 1.6).
       const rated = assessedRatings(draft);
       const latest = rated.length > 0 ? await ports.latestAssessment(ctx, candidateId, jobId) : null;
@@ -101,7 +108,8 @@ export function submitUseCases(ports: SubmitPorts) {
             const level = rubric?.competencies.find((c) => c.id === competencyId)?.levelNeeded;
             if (rubric?.id !== interview.rubricVersionId || level === undefined)
               throw new InterviewError('competency_not_in_rubric');
-            if (rating === 'partly_shown') return [];
+            // A "Not shown" with no note has no words to cite: the rating is still applied and audited below.
+            if (rating === 'partly_shown' || !note) return [];
             const medium = STRENGTHENS.has(rating);
             return { competencyId, excerpt: note, strength: medium ? 'medium' : 'claim', level: medium ? level : 0 };
           }),
@@ -112,8 +120,8 @@ export function submitUseCases(ports: SubmitPorts) {
           interviewId,
           changes: rated.map(({ competencyId, rating }) => ({ competencyId, rating })),
           previewId,
-          reason: rated[0]?.note ?? '',
-          reasons: Object.fromEntries(rated.map((r) => [r.competencyId, r.note])),
+          reason: rated[0] ? ratingReason(rated[0]) : '',
+          reasons: Object.fromEntries(rated.map((r) => [r.competencyId, ratingReason(r)])),
           idempotencyKey: interviewId,
         },
       );

@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clientNames,
   filterByClient,
   filterCounts,
   filterJobs,
   jobHref,
+  parseClient,
   parseFilter,
+  rowButton,
   rubricLabel,
   type JobRow,
 } from './jobsList.ts';
@@ -22,6 +23,7 @@ const row = (title: string, more: Partial<JobRow>): JobRow => ({
   nextAction: null,
   hiringOwner: null,
   client: null,
+  clientId: null,
   ...more,
 });
 
@@ -89,10 +91,39 @@ describe('Rubric label and job link', () => {
 });
 
 describe('AIV-P1-056: the agency client filter', () => {
-  const agency = [row('A', { client: 'Falcon Pay' }), row('B', { client: 'Dune Logistics' }), row('C', {})];
-  it('offers each client named on a job, by name, and filters to it', () => {
-    expect(clientNames(agency)).toEqual(['Dune Logistics', 'Falcon Pay']);
-    expect(filterByClient(agency, 'Falcon Pay').map((r) => r.title)).toEqual(['A']);
+  const agency = [
+    row('A', { client: 'Falcon Pay', clientId: 'c-falcon' }),
+    row('B', { client: 'Dune Logistics', clientId: 'c-dune' }),
+    row('C', {}),
+  ];
+  const clients = [
+    { id: 'c-dune', name: 'Dune Logistics' },
+    { id: 'c-falcon', name: 'Falcon Pay' },
+  ];
+  it('filters to a client by its id; no id is every job', () => {
+    expect(filterByClient(agency, 'c-falcon').map((r) => r.title)).toEqual(['A']);
     expect(filterByClient(agency, '')).toHaveLength(3);
+  });
+
+  // AIV-P1-165 "The client filter survives reload": the URL carries the opaque id, never the name.
+  it('reads the client from the URL only when it is an id of one of the workspace clients', () => {
+    expect(parseClient('c-falcon', clients)).toBe('c-falcon');
+    expect(parseClient('Falcon Pay', clients)).toBe('');
+    expect(parseClient(null, clients)).toBe('');
+    expect(parseClient('c-falcon', null)).toBe('');
+  });
+});
+
+describe('AIV-P1-165: the row button', () => {
+  it.each([
+    [{ rubric: { approved: false, latest: 'draft' }, nextAction: { kind: 'approve_rubric' } }, 'rubric'],
+    [{ rubric: { approved: true, latest: 'approved' }, nextAction: null }, 'import'],
+    [
+      { rubric: { approved: false, latest: 'awaiting_approval' }, nextAction: { kind: 'rubric_approval_pending' } },
+      null,
+    ],
+    [{ rubric: { approved: true, latest: 'approved' }, nextAction: { kind: 'chase_evidence', count: 2 } }, null],
+  ] as const)('%j -> %s', (job, page) => {
+    expect(rowButton(job)).toBe(page);
   });
 });

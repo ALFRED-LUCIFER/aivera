@@ -65,18 +65,29 @@ export const assessedRatings = (draft: ScorecardDraft) =>
     c.rating && !notAssessed(c) ? [{ competencyId: c.competencyId, rating: c.rating, note: c.note.trim() }] : [],
   );
 
-/** Competencies that block a submit: neither rated nor marked as not tested. */
-export const unrated = (draft: ScorecardDraft) =>
-  draft.competencies.filter((c) => !c.rating && !notAssessed(c)).map((c) => c.competencyId);
+/**
+ * Blocks a submit: the scorecard says nothing yet, no competency rated and none marked as not tested. One is enough:
+ * the interviewer rates only what the interview tested, and a competency left unrated carries no rating, so it is
+ * never scored down and stays a gap for the next round (AIV-P1-165 §12, AGENTS.md 1.6).
+ */
+export const nothingAssessed = (draft: ScorecardDraft) =>
+  draft.competencies.length > 0 && !draft.competencies.some((c) => c.rating || notAssessed(c));
 
 /**
- * Rated competencies with nothing written under "What you saw or heard": the note is the reason logged with the change
- * and the words its evidence cites (AGENTS.md 1.6, 3.6), so they block a submit too.
+ * Rated competencies with nothing written under "What you saw or heard", which block a submit: the note is the reason
+ * logged with the change and the words its evidence cites (AGENTS.md 1.6, 3.6). "Not shown" needs none (AIV-P1-165
+ * §12): there is nothing seen or heard to write down, and the rating is logged with `NOT_SHOWN_REASON`.
  */
 export const unexplained = (draft: ScorecardDraft) =>
   assessedRatings(draft)
-    .filter((c) => !c.note)
+    .filter((c) => !c.note && c.rating !== 'not_shown')
     .map((c) => c.competencyId);
+
+/** The reason logged with a "Not shown" rating given without a note: every score change is audited with one (AGENTS.md 3.6). */
+export const NOT_SHOWN_REASON = 'Rated Not shown in the interview, with no note.';
+
+/** The reason the assessment logs with a rating: the interviewer's note, else that it was rated Not shown. */
+export const ratingReason = ({ note }: { note: string }) => note || NOT_SHOWN_REASON;
 
 /**
  * The draft for the competencies shown, each with the questions shown for it now (`['']` with none suggested: the

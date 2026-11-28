@@ -56,7 +56,19 @@ export default async function JobsPage() {
   return (
     <>
       <JobsHeader title={t('shell.nav.jobs')} intro={t('jobsList.intro')} add={canAdd ? t('jobsList.add') : null} />
-      <JobsListClient rows={rows} agency={agency} canImport={canAdd} />
+      <JobsListClient
+        rows={rows}
+        // The filter offers every active client, and an archived one while a job still names it; null for an in-house team.
+        clients={
+          agency
+            ? clients
+                .filter((c) => !c.archivedAt || jobs.some((job) => job.clientId === c.id))
+                .map(({ id, name }) => ({ id, name }))
+                .toSorted((a, b) => a.name.localeCompare(b.name))
+            : null
+        }
+        canImport={canAdd}
+      />
     </>
   );
 }

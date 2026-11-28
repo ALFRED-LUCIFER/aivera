@@ -37,13 +37,19 @@ const MESSAGES = {
   not_synthetic: 'Only a synthetic workspace holding only synthetic people can be purged.',
   merge_people: 'Pick two different people in this workspace, neither merged already.',
   merge_reason: 'Give the reason, in at most 500 characters.',
+  name_too_long: "Shorten the person's name to 200 characters or fewer.",
+  name_reason: 'Give the reason for the correction, in at most 500 characters.',
+  person_not_found: 'That person was not found.',
   merge_not_found: 'That merge was not found or is already undone.',
   undo_expired: 'This merge can no longer be undone.',
   undo_blocked: 'The person this one was merged into has been merged since; undo that merge first.',
 } as const;
 
-/** The longest merge or undo reason. */
+/** The longest merge, undo or name-correction reason. */
 export const MERGE_REASON_MAX = 500;
+
+/** The longest name a person corrects a display name to (AIV-P1-165). */
+export const NAME_MAX = 200;
 
 export type CandidateErrorCode = keyof typeof MESSAGES;
 

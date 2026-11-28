@@ -434,6 +434,18 @@ describe('nameFromCv (AIV-P1-090)', () => {
     [['Curriculum Vitae', 'Layla Al Mansoori', 'Senior engineer, 2020 to 2023'], 'Layla Al Mansoori'],
     [['Resume', 'built a claims model', '+971 50 000 0001'], null],
     [['Senior Software Engineer', 'Professional Summary', 'Work Experience', 'Dubai United Arab Emirates'], null],
+    // AIV-P1-165 §8: a heading above the name, a job title after it, and a name in capitals.
+    [['PROFESSIONAL SUMMARY', 'MARIA SANTOS'], 'Maria Santos'],
+    [['Priya Nair – Senior AI Engineer'], 'Priya Nair'],
+    [['DANIEL NOVAK'], 'Daniel Novak'],
+    [['TARIQ BIN NASSER | QA Lead'], 'Tariq bin Nasser'],
+    [["SIOBHAN O'BRIEN-AL NUAIMI"], "Siobhan O'Brien-Al Nuaimi"],
+    [['Layla Al-Mansoori'], 'Layla Al-Mansoori'],
+    // A title before the dash, or a heading, is not taken for the name.
+    [['QA Tester – Acme Trading', 'KEY ACHIEVEMENTS', 'Core Competencies'], null],
+    // A name part that is also a word ("Abu", "Key") is still a name: the heading beside it is caught by its other word.
+    [['Ahmed Abu Bakr', 'Abu Dhabi'], 'Ahmed Abu Bakr'],
+    [['WORK HISTORY', 'Mei Key'], 'Mei Key'],
   ])('%j -> %j', (lines, expected) => {
     expect(nameFromCv(lines.join('\n'))).toBe(expected);
   });

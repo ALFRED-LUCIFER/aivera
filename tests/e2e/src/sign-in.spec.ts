@@ -81,7 +81,7 @@ test('Scenario: On a shared computer Google always shows the account chooser', a
 
 const newAddress = (name: string) => `${name}.${Date.now()}${Math.floor(Math.random() * 1000)}@example.com`;
 const noWorkspace = (page: import('@playwright/test').Page) =>
-  expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
+  expect(page.getByRole('heading', { level: 1, name: 'Create your workspace' })).toBeVisible();
 
 test('Scenario: First-time Google sign-in creates the user, and a returning one is the same user', async ({
   page,

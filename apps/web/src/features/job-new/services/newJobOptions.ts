@@ -1,5 +1,6 @@
 import type { WorkspaceContext } from '@credalent/workspaces';
 import { getIdentity } from '@/server/auth';
+import { getJobs } from '@/server/jobs';
 import { getWorkspaces } from '@/server/workspace';
 
 type Option = { value: string; label: string };
@@ -42,4 +43,23 @@ export async function newJobOptions(ctx: WorkspaceContext): Promise<NewJobOption
     synthetic: workspace.synthetic,
     hiringFocus: workspace.hiringFocus,
   };
+}
+
+/**
+ * The jobs "Duplicate an earlier job or rubric" offers (AIV-P1-165): each job of the workspace that has a rubric, newest
+ * first, named by its title and, for an agency, its client. Admins and recruiters only, as `newJobOptions`.
+ */
+export async function earlierJobOptions(ctx: WorkspaceContext): Promise<Option[]> {
+  const workspaces = getWorkspaces();
+  await workspaces.authorize(ctx, 'job.create');
+  const jobs = (await getJobs().listJobsForDesk(ctx)).filter((job) => job.rubric.latest);
+  if (jobs.length === 0) return [];
+  // Archived clients too: an earlier job keeps its client's name.
+  const clients = new Map((await workspaces.listClients(ctx)).map((c) => [c.id, c.name]));
+  return jobs
+    .map((job) => ({
+      value: job.id,
+      label: [job.title, job.clientId && clients.get(job.clientId)].filter(Boolean).join(' · '),
+    }))
+    .toReversed();
 }

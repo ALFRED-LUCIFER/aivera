@@ -63,7 +63,7 @@ test('Scenario: An operator with no workspace who opens /app goes to the console
   await signIn(page, { email: PIA });
   await page.goto('/app');
   await expect(page).toHaveURL(/\/ops$/);
-  await expect(page.getByRole('heading', { name: 'You are not in a workspace yet' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Create your workspace' })).toHaveCount(0);
 });
 
 test('Scenario: A recruiter who is not an operator still lands on My desk', async ({ page }) => {

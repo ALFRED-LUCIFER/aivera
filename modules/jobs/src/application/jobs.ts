@@ -562,13 +562,14 @@ export function jobsUseCases({
      * An admin or recruiter approves the job's open version (draft, returned or awaiting approval), or the job's hiring
      * owner the version sent to them (AIV-P1-014, ADR-014); `actingAs` records which. The previously approved version becomes superseded and RubricApproved.v1 is written to the outbox,
      * which starts assessment, in this transaction. `revision` is the copy the approver read; an older copy throws
-     * `JobError('stale')`.
+     * `JobError('stale')`. `reason` is what the approver wrote when confirming (AIV-P1-165), kept as the audit note.
      */
     async approveRubric(
       ctx: WorkspaceContext,
       versionId: string,
       revision?: number,
       alongside?: () => Promise<void>,
+      reason?: string,
     ): Promise<void> {
       const { job, version, actingAs } = await decidable(ctx, versionId, 'approved', revision);
       const store = storeFor(ctx.tx);
@@ -590,6 +591,7 @@ export function jobsUseCases({
       await audit(ctx, {
         action: 'rubric.approved',
         subject: { type: 'rubric_version', id: versionId },
+        ...(reason?.trim() && { note: reason.trim() }),
         before: { status: version.status, approvedVersionId: previous?.id ?? null },
         after: { status: 'approved', jobId: job.id, version: version.version, actingAs },
       });

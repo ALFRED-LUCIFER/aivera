@@ -26,6 +26,9 @@ export const VIEWS = ['ongoing', 'completed'] as const;
 export type InterviewView = (typeof VIEWS)[number];
 export const parseView = (value: unknown): InterviewView => (value === 'completed' ? 'completed' : 'ongoing');
 
+/** "Start interview": the controller hook builds it and the list only renders it. */
+export type StartView = { pending: boolean; onStart: (interviewId: string) => void };
+
 export type InterviewsData = Record<InterviewView, InterviewRow[]> & {
   /** How many people and jobs the completed interviews cover, for the summary line. */
   people: number;
@@ -46,7 +49,10 @@ export type RowAction =
   | { kind: 'noGuide' }
   | null;
 
-/** What the Action column offers for a row: Schedule while there is no time (for those who may), nothing once completed. */
+/**
+ * What the Action column offers for a row beside "Start interview" (`startable`): Schedule while there is no time (for
+ * those who may), the scorecard once the interview has started or its time has passed, nothing once completed.
+ */
 export function rowAction(
   { id, status, dueDays }: Pick<InterviewRow, 'id' | 'status' | 'dueDays'>,
   canSchedule = false,
@@ -58,6 +64,14 @@ export function rowAction(
   if (status === 'scheduled') return { kind: 'noGuide' };
   return null;
 }
+
+/**
+ * Whether the row offers "Start interview" (AIV-P1-165 §12), which marks the interview started and opens its
+ * scorecard: an interview that has not started, for its interviewer (`interviewer` null: the signed-in member) or a
+ * member who plans interviews (admins and recruiters). The interviews module decides again when it starts.
+ */
+export const startable = ({ status, interviewer }: Pick<InterviewRow, 'status' | 'interviewer'>, canSchedule = false) =>
+  (status === 'to_schedule' || status === 'scheduled') && (canSchedule || interviewer === null);
 
 // The Interviews artboard's order: what is under way, then what is coming, then scorecards overdue, then no time yet.
 const ORDER: InterviewStatus[] = ['in_progress', 'scheduled', 'scorecard_due', 'to_schedule'];

@@ -2,6 +2,7 @@ import type { Tx } from '@credalent/db';
 import type { EvidenceItemView } from '@credalent/evidence';
 import { ForbiddenError, type Action, type JobResource, type WorkspaceContext } from '@credalent/workspaces';
 import { assess, type Assessment, type Confidence, type EvidenceLink, type RubricInput } from '../domain/assess.ts';
+import { citedLead, type CitedLead } from '../domain/explain.ts';
 import { selectGaps } from '../domain/questions.ts';
 import { withInterviewChanges, type InterviewChange } from '../domain/scoreChange.ts';
 import type { InterviewChangeRow } from './scoreChange.ts';
@@ -53,6 +54,8 @@ export type RankingRow = {
   missingCritical: string[];
   /** The competencies a Round 1 interview should investigate (`selectGaps`), heaviest first (AIV-P1-114). */
   gaps: string[];
+  /** What the row's one-line reason cites (`citedLead`, AIV-P1-165 §9); null when the result cites nothing. */
+  cited: CitedLead | null;
   assessedAt: Date;
 };
 
@@ -235,6 +238,7 @@ export function rank(results: readonly StoredAssessment[], versionId: string): R
       confidence: r.confidence,
       missingCritical: r.missingCritical,
       gaps: selectGaps(r).map((gap) => gap.competencyId),
+      cited: citedLead(r),
       assessedAt: r.assessedAt,
     }));
 }

@@ -255,6 +255,29 @@ describe('the golden set', () => {
     expect(new Set(cases.map((c) => c.input['jobType'])).size).toBe(10);
   });
 
+  // AIV-P1-165 (#677 "The draft varies levels and must-have versus nice-to-have"): on @5 a senior title drafted every
+  // row "4 of 5, mandatory". The answers recorded live on @6: no draft reads every row alike, each suggestion is
+  // desirable (the description did not ask for it), and the Senior AI Engineer draft uses more than one level.
+  it('AIV-P1-165: no recorded draft reads every row as one level and mandatory', () => {
+    const cases = golden.get('jobs.draftCompetencies') ?? [];
+    for (const c of cases) {
+      const { competencies, suggestions } = draftCompetenciesSchema.parse(c.recorded.output);
+      const rows = [...competencies, ...suggestions];
+      if (rows.length < 2) continue;
+      const alike = new Set(rows.map((row) => `${row.level} ${row.type}`)).size === 1;
+      expect(alike && rows[0]?.type === 'mandatory', c.id).toBe(false);
+      expect(
+        suggestions.map((s) => s.type),
+        c.id,
+      ).toEqual(suggestions.map(() => 'desirable'));
+    }
+    const senior = draftCompetenciesSchema.parse(
+      caseOf('jobs.draftCompetencies', 'senior-ai-engineer').recorded.output,
+    );
+    expect(senior.competencies).toHaveLength(5);
+    expect(new Set([...senior.competencies, ...senior.suggestions].map((row) => row.level)).size).toBeGreaterThan(1);
+  });
+
   it('AIV-P1-008: the registered runner sends the product request, and its checked answer passes the gates', async () => {
     // A case whose recorded live answer passes every metric on its own (AIV-P2-085 re-recorded them all).
     const c = caseOf('jobs.draftCompetencies', 'software-engineer');

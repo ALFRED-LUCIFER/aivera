@@ -16,7 +16,16 @@ import {
 import type { Route } from 'next';
 import Link from 'next/link';
 import { jobPageHref } from '@/features/job-header/domain/jobHeader.ts';
-import { JOB_FILTERS, jobHref, parseFilter, rubricLabel, type JobFilter, type JobRow } from '../domain/jobsList.ts';
+import {
+  JOB_FILTERS,
+  jobHref,
+  parseFilter,
+  rowButton,
+  rubricLabel,
+  type ClientOption,
+  type JobFilter,
+  type JobRow,
+} from '../domain/jobsList.ts';
 
 export type JobsListView =
   | { status: 'loading' }
@@ -28,9 +37,9 @@ export type JobsListView =
       filter: JobFilter;
       counts: Record<JobFilter, number>;
       onFilterChange: (filter: JobFilter) => void;
-      /** An agency's client names for the Client column and filter; null for an in-house team (AIV-P1-056). */
-      clients: string[] | null;
-      /** The chosen client's name; '' is every job. */
+      /** An agency's clients for the Client column and filter; null for an in-house team (AIV-P1-056). */
+      clients: ClientOption[] | null;
+      /** The chosen client's id; '' is every job. */
       client: string;
       onClientChange: (client: string) => void;
     };
@@ -46,12 +55,14 @@ const cells: (Omit<DataTableColumn<JobRow>, 'header'> & { id: keyof Messages['jo
   { id: 'rubric', cell: (row) => <RubricCell row={row} /> },
   { id: 'nextAction', cell: (row) => <NextActionCell row={row} /> },
 ];
-// The next action with "Import candidates" under it, for admins and recruiters.
-const importCell = (row: JobRow) => <NextActionAndImport row={row} />;
+// The next action as the row's button, for admins and recruiters.
+const actionCell = (row: JobRow) => <NextActionButton row={row} />;
 
 /**
- * Every job, where it stands and what it needs (AIV-P1-006). Every figure shows its basis (AGENTS.md 1.7). Admins and
- * recruiters get "Import candidates" under each job's next action (AIV-P1-101, the Roles artboard).
+ * Every job, where it stands and what it needs (AIV-P1-006). Every figure shows its basis (AGENTS.md 1.7).
+ * Deviations from the Roles artboard (AIV-P1-165): for admins and recruiters the next action is the row's one button
+ * ("Approve the rubric", or "Add CVs" on an approved job), not a line of text with "Import candidates" under it; a
+ * count of zero reads "0" with no basis chip, since nothing was observed yet.
  */
 export function JobsList({ view, canImport = false }: { view: JobsListView; canImport?: boolean }) {
   const t = useTranslations('jobsList');
@@ -61,7 +72,7 @@ export function JobsList({ view, canImport = false }: { view: JobsListView; canI
     .map((column) => ({
       ...column,
       header: t(`columns.${column.id}`),
-      cell: canImport && column.id === 'nextAction' ? importCell : column.cell,
+      cell: canImport && column.id === 'nextAction' ? actionCell : column.cell,
     }));
 
   return (
@@ -75,8 +86,8 @@ export function JobsList({ view, canImport = false }: { view: JobsListView; canI
             onChange={(event) => view.onClientChange(event.target.value)}
           >
             <option value="">{t('allClients')}</option>
-            {view.clients.map((name) => (
-              <option key={name} value={name}>
+            {view.clients.map(({ id, name }) => (
+              <option key={id} value={id}>
                 {name}
               </option>
             ))}
@@ -144,6 +155,8 @@ function StageCell({ row }: { row: JobRow }) {
 function Figure({ value, percent = false }: { value: number | null; percent?: boolean }) {
   const t = useTranslations('jobsList');
   if (value === null) return <ValueBasis basis="not-available" label={t('notYetAvailable')} />;
+  // A zero count is shown bare, with no "Observed" chip (AIV-P1-165 §5).
+  if (value === 0 && !percent) return <span className="tabular-nums">{t('count', { count: 0 })}</span>;
   return (
     <span className="inline-flex items-center gap-2 tabular-nums">
       {percent ? t('percent', { value }) : t('count', { count: value })}
@@ -168,19 +181,16 @@ function RubricCell({ row }: { row: JobRow }) {
   );
 }
 
-function NextActionAndImport({ row }: { row: JobRow }) {
+function NextActionButton({ row }: { row: JobRow }) {
   const t = useTranslations('jobsList');
+  const page = rowButton(row);
+  if (!page) return <NextActionCell row={row} />;
   return (
-    <>
-      <NextActionCell row={row} />
-      <div className="mt-2">
-        {/* jobPageHref builds the path from the job id, which typed routes cannot check. */}
-        <Link href={jobPageHref(row.id, 'import') as Route} className={buttonClassName('secondary', 'compact')}>
-          <UploadIcon className="size-3.5" />
-          {t('import')}
-        </Link>
-      </div>
-    </>
+    // jobPageHref builds the path from the job id, which typed routes cannot check.
+    <Link href={jobPageHref(row.id, page) as Route} className={buttonClassName('secondary', 'compact')}>
+      {page === 'import' && <UploadIcon className="size-3.5" />}
+      {t(page === 'import' ? 'import' : 'nextAction.approve_rubric')}
+    </Link>
   );
 }
 

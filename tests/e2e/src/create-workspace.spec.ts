@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { css, expectAccessible, themes } from './gallery.ts';
+import { css, expectAccessible, primaryButtons, themes } from './gallery.ts';
+import { WAITING } from './workspaces.ts';
 
 // AIV-P1-001 J1 step 1: a recruiter signs in with no workspace yet, creates one and lands in it. While new workspaces
 // need approval (AIV-P2-039, on by default) it shows the waiting page; ops-approvals.spec.ts continues the journey.
@@ -13,9 +14,17 @@ for (const theme of themes) {
   }) => {
     await context.addCookies([{ name: 'theme', value: theme, url: 'http://localhost:3200' }]);
     await signIn(page, { email: `nadia+${theme}-${Date.now()}@example.com` });
-    await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'Or create your own workspace' })).toBeVisible();
-    await expect(page.getByText('Optional', { exact: true })).toBeVisible();
+    // AIV-P1-165 "Someone with no workspace is offered to create one first": the one primary action, with asking an
+    // admin as the secondary line below it.
+    await expect(page.getByRole('heading', { level: 1, name: 'Create your workspace' })).toBeVisible();
+    const create = page.getByRole('button', { name: 'Create your workspace' });
+    await expect(primaryButtons(page)).toHaveText(['Create your workspace']);
+    const ask = page.getByText('Joining a team instead? Ask your workspace admin to add you to their workspace.');
+    expect((await ask.boundingBox())?.y).toBeGreaterThan((await create.boundingBox())?.y ?? Infinity);
+    // AIV-P1-165 "Creating a workspace asks only what it needs": an example mail host pre-fills no company, and both
+    // fields are marked optional.
+    await expect(page.getByLabel('Company')).toHaveValue('');
+    await expect(page.getByText('Optional', { exact: true })).toHaveCount(2);
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     await expectAccessible(page);
 
@@ -30,22 +39,30 @@ for (const theme of themes) {
     await expect(focus).toBeFocused();
     await focus.selectOption({ label: 'AI and LLM engineering' });
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: 'Create workspace' })).toBeFocused();
+    await expect(create).toBeFocused();
     await page.keyboard.press('Enter');
 
+    // AIV-P1-165 "Waiting for approval says what happens next".
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Waiting for approval' })).toBeVisible();
+    await expect(page.getByText(WAITING)).toBeVisible();
     await expectAccessible(page);
+    // Operator approval is still required before any job can be added: every recruiter route shows the waiting page.
+    await page.goto('/app/jobs/new');
+    await expect(page.getByRole('heading', { level: 1, name: 'Waiting for approval' })).toBeVisible();
+    await expect(page.getByLabel('Job title')).toHaveCount(0);
+    // She can sign out from that screen, from the keyboard.
+    await page.getByRole('button', { name: 'Sign out' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/sign-in/);
   });
 }
 
-test('a hiring focus is required before submitting', async ({ page }) => {
-  await signIn(page, { email: `nadia+required-${Date.now()}@example.com` });
-  await page.getByRole('button', { name: 'Create workspace' }).click();
-  // The browser's own required check keeps the form on the page; nothing is created.
-  await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
-  await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' })).toBeVisible();
+test('Scenario: "What do you hire for most?" can be left blank', async ({ page }) => {
+  await signIn(page, { email: `nadia+blank-${Date.now()}@example.com` });
+  await expect(page.getByLabel('What do you hire for most?')).toHaveValue('');
+  await page.getByRole('button', { name: 'Create your workspace' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Waiting for approval' })).toBeVisible();
 });
 
 // A refused submit (here a company over the server's 200-character limit, past the field's maxlength) takes the same
@@ -56,7 +73,7 @@ test('Scenario: A failed create keeps what I typed', async ({ page }) => {
   await company.evaluate((input) => input.removeAttribute('maxlength'));
   await company.fill('x'.repeat(201));
   await page.getByLabel('What do you hire for most?').selectOption({ label: 'Sales' });
-  await page.getByRole('button', { name: 'Create workspace' }).click();
+  await page.getByRole('button', { name: 'Create your workspace' }).click();
   await expect(
     page.getByRole('alert').filter({ hasText: 'We could not create your workspace. Try again.' }),
   ).toBeVisible();
@@ -81,11 +98,11 @@ for (const theme of themes) {
     ])
       await expect(panel.getByRole('listitem').filter({ hasText: point })).toBeVisible();
     expect(await css(panel, 'background-color')).toBe('rgb(29, 25, 34)');
-    const title = page.getByRole('heading', { level: 1, name: 'You are not in a workspace yet' });
+    const title = page.getByRole('heading', { level: 1, name: 'Create your workspace' });
     expect(await css(title.locator('..').locator('..'), 'max-width')).toBe('440px');
     expect((await page.getByLabel('Company').boundingBox())?.height).toBe(44);
     expect((await page.getByLabel('What do you hire for most?').boundingBox())?.height).toBe(44);
-    expect((await page.getByRole('button', { name: 'Create workspace' }).boundingBox())?.height).toBe(48);
+    expect((await page.getByRole('button', { name: 'Create your workspace' }).boundingBox())?.height).toBe(48);
 
     await page.setViewportSize({ width: 390, height: 800 });
     const [top, form] = [await panel.boundingBox(), await page.getByRole('main').boundingBox()];

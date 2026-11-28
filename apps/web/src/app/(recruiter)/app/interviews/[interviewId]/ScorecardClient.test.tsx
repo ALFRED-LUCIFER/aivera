@@ -41,7 +41,8 @@ beforeAll(async () => {
 const RETRIEVAL = '0190d4a2-0000-7000-9000-000000000040';
 const COST = '0190d4a2-0000-7000-9000-000000000041';
 const NOTE = 'Walked through the 200-question set he built';
-const BLOCKED = 'Rate this competency, or mark its questions Not asked or Not answered, before submitting';
+const BLOCKED =
+  'Rate at least one competency before submitting, or mark its questions Not asked or Not answered. Leave the rest unrated: they stay gaps.';
 const question = (text: string) => ({ text, strongAnswer: 'Names the set.', weakAnswer: 'No detail.', citations: [] });
 
 const competencies: ScorecardCompetency[] = [
@@ -117,27 +118,38 @@ describe('Scenario: Scorecard shows what to test', () => {
   it('draws the header, the rounds and each competency with its evidence, source, questions, rating and note', () => {
     show();
     expect(screen.getByRole('heading', { level: 1, name: 'Round 1 scorecard: Daniel Novak' })).toBeTruthy();
-    expect(screen.getByText('Senior AI Engineer · structured screen · Today, 14:00 · interviewer: you')).toBeTruthy();
+    // AIV-P1-165 §12: plain words; no "structured screen", "evidence defence" or "panel" anywhere on the page.
+    expect(screen.getByText('Senior AI Engineer · Today, 14:00 · interviewer: you')).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/structured screen|evidence defence|panel/i);
+    expect(
+      within(card('Retrieval and evaluation')).getByLabelText('What you saw or heard').getAttribute('placeholder'),
+    ).toBe('What the candidate said or did');
     expect(
       within(screen.getByRole('list', { name: 'Interview rounds' }))
         .getAllByRole('listitem')
         .map((li) => li.textContent),
     ).toEqual([
       'Evidence assessed12 Nov · backed score 55Observed',
-      'Round 1, structured screenCurrent round',
-      'Round 2, evidence defenceIf shortlisted',
-      'Round 3, panelIf shortlisted',
+      'Round 1Current round',
+      'Round 2If shortlisted',
+      'Round 3If shortlisted',
     ]);
 
     const retrieval = card('Retrieval and evaluation');
     expect(within(retrieval).getByRole('heading', { level: 2 }).textContent).toBe(
       'Retrieval and evaluation · weight 20%',
     );
+    // AIV-P1-165 §10/§11: a CV claim shows its stored strength, as on the profile and in Compare, is named a claim in
+    // neutral ink, and states its limit once.
     expect(within(retrieval).getByText('Supporting')).toBeTruthy();
     expect(within(retrieval).getByText('Claim awaiting validation')).toBeTruthy();
     // SAFETY: a claim's words are shown plain, never highlighted (AGENTS.md 1.6).
     expect(within(retrieval).getByText('raised answer accuracy from 71% to 88%').closest('mark')).toBeNull();
-    expect(within(retrieval).getByText('Claim only. Counts as zero in the backed score.')).toBeTruthy();
+    expect(
+      within(retrieval)
+        .getAllByText(/^Limit:/)
+        .map((el) => el.parentElement?.textContent),
+    ).toEqual(['Limit: A claim, not inspected work. It counts zero in the backed score.']);
 
     const cost = card('Cost and reliability');
     expect(within(cost).getByRole('heading', { level: 2 }).textContent).toBe('Cost and reliability · weight 15%');
@@ -283,31 +295,51 @@ describe('Scenario Outline: A competency that was not tested stays a gap', () =>
   });
 });
 
-describe('Scenario: Submit needs every competency rated or marked not tested', () => {
-  it('names the competency that is neither rated nor marked, then accepts it once it is', async () => {
+describe('Scenario: Rate only what was tested (AIV-P1-165 §12)', () => {
+  it('with nothing rated or marked the submit says to rate at least one competency, and sends nothing', async () => {
     const user = userEvent.setup();
     show();
-    fake.preview.mockResolvedValue(RATED['Clearly shown']);
-    await user.click(within(rating('Retrieval and evaluation')).getAllByRole('radio')[2] as HTMLElement);
-    // "Submit scorecard" waits for the preview of the ratings (AIV-P2-006).
-    await within(effectCard()).findByText('Backed score 55 to 67.');
     expect(screen.queryByText(BLOCKED)).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
-    expect(within(card('Cost and reliability')).getByRole('alert').textContent).toBe(BLOCKED);
-    // Rated, so not blocked; its missing note is said on the note (AIV-P2-006).
-    expect(within(card('Retrieval and evaluation')).queryByText(BLOCKED)).toBeNull();
-    expect(rating('Cost and reliability').getAttribute('aria-invalid')).toBe('true');
-
+    expect(screen.getByRole('alert').textContent).toBe(BLOCKED);
     expect(fake.submit).not.toHaveBeenCalled();
-    for (const button of within(card('Cost and reliability')).getAllByRole('button', { name: 'Not asked' }))
-      await user.click(button);
+  });
+
+  // SAFETY: mutation check: `nothingAssessed` blocked on any unrated competency, as before -> this test failed (not submitted)
+  it('submits with one competency rated and the other left unrated', async () => {
+    fake.submit.mockResolvedValue('updated');
+    fake.preview.mockResolvedValue(RATED['Clearly shown']);
+    const user = userEvent.setup();
+    show();
+    await user.click(within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Clearly shown' }));
+    await user.type(within(card('Retrieval and evaluation')).getByLabelText('What you saw or heard'), NOTE);
+    // "Submit scorecard" waits for the preview of the ratings (AIV-P2-006).
+    await within(effectCard()).findByText('Backed score 55 to 67.');
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText(UPDATED)).toBeTruthy();
     expect(screen.queryByText(BLOCKED)).toBeNull();
+    expect(fake.submit).toHaveBeenCalledWith({ interviewId: data().interviewId, previewId: 'p-medium' });
+    // Cost and reliability was never rated: it is saved with no rating, so nothing scores it down.
+    const saved = fake.save.mock.calls.at(-1)?.[0] as { draft: ScorecardData['draft'] };
+    expect(saved.draft.competencies.map((c) => c.rating)).toEqual(['clearly_shown', null]);
+  });
+
+  it('"Not shown" submits with no note', async () => {
+    fake.submit.mockResolvedValue('updated');
+    fake.preview.mockResolvedValue(RATED['Not shown']);
+    const user = userEvent.setup();
+    show();
+    await user.click(within(rating('Retrieval and evaluation')).getByRole('radio', { name: 'Not shown' }));
+    await within(effectCard()).findByText('Backed score stays 55.');
+    await user.click(screen.getByRole('button', { name: 'Submit scorecard' }));
+    expect(await screen.findByText(UPDATED)).toBeTruthy();
+    expect(screen.queryByText(NO_NOTE)).toBeNull();
   });
 });
 
 // AIV-P2-006: submitting, with the server action faked; the transaction itself is tests/integration.
 const NO_NOTE =
-  'Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes';
+  'Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes. Not shown needs no note.';
 const UPDATED = "Scorecard submitted and logged. Daniel Novak's assessment has been updated.";
 
 describe('Scenario: Recommendation is not a decision', () => {

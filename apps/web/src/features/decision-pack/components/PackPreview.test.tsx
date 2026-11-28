@@ -26,6 +26,7 @@ const preview: Preview = {
   workspace: 'Gulf Talent Partners',
   name: 'Round 2 shortlist',
   job: 'Senior AI Engineer',
+  client: null,
   // 21:30 UTC is 17 Nov in Dubai.
   preparedAt: new Date('2026-11-16T21:30:00.000Z'),
   members: [
@@ -80,10 +81,10 @@ const preview: Preview = {
 const EMAIL = /[^\s@]+@[^\s@]+\.[^\s@]+/;
 const PHONE = /\+?\d[\d\s().-]{7,}\d/;
 
-function renderPreview() {
+function renderPreview(client: string | null = null) {
   return render(
     <IntlProvider {...intl}>
-      <PackPreview jobId={id(30)} packId={id(31)} preview={preview} />
+      <PackPreview jobId={id(30)} packId={id(31)} preview={{ ...preview, client }} />
     </IntlProvider>,
   );
 }
@@ -102,12 +103,13 @@ describe('PackPreview', () => {
     );
     expect(within(sara).getByText('authored 412 of 460 commits').closest('mark')).toBeTruthy();
     expect(within(sara).getByText('Source: llm-eval-harness')).toBeTruthy();
-    expect(within(sara).getByText("Credalent's recommendation:").textContent).toBe(
-      "Credalent's recommendation: advance, and look into Cost and reliability next",
+    // AIV-P1-165: the recommendation is the recruiter's workspace's, marked "Prepared with Credalent".
+    expect(within(sara).getByText('Gulf Talent Partners recommends:').textContent).toBe(
+      'Gulf Talent Partners recommends: advance, and look into Cost and reliability next [1]',
     );
-    expect(within(sara).getByText('Round 1 finding').nextElementSibling?.textContent).toBe(
-      'None stated in this summary.',
-    );
+    expect(within(sara).getByText('Prepared with Credalent')).toBeTruthy();
+    // AIV-P1-165: an empty "Round 1 finding" is left out.
+    expect(within(sara).queryByText('Round 1 finding')).toBeNull();
     // No usable cited answer: the assessment's own levels against the need, from the snapshot the member joined with.
     const arjun = screen.getByRole('region', { name: 'Arjun Menon' });
     expect(within(arjun).getByRole('img', { name: '64 backed by evidence · up to 76 if claims hold' })).toBeTruthy();
@@ -123,6 +125,32 @@ describe('PackPreview', () => {
     expect(screen.getByText('Observed')).toBeTruthy();
     expect(screen.getByText('Powered by Credalent')).toBeTruthy();
     expect(screen.getByText('Prepared 17 Nov 2026 · Confidential')).toBeTruthy();
+  });
+
+  // AIV-P1-165 section 13: the top summary, in the order given (loadPack orders by backed score), printed with the cards.
+  it('Scenario: Ordered and summarised: the top summary lists each person with scores, one cited strength and one risk', () => {
+    renderPreview();
+    const rows = within(screen.getByRole('region', { name: 'Summary' }))
+      .getAllByRole('listitem')
+      .map((li) => li.textContent);
+    expect(rows).toEqual([
+      'Sara Al Qahtani · 68 backed by evidence · up to 84 if claims holdHighest backed score in this pack.Strength: The candidate authored 412 of 460 commits in llm-eval-harness. · Source: llm-eval-harnessRisk: Cost and reliability is a claim with nothing to inspect. · Source: the assessment',
+      'Arjun Menon · 64 backed by evidence · up to 76 if claims hold4 points below Sara Al Qahtani on backed score.Summary unavailable',
+      'Huda Al Mansoori · 61 backed by evidence · up to 82 if claims hold3 points below Arjun Menon on backed score.Preparing summary',
+    ]);
+  });
+
+  // AIV-P1-165 section 13.
+  it('Scenario: Agency packs name the client: "Prepared for Falcon Pay"', () => {
+    renderPreview('Falcon Pay');
+    expect(screen.getByText('Prepared for Falcon Pay')).toBeTruthy();
+  });
+
+  it('Scenario: Neutral copy for an in-house team: the hiring owner is named, with no client wording', () => {
+    const { container } = renderPreview();
+    expect(screen.getByText(/^This is how the hiring owner will see this pack\./)).toBeTruthy();
+    expect(screen.queryByText(/^Prepared for/)).toBeNull();
+    expect(container.textContent).not.toMatch(/client/i);
   });
 
   it('Scenario: Branding: the header shows the workspace name and its mark', () => {

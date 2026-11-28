@@ -4,6 +4,7 @@ import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { JobRow } from '../domain/jobsList.ts';
 import { JobsList, type JobsListView } from './JobsList.tsx';
 
 afterEach(cleanup);
@@ -57,6 +58,7 @@ describe('Rows', () => {
           nextAction: { kind: 'chase_evidence', count: 2 },
           hiringOwner: null,
           client: null,
+          clientId: null,
         },
       ],
       clients: null,
@@ -98,10 +100,10 @@ describe("AIV-P1-056: an agency sees each job's client", () => {
       counts: { all: 2, needsAction: 0, rubricNotApproved: 2 },
       onFilterChange: () => {},
       rows: [
-        { ...job, id: 'j1', client: 'Dune Logistics' },
-        { ...job, id: 'j2', title: 'Recruitment Coordinator', client: null },
+        { ...job, id: 'j1', client: 'Dune Logistics', clientId: 'c1' },
+        { ...job, id: 'j2', title: 'Recruitment Coordinator', client: null, clientId: null },
       ],
-      clients: ['Dune Logistics'],
+      clients: [{ id: 'c1', name: 'Dune Logistics' }],
       client: '',
       onClientChange,
     });
@@ -110,12 +112,13 @@ describe("AIV-P1-056: an agency sees each job's client", () => {
     expect(within(first as HTMLElement).getAllByRole('cell')[1]?.textContent).toBe('Dune Logistics');
     expect(within(second as HTMLElement).getAllByRole('cell')[1]?.textContent).toBe('Our team');
     await userEvent.selectOptions(screen.getByLabelText('Client'), 'Dune Logistics');
-    expect(onClientChange).toHaveBeenCalledWith('Dune Logistics');
+    // AIV-P1-165: the filter works by the client's opaque id, which is what the URL carries.
+    expect(onClientChange).toHaveBeenCalledWith('c1');
   });
 });
 
 // AIV-P1-101: one approved job, as an admin or recruiter (canImport) or anyone else.
-const withImport = (canImport: boolean) =>
+const withImport = (canImport: boolean, more: Partial<JobRow> = {}) =>
   render(
     <IntlProvider {...intl}>
       <JobsList
@@ -139,6 +142,8 @@ const withImport = (canImport: boolean) =>
               nextAction: null,
               hiringOwner: null,
               client: null,
+              clientId: null,
+              ...more,
             },
           ],
           clients: null,
@@ -159,6 +164,23 @@ describe('AIV-P1-101, AIV-P1-165: "Add CVs" on each row', () => {
 
   it('is not offered to a hiring owner or interviewer', () => {
     withImport(false);
+    expect(screen.queryByRole('link', { name: 'Add CVs' })).toBeNull();
+  });
+});
+
+describe('AIV-P1-165 Scenario: The next action is the button', () => {
+  it('an approved job with no candidates: the cell is the "Add CVs" button, and the count is "0" with no chip', () => {
+    withImport(true, { assessed: 0 });
+    const cells = within(screen.getAllByRole('row')[1] as HTMLElement).getAllByRole('cell');
+    expect(cells.at(-1)?.textContent).toBe('Add CVs');
+    expect(cells[3]?.textContent).toBe('0');
+  });
+
+  it('a rubric to approve: the button is "Approve the rubric", opening the rubric page, and nothing else', () => {
+    withImport(true, { rubric: { approved: false, latest: 'draft' }, nextAction: { kind: 'approve_rubric' } });
+    expect(screen.getByRole('link', { name: 'Approve the rubric' }).getAttribute('href')).toBe(
+      '/app/jobs/0190d4a2-0000-7000-9000-000000001031/rubric',
+    );
     expect(screen.queryByRole('link', { name: 'Add CVs' })).toBeNull();
   });
 });

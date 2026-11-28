@@ -12,7 +12,8 @@ import { signIn } from './auth.ts';
 
 export const PIA = 'pia.platform@example.com';
 export const WAITING =
-  'Your workspace is waiting for approval. We will email you when it is ready, usually within one working day.';
+  'A Credalent operator reviews every new workspace before it opens. You can sign out and come back once it is ' +
+  'approved: your desk opens when you sign in.';
 
 /** A new synthetic address signs in, creates workspace `name` and lands on its waiting page; its own browser context. */
 export async function signUpWorkspace(browser: Browser, baseURL: string, email: string, name: string) {
@@ -21,7 +22,7 @@ export async function signUpWorkspace(browser: Browser, baseURL: string, email: 
   await signIn(page, { email });
   await page.getByLabel('Company').fill(name);
   await page.getByLabel('What do you hire for most?').selectOption({ label: 'AI and LLM engineering' });
-  await page.getByRole('button', { name: 'Create workspace' }).click();
+  await page.getByRole('button', { name: 'Create your workspace' }).click();
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByText(WAITING)).toBeVisible();
   return { page, context };

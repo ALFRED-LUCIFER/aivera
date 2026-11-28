@@ -28,7 +28,7 @@ export type {
 } from '../domain/assess.ts';
 export type { AssessCandidateInput, JobRanking, RankingRow, StoredAssessment } from '../application/assessment.ts';
 export type { RankingExplanation } from '../application/explain.ts';
-export type { ExplanationCitation, ExplanationStatement } from '../domain/explain.ts';
+export type { CitedLead, ExplanationCitation, ExplanationStatement } from '../domain/explain.ts';
 export type { SuggestQuestionsResult, SuggestedQuestions } from '../application/questions.ts';
 export type { QuestionCitation, SuggestedGap, SuggestedQuestion } from '../domain/questions.ts';
 export type { Tradeoffs } from '../application/tradeoffs.ts';

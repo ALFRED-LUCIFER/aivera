@@ -42,6 +42,7 @@ const pack = (over: Partial<PackPage> = {}): PackPage => ({
   packId: PACK,
   name: 'Round 2 shortlist',
   job: 'Senior AI Engineer',
+  client: null,
   preparedAt: new Date('2026-11-17T08:00:00.000Z'),
   rubricVersion: 2,
   role: null,

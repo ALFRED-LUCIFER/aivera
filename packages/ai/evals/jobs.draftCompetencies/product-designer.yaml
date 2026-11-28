@@ -19,13 +19,13 @@ expected:
       - Arabic and right-to-left design
       - Accessibility
 recorded:
-  promptVersion: jobs.draftCompetencies@5
-  promptHash: 603d2797a05b
+  promptVersion: jobs.draftCompetencies@6
+  promptHash: f0d65881a3ce
   output:
     competencies:
-      - name: Design Checkout Flows
-        evidenceExpected: Built and shipped checkout flow designs for customer use.
-        weight: 40
+      - name: Checkout Flow Design
+        evidenceExpected: Designed and shipped checkout flows used by customers in an e-commerce environment.
+        weight: 50
         level: 4
         type: mandatory
         citations:
@@ -34,8 +34,8 @@ recorded:
             start: 0
             end: 53
         claim: false
-      - name: Translate Research into Design Decisions
-        evidenceExpected: Documented design decisions clearly derived from user research findings.
+      - name: User Research Application in Design
+        evidenceExpected: Produced design decisions directly informed by user research findings.
         weight: 25
         level: 4
         type: mandatory
@@ -45,8 +45,8 @@ recorded:
             start: 54
             end: 94
         claim: false
-      - name: Prototype and Test Design Ideas
-        evidenceExpected: Created prototypes and conducted usability tests to validate design concepts before development.
+      - name: Prototyping and Testing
+        evidenceExpected: Created prototypes and conducted usability tests to validate design ideas before development.
         weight: 25
         level: 4
         type: mandatory
@@ -56,42 +56,33 @@ recorded:
             start: 95
             end: 145
         claim: false
-      - name: Design for Arabic and English Users
-        evidenceExpected: Delivered designs supporting both Arabic and English languages for users in UAE and Saudi Arabia.
-        weight: 10
-        level: 4
-        type: mandatory
+    refused: false
+    reason: null
+    suggestions:
+      - name: Bilingual Design (Arabic and English)
+        evidenceExpected:
+          Designed user interfaces that effectively support both Arabic and English languages, considering
+          cultural and linguistic nuances.
+        weight: 20
+        level: 3
+        type: desirable
+        why:
+          The description states customers shop in Arabic and English across the UAE and Saudi Arabia but does not explicitly
+          require bilingual design skills.
         citations:
           - sourceId: S1
             quote: Our customers shop in Arabic and English across the UAE and Saudi Arabia.
             start: 146
             end: 219
         claim: false
-    refused: false
-    reason: null
-    suggestions:
-      - name: User Experience (UX) Research
-        evidenceExpected: Conducted or collaborated on user research to understand customer needs and behaviors.
-        weight: 30
-        level: 4
-        type: desirable
-        why:
-          The description states turning research into design decisions, implying involvement with user research but does not
-          explicitly state conducting it.
-        citations:
-          - sourceId: S1
-            quote: You turn research into design decisions.
-            start: 54
-            end: 94
-        claim: false
-      - name: Accessibility Design
-        evidenceExpected: Designed products accessible to users with diverse needs and abilities.
-        weight: 20
+      - name: E-commerce Domain Knowledge
+        evidenceExpected: Demonstrated understanding of e-commerce user behaviors and best practices in online shopping experiences.
+        weight: 15
         level: 3
         type: desirable
         why:
-          Designing checkout flows for Arabic and English users across UAE and Saudi Arabia implies the need to consider
-          accessibility for diverse users, but it is not explicitly mentioned.
+          The description involves designing checkout flows for customers shopping online, implying e-commerce knowledge is
+          beneficial but not explicitly stated.
         citations:
           - sourceId: S1
             quote: You will design the checkout flows our customers use.
@@ -99,11 +90,11 @@ recorded:
             end: 53
         claim: false
   matches:
-    Interaction design craft: Design Checkout Flows
-    Research to decisions: Translate Research into Design Decisions
-    Prototyping: Prototype and Test Design Ideas
+    Interaction design craft: Checkout Flow Design
+    Research to decisions: User Research Application in Design
+    Prototyping: Prototyping and Testing
   suggestions:
     judge: evals.suggestion@2
     verdicts:
-      User Experience (UX) Research: null
-      Accessibility Design: null
+      Bilingual Design (Arabic and English): null
+      E-commerce Domain Knowledge: null

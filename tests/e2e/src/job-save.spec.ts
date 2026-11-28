@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectAccessible, themes } from './gallery.ts';
+import { expectAccessible, primaryButtons, themes } from './gallery.ts';
 
 // AIV-P1-010 J1 step 5, Add a job step 3: save the job with rubric version 1 as a draft. The fake model answers from
 // tests/e2e/ai-fixtures.json (the eval set's senior-ai-engineer case: 6 competencies totalling 100%). What is stored
@@ -53,7 +53,9 @@ for (const theme of themes) {
     await expect(
       page.getByText('Next: approve the rubric on its page. Candidates are assessed only after that.'),
     ).toBeVisible();
-    // AIV-P1-165 Scenario: The saved page leads to the rubric.
+    // AIV-P1-165 Scenario: The saved page leads to the rubric: titled "Job saved", with one primary button.
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Job saved');
+    await expect(primaryButtons(page)).toHaveText(['Review and approve the rubric']);
     await expect(page.getByRole('link', { name: 'Review and approve the rubric' })).toHaveAttribute(
       'href',
       /^\/app\/jobs\/[0-9a-f-]+\/rubric$/,
@@ -70,7 +72,7 @@ for (const theme of themes) {
 test('Scenario: Weights rebalance when a suggestion was removed', async ({ page }) => {
   await draft(page, 'Rebalanced AI Engineer');
   await page.getByRole('button', { name: 'Remove Product judgement' }).click();
-  await expect(page.getByText('Weights rebalance when you save')).toBeVisible();
+  await expect(page.getByText('Weights total 85%. They rebalance to 100% when you save.')).toBeVisible();
   await save(page).click();
   await expect(page.getByText(SAVED)).toBeVisible();
 });

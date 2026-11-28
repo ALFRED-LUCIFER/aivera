@@ -4,7 +4,7 @@ import { getIdentity } from '@/server/auth';
 import { getDecisions } from '@/server/decisions';
 import { getIntake } from '@/server/intake';
 import { getJobs } from '@/server/jobs';
-import { getWorkspaces, inActiveWorkspace } from '@/server/workspace';
+import { clientName, getWorkspaces, inActiveWorkspace } from '@/server/workspace';
 
 const jobId = z.uuid();
 
@@ -34,6 +34,8 @@ export async function loadJobHeader(id: string) {
         : false;
     return {
       header,
+      // "Client: Falcon Pay" on an agency's job (AIV-P1-165), for the members who may list clients.
+      client: await clientName(ctx, header?.job.clientId ?? null),
       assessed,
       imported,
       shortlistReady,
@@ -42,7 +44,7 @@ export async function loadJobHeader(id: string) {
     };
   });
   if (!result) return null;
-  const { header, assessed, imported, shortlistReady, members, jobScoped } = result.value;
+  const { header, client, assessed, imported, shortlistReady, members, jobScoped } = result.value;
   if (!header) return { missing: jobScoped ? ('forbidden' as const) : ('notFound' as const) };
   const owner = header.job.hiringOwnerUserId && (await getIdentity().getUser(header.job.hiringOwnerUserId));
   // shortcut: one identity read per hiring-owner member, as the members screen does; batch it with identity.
@@ -57,6 +59,7 @@ export async function loadJobHeader(id: string) {
   const ownerChange = options && { currentUserId: header.job.hiringOwnerUserId, options };
   return {
     header,
+    client,
     assessed,
     imported,
     shortlistReady,

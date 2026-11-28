@@ -133,8 +133,17 @@ test('Scenario: No clear domain, and nothing changes until I save', async ({ pag
   await expect(page.getByText(/Credalent read this as/)).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /^For an? .* job/ })).toHaveCount(0);
 
-  await page.getByText('Add industry skills').focus();
+  // AIV-P1-165 "Add industry skills is a real button": a <button>, reached by Tab, opened by Enter and by Space.
+  const add = page.getByRole('button', { name: 'Add industry skills' });
+  expect(await add.evaluate((element) => element.tagName)).toBe('BUTTON');
+  await page.getByRole('button', { name: 'Remove' }).last().focus();
+  await page.keyboard.press('Tab');
+  await expect(add).toBeFocused();
   await page.keyboard.press('Enter');
+  await expect(add).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('list', { name: 'Industries' })).toBeHidden();
+  await page.keyboard.press('Space');
   const packs = page.getByRole('list', { name: 'Industries' }).getByRole('button');
   await expect(packs).toHaveText([
     'Payments and fintech',

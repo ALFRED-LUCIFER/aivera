@@ -45,3 +45,45 @@ describe('A job with no rubric', () => {
     expect(screen.queryByText(/Weights total/)).toBeNull();
   });
 });
+
+// AIV-P1-165: "Levels and Mandatory are explained where they appear", "Scoring definitions are behind a toggle".
+describe('A rubric read on its page', () => {
+  const rubric = {
+    shown: {
+      version: 1,
+      successStatement: '',
+      competencies: [
+        {
+          name: 'Cost and reliability',
+          evidenceExpected: 'Numbers on latency and cost',
+          weightPercent: 100,
+          levelNeeded: 2,
+          type: 'mandatory' as const,
+          origin: 'from_description' as const,
+        },
+      ],
+    },
+    history: [],
+    edit: null,
+    review: null,
+    approvable: null,
+    approvedCompetencies: 0,
+  };
+
+  it('each level has its one-line meaning beside it, and Mandatory is said never to reject', () => {
+    show({ status: 'ready', rubric });
+    const cell = screen.getByRole('cell', { name: /Level 2 of 5/ });
+    expect(cell.textContent).toBe('Level 2 of 5Does routine tasks alone.');
+    expect(screen.getByText(/^Mandatory never rejects anyone automatically\./)).toBeTruthy();
+  });
+
+  it('the scoring definitions are collapsed under "Show scoring definitions"', async () => {
+    show({ status: 'ready', rubric });
+    const toggle = screen.getByText('Show scoring definitions');
+    const details = toggle.closest('details');
+    expect(details?.open).toBe(false);
+    expect(details?.textContent).toContain('Stated, with nothing to inspect. Counts as zero.');
+    await userEvent.click(toggle);
+    expect(details?.open).toBe(true);
+  });
+});

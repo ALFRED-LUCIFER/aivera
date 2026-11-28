@@ -8,6 +8,7 @@ import {
   editsInPlace,
   newSuggestions,
   rebalanceWeights,
+  roundWeightsToFives,
   nextAction,
   RUBRIC_STATUSES,
   toPublicListing,
@@ -155,6 +156,22 @@ describe('Scenario: Weights rebalance when a suggestion was removed (AIV-P1-010)
     // 25 20 15 15 10 (Product judgement's 15 removed): 29.41 23.53 17.65 17.65 11.76 round down to 97; the three
     // largest remainders (.76, .65, .65) get a point each.
     expect(weights(rebalanceWeights(rubric([25, 20, 15, 15, 10])))).toEqual([29, 23, 18, 18, 12]);
+  });
+
+  it("AIV-P1-165: a draft's weights go to steps of 5 that still total 100, a heavier weight never ending lighter", () => {
+    const fives = (list: number[]) => weights(roundWeightsToFives(rubric(list)));
+    expect(fives([29, 23, 18, 18, 12])).toEqual([30, 25, 20, 15, 10]);
+    expect(fives([13, 13, 13, 13, 12, 12, 12, 12])).toEqual([15, 15, 15, 15, 10, 10, 10, 10]);
+    // Nothing drops under 5: the steps that takes come off the heaviest.
+    expect(fives([81, ...Array.from({ length: 19 }, () => 1)])).toEqual([5, ...Array.from({ length: 19 }, () => 5)]);
+    expect(fives([62, 34, 2, 2])).toEqual([60, 30, 5, 5]);
+    const already = rubric([25, 20, 15, 15, 15, 10]);
+    expect(weights(roundWeightsToFives(already))).toEqual(weights(already));
+    // Not a total of 100 (the recruiter's own edits) or no room for 5 each: left alone.
+    const short = rubric([13, 13]);
+    expect(roundWeightsToFives(short)).toBe(short);
+    const many = rubric([...Array.from({ length: 20 }, () => 4), 20]);
+    expect(roundWeightsToFives(many)).toBe(many);
   });
 
   it('keeps weights that already total 100, and keeps every other field', () => {

@@ -46,6 +46,7 @@ function Harness({ schedule }: { schedule: (input: unknown) => Promise<ScheduleR
         people: 0,
         jobs: 0,
         schedule: view,
+        start: { pending: false, onStart: () => {} },
       }}
     />
   );
@@ -63,7 +64,7 @@ describe('Schedule dialog', () => {
     const schedule = vi.fn(async (): Promise<ScheduleResult> => ({ ok: true }));
     show(schedule);
     await userEvent.click(screen.getByRole('button', { name: 'Schedule Daniel Novak' }));
-    const dialog = screen.getByRole('dialog', { name: 'Schedule Round 1, structured screen' });
+    const dialog = screen.getByRole('dialog', { name: 'Schedule Round 1' });
     expect(within(dialog).getByText('Nobody is contacted.', { exact: false })).toBeTruthy();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Schedule' }));
     expect(within(dialog).getByRole('alert').textContent).toBe('Choose an interviewer');

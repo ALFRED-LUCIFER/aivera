@@ -45,6 +45,21 @@ export const toDelivery = (receiver: ServiceBusReceiver, message: ServiceBusRece
  */
 export const systemConsumer = (_reason: string, handle: (delivery: Delivery) => Promise<void>) => handle;
 
+/** The queue of the events nothing handles yet (apps/backend/worker/src/main.ts, QUEUES). */
+export const UNHANDLED_QUEUE = 'candidates';
+
+/**
+ * The consumer of `UNHANDLED_QUEUE` (AIV-P1-165): completes each event, so none stays active and unconsumed until its
+ * 14-day time to live dead-letters it. Its row stays in its module's outbox, marked sent: the relay never resends a sent
+ * row, so a consumer a later ticket adds (AIV-P3-008) needs a replay. A body that is not an envelope is dead-lettered.
+ */
+export async function acknowledgeUnhandled(delivery: Delivery): Promise<void> {
+  const envelope = envelopeSchema.safeParse(delivery.body);
+  if (!envelope.success) return delivery.deadLetter('invalid payload');
+  log.info({ 'outbox.event_id': envelope.data.id }, 'event with no handler completed');
+  await delivery.complete();
+}
+
 /** Streams `receiver`'s messages to `handle`, settling manually; close the returned subscription to stop receiving. */
 export const subscribe = (receiver: ServiceBusReceiver, handle: (delivery: Delivery) => Promise<void>) =>
   receiver.subscribe(

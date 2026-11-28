@@ -93,14 +93,20 @@ async function interviewerOptions(ctx: WorkspaceContext): Promise<InterviewerOpt
 /**
  * The Interviews page (AIV-P2-002): the ongoing and completed interviews the member may see, through `listInterviews`,
  * which checks `interview.view`, the member's job scope and, for an interviewer, that the interview is theirs. Null
- * with no workspace. The summary counts are of what this member sees.
+ * with no workspace. The summary counts are of what this member sees. With `jobId`, that job's interviews only: the
+ * job's Interviews tab (AIV-P1-165 §12), whose layout has already checked the member may see the job.
  */
-export async function loadInterviews(): Promise<InterviewsData | null> {
+// shortcut: reads every interview the member may see, then keeps one job's; filter by job in the contract past ~500.
+export async function loadInterviews(jobId?: string): Promise<InterviewsData | null> {
   const now = new Date();
   const result = await inActiveWorkspace(async (ctx) => {
-    const completed = await getInterviews().listInterviews(ctx, 'completed');
+    const list = async (filter: 'ongoing' | 'completed') => {
+      const interviews = await getInterviews().listInterviews(ctx, filter);
+      return jobId ? interviews.filter((i) => i.jobId === jobId) : interviews;
+    };
+    const completed = await list('completed');
     return {
-      ongoing: inListOrder(await toInterviewRows(ctx, await getInterviews().listInterviews(ctx, 'ongoing'), now)),
+      ongoing: inListOrder(await toInterviewRows(ctx, await list('ongoing'), now)),
       completed: await toInterviewRows(ctx, completed, now),
       people: new Set(completed.map((i) => i.candidateId)).size,
       jobs: new Set(completed.map((i) => i.jobId)).size,

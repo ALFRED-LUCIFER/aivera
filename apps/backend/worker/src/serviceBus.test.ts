@@ -3,7 +3,7 @@ import type { ServiceBusReceivedMessage, ServiceBusReceiver, ServiceBusSender } 
 import Long from 'long';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { createScheduler, toDelivery } from './serviceBus.ts';
+import { acknowledgeUnhandled, createScheduler, toDelivery } from './serviceBus.ts';
 
 // AIV-P0-015: Service Bus faked at the SDK boundary (no emulator, see tests/integration/src/worker.test.ts).
 
@@ -73,5 +73,42 @@ describe('toDelivery', () => {
       deadLetterReason: 'invalid payload',
       deadLetterErrorDescription: 'invalid payload',
     });
+  });
+});
+
+/** A delivery's settlement, recorded. */
+const settle = () => {
+  const settled: string[] = [];
+  return {
+    settled,
+    settlement: {
+      deliveryCount: 1,
+      complete: async () => void settled.push('complete'),
+      abandon: async () => void settled.push('abandon'),
+      deadLetter: async (reason: string) => void settled.push(`deadLetter: ${reason}`),
+    },
+  };
+};
+
+// AIV-P1-165 "The candidates queue is consumed": the events nothing handles yet are completed, not left active.
+describe('Scenario: The candidates queue is consumed', () => {
+  it('completes an event nothing handles yet, so no message is left active and unconsumed', async () => {
+    const { settled, settlement } = settle();
+    const body = newEnvelope(
+      { type: 'PersonCreated.v1', payload: z.strictObject({ personId: z.uuid() }) },
+      {
+        workspaceId: '0190d4a2-0000-7000-8000-000000000001',
+        payload: { personId: '0190d4a2-0000-7000-8000-0000000000a1' },
+        occurredAt: SENT_AT,
+      },
+    );
+    await acknowledgeUnhandled({ ...settlement, body });
+    expect(settled).toEqual(['complete']);
+  });
+
+  it('dead-letters a body that is not an envelope', async () => {
+    const { settled, settlement } = settle();
+    await acknowledgeUnhandled({ ...settlement, body: { id: 'x' } });
+    expect(settled).toEqual(['deadLetter: invalid payload']);
   });
 });

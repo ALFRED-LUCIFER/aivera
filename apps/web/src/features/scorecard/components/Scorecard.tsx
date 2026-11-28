@@ -17,10 +17,8 @@ import {
   Card,
   EvidenceHighlight,
   Label,
-  ProvenanceTag,
   RadioGroup,
   SegmentedControl,
-  StrengthMeter,
   SuccessBanner,
   Textarea,
   ValueBasis,
@@ -28,6 +26,7 @@ import {
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { LimitLine, Standing } from '@/features/evidence-profile';
 import type { ScorecardCompetency, ScorecardData, SubmitOutcome } from '../domain/scorecard.ts';
 
 // AIV-P2-004: the Interview artboard (docs/01-design/artboards/Interview.dc.html): breadcrumb, title, subtitle and "Save
@@ -53,8 +52,12 @@ import type { ScorecardCompetency, ScorecardData, SubmitOutcome } from '../domai
 //   its name (AGENTS.md 1.9);
 // - "Effect on the assessment" is a slot (`effect`) at the top of the right column: the live preview (AIV-P2-005) has
 //   its own controller and component, `ScoreEffect`;
-// - "Submit scorecard" (AIV-P2-006) first checks that every competency is rated or marked as not tested and that each
-//   rating has a note (kept with it, logged with any change it makes, and the words its evidence cites), saying which is not, and is
+// - the evidence states its limit once and a claim reads "Claim only" in neutral ink, as on the profile; the rounds
+//   read "Round 1", "Round 2" and "Round 3", the subtitle no longer says "structured screen", and the notes placeholder
+//   is "What the candidate said or did", where the artboard draws "Evidence, not impressions" (AIV-P1-165 §11, §12);
+// - "Submit scorecard" (AIV-P2-006) first checks that at least one competency is rated or marked as not tested (rate
+//   only what was tested, AIV-P1-165 §12) and that each rating but "Not shown" has a note (kept with it, logged with any
+//   change it makes, and the words its evidence cites), saying which is not, and is
 //   disabled while the preview of the current ratings is on its way, so what is applied is what the person saw. Under
 //   "Scorecard submitted and logged" its name is the candidate's full name, not the first name. While the preview of
 //   the ratings is on its way or unavailable a line under the button says why it waits (no preview, no submit,
@@ -87,7 +90,8 @@ import type { ScorecardCompetency, ScorecardData, SubmitOutcome } from '../domai
 export type ScorecardHandlers = {
   draft: ScorecardDraft;
   saving: 'idle' | 'saving' | 'saved' | 'failed';
-  blocked: string[];
+  /** "Submit scorecard" was chosen with nothing rated or marked as not tested. */
+  blocked: boolean;
   noNote: string[];
   outcome: SubmitOutcome | 'submitting' | null;
   /** Why submitting waits: the preview of the ratings now is on its way, or unavailable; null when it is ready. */
@@ -172,7 +176,6 @@ export function Scorecard({
   const at = view.scheduledAt && new Date(view.scheduledAt);
   const subtitle = [
     view.job,
-    t(`scorecard.kind.${view.round}`),
     at ? t(view.today ? 'interviews.when.today' : 'interviews.when.at', { at }) : t('interviews.when.none'),
     view.interviewer === null ? t('scorecard.interviewerYou') : t('scorecard.interviewer', { name: view.interviewer }),
   ].join(' · ');
@@ -252,6 +255,11 @@ export function Scorecard({
                       {t('scorecard.submit')}
                     </Button>
                   </div>
+                  {view.blocked && (
+                    <p role="alert" className="text-body font-medium text-text">
+                      {t('scorecard.rateOrMark')}
+                    </p>
+                  )}
                   {view.previewBlock && (
                     <p id="submit-waits" className="text-meta text-text">
                       {t(`scorecard.waits.${view.previewBlock}`)}
@@ -332,7 +340,6 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
   const draft = view.draft.competencies.find((c) => c.competencyId === id);
   if (!draft) return null;
   const untested = notAssessed(draft);
-  const blocked = view.blocked.includes(id);
   const noNote = view.noNote.includes(id);
   return (
     <Card>
@@ -344,15 +351,7 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
               {t('candidateProfile.weight', { weight: competency.weightPercent })}
             </span>
           </h2>
-          {evidence?.lead && (
-            <>
-              <StrengthMeter strength={evidence.lead.strength} label={t(`rubric.strength.${evidence.lead.strength}`)} />
-              <ProvenanceTag
-                provenance={evidence.lead.provenance}
-                label={t(`evidence.provenance.${evidence.lead.provenance}`)}
-              />
-            </>
-          )}
+          {evidence?.lead && <Standing {...evidence.lead} />}
         </div>
         {!evidence || evidence.items.length === 0 ? (
           <p className="text-body text-text-2">{t('candidateProfile.noEvidence')}</p>
@@ -373,31 +372,12 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
                   )}
                 </span>
                 {/* SAFETY: an item weaker than the row's lead says so itself; it never reads under the lead's tag. */}
-                {item.own && (
-                  <>
-                    <StrengthMeter strength={item.own.strength} label={t(`rubric.strength.${item.own.strength}`)} />
-                    <ProvenanceTag
-                      provenance={item.own.provenance}
-                      label={t(`evidence.provenance.${item.own.provenance}`)}
-                    />
-                  </>
-                )}
+                {item.own && <Standing {...item.own} under={evidence.lead} />}
               </li>
             ))}
           </ul>
         )}
-        {evidence?.limits.map((limit) => (
-          <p key={limit} className="text-meta text-text-2">
-            <strong className="font-semibold text-text">{t('candidateProfile.limit')}</strong> {limit}
-          </p>
-        ))}
-        {/* SAFETY: a row resting only on claims says it counts zero, whatever strength the claim is stored with. */}
-        {evidence?.claimOnly && (
-          <p className="text-meta text-text-2">
-            <strong className="font-semibold text-text">{t('candidateProfile.limit')}</strong>{' '}
-            {t('candidateProfile.claimLimit')}
-          </p>
-        )}
+        {evidence && <LimitLine card={evidence} />}
         <div className="flex flex-col gap-1.5">
           <span className="text-meta font-semibold text-text">{t('scorecard.questions')}</span>
           {competency.questions.length === 0 && (
@@ -497,17 +477,11 @@ function Competency({ competency, view }: { competency: ScorecardCompetency; vie
             value={untested ? '' : (draft.rating ?? '')}
             onValueChange={(value) => view.onRate(id, value as Rating)}
             disabled={untested || !view.canEdit}
-            aria-invalid={blocked}
-            {...((untested || blocked) && { 'aria-describedby': `${untested ? 'untested' : 'blocked'}-${id}` })}
+            {...(untested && { 'aria-describedby': `untested-${id}` })}
           />
           {untested && (
             <p id={`untested-${id}`} className="text-body font-medium text-text">
               {t('scorecard.notAssessed')}
-            </p>
-          )}
-          {blocked && (
-            <p id={`blocked-${id}`} role="alert" className="text-body font-medium text-text">
-              {t('scorecard.rateOrMark')}
             </p>
           )}
           <div className="flex flex-col gap-1.5">

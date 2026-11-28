@@ -14,6 +14,15 @@ export const parseJobPage = (segment: string | null): JobPage | null =>
 
 export const jobPageHref = (jobId: string, page: JobPage) => `/app/jobs/${jobId}/${page}`;
 
+/**
+ * On the rubric page of an approved rubric with nothing newer open, "Add CVs" is the one next step, so the page's one
+ * primary button (AIV-P1-165).
+ * shortcut: it stays primary beside "Save draft" while that rubric is edited, since edit mode lives in the page and not
+ * the header; lift edit mode up if two primaries there confuse a pilot recruiter.
+ */
+export const addCvsIsNext = (rubric: RubricState, current: JobPage | null) =>
+  current === 'rubric' && rubric.approved && rubric.latest === 'approved';
+
 /** A stage's status line as a `jobHeader.status` key and its values. */
 export type StageLine =
   | { key: 'saved'; values: { date: Date } }
@@ -28,6 +37,8 @@ export type JobHeaderView = {
   team: string | null;
   location: string | null;
   hiringOwner: string | null;
+  /** The agency client the job is for; null in-house, and for a reader who may not list clients (AIV-P1-165). */
+  client: string | null;
   assessed: number;
   /** The admin's hiring-owner picker; null for every other role (AIV-P1-097). */
   ownerChange: OwnerChange | null;
@@ -44,6 +55,7 @@ export function jobHeaderView(
   imported: number,
   /** The job has an undecided decision pack (AIV-P2-011): "Shortlist ready". */
   shortlistReady: boolean,
+  client: string | null = null,
 ): JobHeaderView {
   const lines: Record<JobPage, StageLine> = {
     // shortcut: a job is not edited after it is added yet, so "Saved" is when it was added; the job edit ticket adds
@@ -72,6 +84,7 @@ export function jobHeaderView(
     team: job.team,
     location: job.location,
     hiringOwner,
+    client,
     assessed,
     ownerChange,
     rubric: { approved: approved !== null, latest: latest?.status ?? null },

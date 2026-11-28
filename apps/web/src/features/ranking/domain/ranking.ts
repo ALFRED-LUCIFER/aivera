@@ -9,9 +9,15 @@ import type { BulkActionId } from './selection.ts';
  * An assessed candidate's figures, with the missing critical competencies and the competencies a Round 1 interview
  * should investigate (AIV-P1-114) by name.
  */
-export type CandidateScore = Omit<RankingRow, 'candidateId' | 'missingCritical' | 'gaps'> & {
+export type CandidateScore = Omit<RankingRow, 'candidateId' | 'missingCritical' | 'gaps' | 'cited'> & {
   missing: string[];
   investigate: string[];
+  /**
+   * The row's one-line reason (AIV-P1-165 §9): the competency that adds most to the backed score and the cited item
+   * behind it, or with nothing proven the largest claim, marked `claim` (it counts zero, AGENTS.md 1.6). Absent when
+   * the result cites nothing or the rubric does not name the competency.
+   */
+  reason?: { competency: string; itemId: string; level: number; claim: boolean };
 };
 
 /**
@@ -147,8 +153,14 @@ export function toCandidateRows(
     };
     const r = scores.get(a.personId);
     if (!r) return { ...base, score: null };
-    const { candidateId: _, missingCritical, gaps, ...figures } = r;
-    return { ...base, score: { ...figures, missing: names(missingCritical), investigate: names(gaps) } };
+    const { candidateId: _, missingCritical, gaps, cited, ...figures } = r;
+    const competency = cited && competencyName(cited.competencyId);
+    // SAFETY: `claim` passes through as the snapshot has it, so a claim's line is always labelled a claim.
+    const reason = cited && competency && { competency, itemId: cited.itemId, level: cited.level, claim: cited.claim };
+    return {
+      ...base,
+      score: { ...figures, missing: names(missingCritical), investigate: names(gaps), ...(reason && { reason }) },
+    };
   };
   const rows = applicants.map(row);
   const rank = (r: CandidateRow) => r.score?.rank ?? Number.MAX_SAFE_INTEGER;
@@ -186,3 +198,12 @@ export const missingOptions = (rows: CandidateRow[]) => [...new Set(rows.flatMap
 /** Columns the Columns menu can hide; "#" and "Candidate" always show. */
 export const HIDEABLE_COLUMNS = ['score', 'meetsNeed', 'confidence', 'missing', 'lastScored', 'nextAction'] as const;
 export type HideableColumn = (typeof HIDEABLE_COLUMNS)[number];
+/** Hidden until asked for: the ranking opens on name, backed score, meets need and next action (AIV-P1-165 §9). */
+export const HIDDEN_BY_DEFAULT: readonly HideableColumn[] = ['confidence', 'missing', 'lastScored'];
+
+/** "Compare top 3": the three highest-ranked candidates' person ids, or null until three are scored. */
+export const TOP_COMPARED = 3;
+export const topRanked = (rows: readonly CandidateRow[]): string[] | null => {
+  const top = rows.filter((row) => row.score).slice(0, TOP_COMPARED);
+  return top.length === TOP_COMPARED ? top.map((row) => row.personId) : null;
+};

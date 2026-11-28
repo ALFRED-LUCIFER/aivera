@@ -1,6 +1,6 @@
 import type { Job, JobHeader, RubricVersion } from '@credalent/jobs';
 import { describe, expect, it } from 'vitest';
-import { jobHeaderView, parseJobPage } from './jobHeader.ts';
+import { addCvsIsNext, jobHeaderView, parseJobPage } from './jobHeader.ts';
 
 const job = { id: 'j1', title: 'Senior AI Engineer', team: 'Engineering', location: 'DIFC, Dubai' } as Job;
 const saved = new Date('2026-11-03T08:00:00.000Z');
@@ -83,6 +83,11 @@ describe('Job header stage lines (AIV-P1-011)', () => {
     expect(jobHeaderView(approved, null, 3, null, 3, false).stages[5]?.line).toEqual({ key: 'notStarted' });
   });
 
+  it('AIV-P1-165: an agency job carries its client for "Client: Falcon Pay"; in-house there is none', () => {
+    expect(jobHeaderView(header({}), null, 0, null, 0, false, 'Falcon Pay').client).toBe('Falcon Pay');
+    expect(jobHeaderView(header({}), null, 0, null, 0, false).client).toBeNull();
+  });
+
   it('only the stage segments are a current page', () => {
     expect(parseJobPage('import')).toBe('import');
     expect(parseJobPage('rubric')).toBe('rubric');
@@ -90,5 +95,19 @@ describe('Job header stage lines (AIV-P1-011)', () => {
     expect(parseJobPage('packs')).toBe('pack');
     expect(parseJobPage('settings')).toBeNull();
     expect(parseJobPage(null)).toBeNull();
+  });
+});
+
+// AIV-P1-165 "After approval, one next step".
+describe('addCvsIsNext', () => {
+  it.each([
+    [{ approved: true, latest: 'approved' }, 'rubric', true],
+    // A newer version is open: approving it is the page's primary action.
+    [{ approved: true, latest: 'draft' }, 'rubric', false],
+    [{ approved: false, latest: 'draft' }, 'rubric', false],
+    // The ranking has its own primary actions.
+    [{ approved: true, latest: 'approved' }, 'candidates', false],
+  ] as const)('%j on %s -> %s', (rubric, page, next) => {
+    expect(addCvsIsNext(rubric, page)).toBe(next);
   });
 });

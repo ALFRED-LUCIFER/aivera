@@ -99,10 +99,11 @@ export function assess(rubric: RubricInput, links: readonly EvidenceLink[]): Ass
     const own = links.filter((l) => l.competencyId === c.id);
     const proven = own.filter(counts);
     const provenLevel = Math.max(0, ...proven.map((l) => toLevel(l.level))) as Level;
+    // Highest level first, so the first item is the one that sets the proven level (the ranking's reason line cites it).
     const cited = proven
       .filter((l) => l.level > 0)
-      .map((l) => l.itemId)
-      .toSorted(byText);
+      .toSorted((a, b) => toLevel(b.level) - toLevel(a.level) || byText(a.itemId, b.itemId))
+      .map((l) => l.itemId);
     // A contradicted item is not a claim that could hold: a second source said otherwise, so it widens nothing.
     const claims = own.filter((l) => !counts(l) && l.provenance !== 'contradictory');
     const claimedLevel = Math.max(provenLevel, ...claims.map((l) => toLevel(l.level))) as Level;
@@ -117,7 +118,9 @@ export function assess(rubric: RubricInput, links: readonly EvidenceLink[]): Ass
           ? { level: 0, itemIds: [] }
           : { level: provenLevel, itemIds: [first, ...rest] },
       claimedLevel,
-      claimItemIds: claims.map((l) => l.itemId).toSorted(byText),
+      claimItemIds: claims
+        .toSorted((a, b) => toLevel(b.level) - toLevel(a.level) || byText(a.itemId, b.itemId))
+        .map((l) => l.itemId),
     };
   });
 

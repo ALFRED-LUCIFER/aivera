@@ -1,4 +1,4 @@
-import { DECISIONS, NOTE_MAX, type DecisionValue, type MemberSummary } from '@credalent/decisions';
+import { DECISIONS, NOTE_MAX, type CitedStatement, type DecisionValue, type MemberSummary } from '@credalent/decisions';
 import { z } from 'zod';
 import type { NeedRow } from '@/features/evidence-profile/domain/needs.ts';
 
@@ -21,11 +21,14 @@ export type PackPage = {
   packId: string;
   name: string;
   job: string;
+  /** The agency client the job is for ("Prepared for Falcon Pay"); null in-house, and for a reader who may not list clients. */
+  client: string | null;
   preparedAt: Date;
   /** The approved rubric version the pack is on, or null once the job's approved version has moved on. */
   rubricVersion: number | null;
   /** "What the role needs" and "Competencies and weights" from the pack's rubric version; null once it has moved on. */
   role: { successStatement: string; competencies: { name: string; weightPercent: number }[] } | null;
+  /** In reading order: highest backed score first (`byBackedScore`). */
   members: {
     candidateId: string;
     name: string | null;
@@ -54,7 +57,7 @@ export type PackPage = {
  * The pack as the hiring owner will see it (AIV-P1-116): summaries and sources only, never a contact detail, a CV or an
  * evidence file (AGENTS.md 1.9). `workspace` is the workspace's name, for the branded header.
  */
-export type PackPreview = Pick<PackPage, 'name' | 'job' | 'preparedAt'> & {
+export type PackPreview = Pick<PackPage, 'name' | 'job' | 'client' | 'preparedAt'> & {
   workspace: string;
   members: Pick<PackPage['members'][number], 'candidateId' | 'name' | 'backedScore' | 'upperBound' | 'summary'>[];
 };
@@ -64,6 +67,37 @@ export const byNeed = (rows: readonly NeedRow[]) => ({
   strengths: rows.filter((r) => r.proven >= r.needed),
   risks: rows.filter((r) => r.proven < r.needed),
 });
+
+/**
+ * The pack's reading order (AIV-P1-165): highest backed score first. A tie keeps the order the members joined in: the
+ * claim range never breaks it, since a claim counts zero (AGENTS.md 1.6).
+ */
+export const byBackedScore = <T extends { backedScore: number }>(members: readonly T[]): T[] =>
+  members.toSorted((a, b) => b.backedScore - a.backedScore);
+
+/** What separates a member from the one listed above them, in one line: the gap in backed score, or none. */
+export type Standing =
+  { key: 'first' } | { key: 'level'; name: string } | { key: 'below'; name: string; points: number };
+
+/** `members` in `byBackedScore` order; `name` is the member above, as the page shows it. */
+export function standing(members: readonly { backedScore: number }[], index: number, nameAbove: string): Standing {
+  const [above, member] = [members[index - 1], members[index]];
+  if (!above || !member) return { key: 'first' };
+  const points = above.backedScore - member.backedScore;
+  return points === 0 ? { key: 'level', name: nameAbove } : { key: 'below', name: nameAbove, points };
+}
+
+type Citation = CitedStatement['citations'][number];
+
+/**
+ * The distinct sources a card section cites, in the order first cited: a statement's "[2]" is the second one. The
+ * assessment's own facts (`itemId` null) are one source.
+ */
+export function numberedSources(citations: readonly Citation[]): Citation[] {
+  const sources = new Map<string | null, Citation>();
+  for (const c of citations) if (!sources.has(c.itemId)) sources.set(c.itemId, c);
+  return [...sources.values()];
+}
 
 /** The pack page's states: loading.tsx and error.tsx render the first two. */
 export type DecisionPackView =

@@ -32,6 +32,8 @@ export const PERMISSIONS = {
   'candidate.duplicates': { reads: true, scope: 'workspace', roles: ['admin', 'recruiter'] },
   'candidate.merge': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'candidate.unmerge': { scope: 'workspace', roles: ['admin'] },
+  // Correcting the name read from a CV (AIV-P1-165), with a reason, audited.
+  'candidate.rename': { scope: 'workspace', roles: ['admin', 'recruiter'] },
   'scorecard.submit': { scope: 'job', roles: ['admin', 'recruiter', 'hiring_owner', 'interviewer'] },
   // Interviews (AIV-P2-001): recruiters plan them; everyone on the job sees and holds them, and the interviews module
   // narrows hiring owners and interviewers to the interviews they hold, interviewers' views to their own.

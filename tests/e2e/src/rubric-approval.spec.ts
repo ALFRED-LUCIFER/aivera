@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { signIn } from './auth.ts';
-import { expectAccessible, themes } from './gallery.ts';
+import { expectAccessible, pickJobTypeAndTitle, themes } from './gallery.ts';
 
 // AIV-P1-014 J1 step: Tariq (admin of "Approvals Co", seed.ts) adds a job owned by the Head of Engineering and sends
 // its rubric for approval; the Head of Engineering approves it; Tariq sees it approved, and done on My desk. Drafting
@@ -20,8 +20,7 @@ const DESCRIPTION =
 async function addJobAndSend(page: Page, title: string) {
   await signIn(page, { email: 'tariq@example.com' });
   await page.goto('/app/jobs/new');
-  await page.getByLabel('Job type').selectOption({ label: 'AI and LLM engineering' });
-  await page.getByLabel('Job title').fill(title);
+  await pickJobTypeAndTitle(page, title);
   await page.getByLabel('Job description').fill(DESCRIPTION);
   // The only hiring owner; their name is what the mocked sign-in gave them.
   await page.getByLabel('Hiring owner').selectOption({ index: 1 });
@@ -84,7 +83,13 @@ for (const theme of themes) {
     await owner.getByRole('button', { name: 'Cancel' }).click();
 
     // Keyboard path: approve from the keyboard.
-    await owner.getByRole('button', { name: 'Approve version 1' }).focus();
+    await owner.getByRole('button', { name: 'Approve rubric' }).focus();
+    await owner.keyboard.press('Enter');
+    // AIV-P1-165: the preview card opens with focus on Cancel; the reason, then Confirm, all from the keyboard.
+    await expect(owner.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await owner.getByRole('textbox', { name: 'Reason, recorded in the audit log' }).focus();
+    await owner.keyboard.type('Matches the job description');
+    await owner.getByRole('button', { name: 'Confirm approval' }).focus();
     await owner.keyboard.press('Enter');
     await expect(owner.getByRole('status').filter({ hasText: 'is approved' })).toHaveText(
       'Version 1 is approved. Assessment can now start for this job.',
@@ -92,7 +97,7 @@ for (const theme of themes) {
     await expect(owner.getByRole('listitem').filter({ hasText: /^Version 1/ })).toHaveText(
       /^Version 1, approved · .+ · \d{1,2} \w{3} \d{4}$/,
     );
-    await expect(panel.getByRole('button', { name: 'Approve version 1' })).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: 'Approve rubric' })).toHaveCount(0);
     await owner.context().close();
 
     // The recruiter sees Approved, and the desk item moves to done.
@@ -141,6 +146,6 @@ test('Scenario: Approving an outdated version is refused: an old link says a new
   await expect(owner.getByText('A newer version is waiting for you')).toHaveCount(0);
   await owner.goto(`${href}?version=00000000-0000-4000-8000-000000000000&revision=0`);
   await expect(owner.getByText('A newer version is waiting for you')).toBeVisible();
-  await expect(owner.getByRole('button', { name: 'Approve version 1' })).toBeVisible();
+  await expect(owner.getByRole('button', { name: 'Approve rubric' })).toBeVisible();
   await owner.context().close();
 });

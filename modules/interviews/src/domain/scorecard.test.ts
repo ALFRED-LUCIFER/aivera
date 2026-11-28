@@ -3,12 +3,14 @@ import { z } from 'zod';
 import {
   assessedRatings,
   MARKS,
+  NOT_SHOWN_REASON,
   notAssessed,
+  nothingAssessed,
+  ratingReason,
   rebuildDraft,
   scorecardDraftSchema,
   toInterviewNoteEvidence,
   unexplained,
-  unrated,
   type DraftCompetency,
   type ScorecardDraft,
 } from './scorecard.ts';
@@ -49,7 +51,7 @@ describe('Scenario Outline: A competency that was not tested stays a gap', () =>
       expect(notAssessed(cost)).toBe(true);
       expect(assessedRatings(draft(rated, cost)).map((r) => r.competencyId)).toEqual([RETRIEVAL]);
       expect(toInterviewNoteEvidence(scorecard(rated, cost)).map((p) => p.competencyId)).toEqual([RETRIEVAL]);
-      expect(unrated(draft(rated, cost))).toEqual([]);
+      expect(nothingAssessed(draft(cost))).toBe(false);
     }
   });
 
@@ -75,10 +77,28 @@ describe('Scenario: Notes become interview_note evidence payloads', () => {
   });
 });
 
-describe('Scenario: Submit needs every competency rated or marked not tested', () => {
-  it('names the competency that is neither rated nor marked', () => {
-    expect(unrated(draft(rated, competency({})))).toEqual([COST]);
-    expect(unrated(draft(rated, competency({ rating: 'not_shown' })))).toEqual([]);
+describe('Scenario: Rate only what was tested (AIV-P1-165 §12)', () => {
+  it('one rated competency is enough: the one left unrated blocks nothing and carries no rating', () => {
+    const one = draft(rated, competency({}));
+    expect(nothingAssessed(one)).toBe(false);
+    // SAFETY: mutation check: gave an unrated competency the rating 'not_shown' in assessedRatings -> this test failed
+    // (Cost and reliability, never tested, was scored down).
+    expect(assessedRatings(one).map((r) => r.competencyId)).toEqual([RETRIEVAL]);
+    expect(toInterviewNoteEvidence(scorecard(rated, competency({}))).map((p) => p.competencyId)).toEqual([RETRIEVAL]);
+  });
+
+  it('a scorecard with nothing rated and nothing marked is not submitted', () => {
+    expect(nothingAssessed(draft(competency({}), competency({ competencyId: RETRIEVAL })))).toBe(true);
+    // An interview that tests no competency of the approved rubric has nothing to rate.
+    expect(nothingAssessed(draft())).toBe(false);
+  });
+
+  it('"Not shown" needs no note, and is logged with its own reason; every other rating needs one', () => {
+    const notShown = competency({ rating: 'not_shown' });
+    const partly = competency({ competencyId: RETRIEVAL, rating: 'partly_shown', note: ' ' });
+    expect(unexplained(draft(notShown, partly))).toEqual([RETRIEVAL]);
+    expect(ratingReason({ note: '' })).toBe(NOT_SHOWN_REASON);
+    expect(ratingReason({ note: NOTE })).toBe(NOTE);
   });
 });
 

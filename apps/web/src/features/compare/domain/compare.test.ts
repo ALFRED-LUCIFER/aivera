@@ -1,7 +1,10 @@
-import { MAX_COMPARED } from '@credalent/assessment';
+import { MAX_COMPARED, type CompetencyResult } from '@credalent/assessment';
+import type { EvidenceItemView } from '@credalent/evidence';
 import { describe, expect, it } from 'vitest';
+import { evidenceCards } from '@/features/evidence-profile/domain/evidenceCards.ts';
 import {
   MAX_COMPARE,
+  cellOf,
   closingOf,
   compareHref,
   parseIds,
@@ -62,6 +65,7 @@ describe('the closing line', () => {
       points: 7,
       count: 3,
       couldChange: true,
+      partial: false,
     });
   });
 
@@ -71,7 +75,13 @@ describe('the closing line', () => {
     expect(closingOf([column(70, 70), column(70, 70)])?.couldChange).toBe(false);
   });
 
-  it('is absent until every candidate is scored', () => {
+  it('is of the scored candidates when someone is not scored yet, and absent with fewer than 2 scored', () => {
+    expect(closingOf([column(68, 84), column(61, 82), { score: null }])).toEqual({
+      points: 7,
+      count: 2,
+      couldChange: true,
+      partial: true,
+    });
     expect(closingOf([column(68, 84), { score: null }])).toBeNull();
   });
 });
@@ -91,5 +101,48 @@ describe('an excerpt handed off (AIV-P1-165)', () => {
     expect(withoutContacts(text)).toBe(text);
     const figures = 'Processed 12000000 records, AED 15000000 saved, ticket 20231105.';
     expect(withoutContacts(figures)).toBe(figures);
+  });
+});
+
+// AIV-P1-165 §10: Maria Santos's "Evaluation design" rests on one CV line, a claim stored Supporting. The profile labels
+// it with the evidence card's lead (EvidenceCards.tsx); the comparison's cell carries that same lead.
+describe('the same evidence has the same strength label on the profile and in the comparison', () => {
+  const line = {
+    id: 'cv-line',
+    excerpt: 'Designed the evaluation set for a retrieval assistant. Reach me on maria.santos@example.com.',
+    excerptSpan: 'page 1',
+    strength: 'supporting',
+    provenance: 'claim',
+    limit: 'A claim until a document or a second source supports it.',
+    source: { id: 's-cv', kind: 'cv', label: 'CV', url: null, blobFileId: null, checkedAt: null, checkMethod: null },
+  } as unknown as EvidenceItemView;
+  const result = {
+    competencyId: 'evaluation',
+    weightPercent: 40,
+    levelNeeded: 3,
+    mandatory: true,
+    proven: { level: 0, itemIds: [] },
+    claimedLevel: 3,
+    claimItemIds: ['cv-line'],
+  } satisfies CompetencyResult;
+  const [card] = evidenceCards([result], new Map([['evaluation', 'Evaluation design']]), [line], false);
+  const cell = cellOf(result.proven.level, card);
+
+  // SAFETY: mutation check: cellOf's `lead` written as the old override (strength 'claim' when claim-only) -> this test failed.
+  it('is the card\'s lead in both places: "Supporting", never "Claim only"', () => {
+    expect(card?.lead).toEqual({ strength: 'supporting', provenance: 'claim' });
+    expect(cell.lead).toEqual(card?.lead);
+  });
+
+  it('still says the competency rests on a claim alone, proven at 0 (AGENTS.md 1.6)', () => {
+    expect(cell).toMatchObject({ proven: 0, claimOnly: true });
+  });
+
+  it('quotes the line without its contact detail', () => {
+    expect(cell.summary).toBe('Designed the evaluation set for a retrieval assistant. Reach me on ….');
+  });
+
+  it('is an empty cell when the assessment cites nothing for the competency', () => {
+    expect(cellOf(0, undefined)).toEqual({ proven: 0, lead: null, claimOnly: false, summary: null });
   });
 });

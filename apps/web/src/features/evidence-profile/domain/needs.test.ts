@@ -1,6 +1,6 @@
 import type { CompetencyResult } from '@credalent/assessment';
 import { describe, expect, it } from 'vitest';
-import { needRows, needSummary, radarShape, type NeedRow } from './needs.ts';
+import { LABEL_LINE, needRows, needSummary, radarLabel, radarShape, type NeedRow } from './needs.ts';
 
 // AIV-P1-044. Sara as the Candidate artboard draws her: [name, weight, proven, claimed, needed].
 const SARA: [string, number, number, number, number][] = [
@@ -66,5 +66,21 @@ describe('needSummary', () => {
 describe('radarShape', () => {
   it("draws the artboard's proven shape for Sara's six levels", () => {
     expect(radarShape([5, 5, 3, 3, 1, 0])).toBe('270,60 365.3,115 327.2,203 270,236 250.9,181 270,170');
+  });
+});
+
+describe('radarLabel (AIV-P1-165 §11)', () => {
+  it.each([
+    ['Arabic NLP', ['Arabic NLP']],
+    ['Retrieval and evaluation', ['Retrieval and', 'evaluation']],
+    ['Working with engineering and design', ['Working with', 'engineering and d…']],
+    ['Internationalisation', ['Internationalisat…']],
+  ])('%s -> %j', (name, lines) => {
+    expect(radarLabel(name)).toEqual(lines);
+  });
+
+  it('never gives a line the chart has no room for', () => {
+    for (const name of ['Cost and reliability', 'LLM systems in production at scale', 'A'.repeat(60)])
+      for (const line of radarLabel(name)) expect(line.length).toBeLessThanOrEqual(LABEL_LINE);
   });
 });

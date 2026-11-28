@@ -33,7 +33,8 @@ test('Scenario: Three candidates', async ({ page }) => {
   await expect(page.getByText(/^Senior AI Engineer · rubric v2\. The same 6 competencies, side by side/)).toBeVisible();
   await expect(grid(page).getByRole('columnheader')).toHaveText([
     'Competency',
-    'Sara Al Qahtani68up to 84 if claims hold',
+    // Her Arabic rests on what she said in Round 1: said once for the column, in neutral ink (AIV-P1-165 §10).
+    'Sara Al Qahtani68up to 84 if claims holdTo check in interview',
     'Arjun Menon64up to 76 if claims hold',
     'Layla Haddad61up to 82 if claims hold',
   ]);
@@ -46,8 +47,11 @@ test('Scenario: Three candidates', async ({ page }) => {
   await expect(arabic.getByRole('cell').nth(2)).toHaveText(
     'StrongAbove the need · 5 against 2Independently corroboratedarabic-ocr: public and documented, with most commits their own.',
   );
-  // Sara's Arabic rests on a claim only: an empty meter, "0 against 2", and the claim's own tag (AGENTS.md 1.6).
-  await expect(arabic.getByRole('cell').first()).toContainText('Claim onlyBelow the need · 0 against 2');
+  // Sara's Arabic rests on a claim only: the quoted line first, then one status line with the strength her profile
+  // shows for it ("Claim only" is how this note is stored) and that it counts 0 (AGENTS.md 1.6, AIV-P1-165 §10).
+  await expect(arabic.getByRole('cell').first()).toHaveText(
+    '“States they built a Gulf Arabic evaluation set. Nothing to inspect yet.”Claim onlyClaim. Counts 0 against 2.',
+  );
   // "Change selection" goes back to the ranking with the same three still ticked.
   await page.getByRole('link', { name: 'Change selection' }).click();
   await expect(page.getByRole('region', { name: 'Bulk actions' }).getByRole('status')).toHaveText('3 selected');
@@ -75,7 +79,7 @@ test('Scenario: Trade-offs cite evidence, asked for by keyboard', async ({ page 
   await expect(work.locator('mark')).toHaveText('cited evidence authored 412 of 460 commits');
   await expect(work).toContainText('Source: llm-eval-harness');
   await expect(tradeoffs(page)).toContainText(
-    '7 points separate the 3 candidates. Claims still to check could change this order.',
+    '7 points separate the 3 candidates. If the open claims hold, they can change this order.',
   );
   await work.getByRole('link').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Sara Al Qahtani' })).toBeVisible();

@@ -104,12 +104,15 @@ describe('Feature: Against what the job needs', () => {
     expect(screen.getByText(/would close/).textContent).toContain('1 of the 2 gaps would close if their claims hold.');
   });
 
-  it('the radar cuts a long competency name on its axis and keeps it whole in its row', () => {
+  it('the radar breaks a long competency name over two lines on its axis and keeps it whole in its row', () => {
     show(SARA);
     const radar = screen.getAllByRole('img')[0];
-    expect([...(radar?.querySelectorAll('text') ?? [])].map((text) => text.textContent)).toContain(
-      'Python service engine…',
-    );
+    const label = [...(radar?.querySelectorAll('text') ?? [])].find((text) => text.textContent?.startsWith('Python'));
+    // AIV-P1-165 §11: every word is on the axis, never cut off at the chart's edge.
+    expect([...(label?.querySelectorAll('tspan') ?? [])].map((line) => line.textContent)).toEqual([
+      'Python service',
+      'engineering',
+    ]);
     expect(rowOf('Python service engineering')).toBeTruthy();
   });
 });

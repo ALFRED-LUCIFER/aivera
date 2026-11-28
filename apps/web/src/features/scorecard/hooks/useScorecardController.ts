@@ -1,6 +1,6 @@
 import {
+  nothingAssessed,
   unexplained,
-  unrated,
   type DraftCompetency,
   type Mark,
   type Rating,
@@ -19,9 +19,10 @@ const AUTOSAVE_MS = 1500;
 
 /**
  * The scorecard form (AIV-P2-004): the draft the page read, kept in one object, saved by itself a moment after each
- * change and by "Save and close". "Submit scorecard" (AIV-P2-006) checks that every competency is rated or marked as
- * not tested, with a note for each rating, saves the draft, then submits it with the preview the person saw: only the
- * submit changes the assessment, and a failed one leaves the saved draft as it was.
+ * change and by "Save and close". "Submit scorecard" (AIV-P2-006) checks that at least one competency is rated or
+ * marked as not tested (AIV-P1-165 §12: rate only what was tested), with a note for each rating but "Not shown", saves
+ * the draft, then submits it with the preview the person saw: only the submit changes the assessment, and a failed one
+ * leaves the saved draft as it was.
  */
 // One object in useState, not React Hook Form: the form's rules are the interviews module's pure functions over the
 // draft, the same ones the server runs, and React Hook Form is not a dependency of this app (AGENTS.md 4, 6.1).
@@ -73,12 +74,12 @@ export function useScorecardController(data: ScorecardData) {
       competencies: latest.current.competencies.map((c) => (c.competencyId === competencyId ? edit(c) : c)),
     });
 
-  const blocked = checked ? unrated(draft) : [];
+  const blocked = checked && nothingAssessed(draft);
   const noNote = checked ? unexplained(draft) : [];
   return {
     draft,
     saving,
-    /** Competencies neither rated nor marked as not tested, once "Submit scorecard" was chosen. */
+    /** Nothing is rated or marked as not tested, once "Submit scorecard" was chosen. */
     blocked,
     /** Rated competencies with no note, once "Submit scorecard" was chosen. */
     noNote,
@@ -99,7 +100,7 @@ export function useScorecardController(data: ScorecardData) {
     /** `previewId`: the preview shown for the ratings now, null with none rated (or none shown yet). */
     onSubmit: async (previewId: string | null) => {
       setChecked(true);
-      if (unrated(latest.current).length > 0 || unexplained(latest.current).length > 0) return setOutcome(null);
+      if (nothingAssessed(latest.current) || unexplained(latest.current).length > 0) return setOutcome(null);
       setOutcome('submitting');
       // Saved first, in its own transaction: a submit that fails leaves the ratings saved ("try again").
       if (!(await save())) return setOutcome((now) => (now === 'already' || now === 'closed' ? now : null));

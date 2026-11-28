@@ -40,7 +40,7 @@ The back end is a modular monolith ([ADR-002](../adr/ADR-002-repository-layout.m
 
 ## Tracing across the outbox ([AIV-P0-018](https://github.com/ALFRED-LUCIFER/aivera/issues/50))
 
-One operation id runs from the server action to the worker handler. The outbox envelope carries `correlationId`: the W3C `traceparent` of the span active when the event is written (`propagation.inject`). The relay and the worker start their spans with it as parent (`propagation.extract`). It holds trace and span ids only, never personal data. Built and tested: the outbox half in `tests/integration/src/outbox.test.ts` (AIV-P0-014), the worker handler half in `tests/integration/src/worker.test.ts` (AIV-P0-015).
+Each worker message is handled in a trace of its own, linked to the span that wrote it (AIV-P1-165). The outbox envelope carries `correlationId`: the W3C `traceparent` of the span active when the event is written (`propagation.inject`). The relay starts its span with it as parent (`propagation.extract`), so the send belongs to the trace that wrote the event; the worker handler starts a new trace with it as a span link, so one message's log lines share a trace id with no other message's, and the server action or handler that caused it is one link away. It holds trace and span ids only, never personal data. Built and tested: the outbox half in `tests/integration/src/outbox.test.ts` (AIV-P0-014), the worker handler half in `tests/integration/src/worker.test.ts` (AIV-P0-015).
 
 ## Events through the outbox ([AIV-P0-014](https://github.com/ALFRED-LUCIFER/aivera/issues/46))
 

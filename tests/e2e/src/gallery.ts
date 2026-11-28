@@ -25,6 +25,9 @@ export async function expectAccessible(page: Page) {
   expect(violations.map(({ id, impact, nodes }) => ({ id, impact, targets: nodes.map((n) => n.target) }))).toEqual([]);
 }
 
+/** The page's primary buttons and button-styled links (ink fill): DESIGN.md allows one per view. */
+export const primaryButtons = (page: Page) => page.getByRole('main').locator(':is(a, button).bg-action');
+
 export const css = (locator: Locator, property: string) =>
   locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
 
@@ -40,3 +43,16 @@ export const focusInView = (page: Page) =>
 /** Whether focus is inside a dialog (the assistant drawer). */
 export const focusInDrawer = (page: Page) =>
   page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')));
+
+/**
+ * Picks the job type and types the title on Add a job, retried until React has hydrated: a pick made before that is
+ * reset when typing the title re-renders the controlled select (next dev).
+ */
+export async function pickJobTypeAndTitle(page: Page, title: string, label = 'AI and LLM engineering') {
+  const type = page.getByLabel('Job type');
+  await expect(async () => {
+    await type.selectOption({ label });
+    await page.getByLabel('Job title').fill(title);
+    await expect(type).not.toHaveValue('', { timeout: 500 });
+  }).toPass();
+}

@@ -5,7 +5,7 @@ import { expectAccessible, themes } from './gallery.ts';
 // AIV-P0-010: the recruiter app runs in the signed-in user's active workspace (seed.ts sets up the cast).
 
 const noAccess = 'You do not have access to this. Ask your workspace admin.';
-const noWorkspace = 'You are not in a workspace yet';
+const noWorkspace = 'Create your workspace';
 
 // A removed member lands on their other workspace or the no-workspace page (AIV-P2-060): invite-members.spec.ts. The
 // 403 page is reached by a role the page does not allow: Rami is an interviewer (seed.ts).
@@ -17,7 +17,9 @@ test('a signed-in user with no workspace yet is told so, not shown a 404', async
   await signIn(page, { email: 'huda@example.com' });
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole('heading', { level: 1, name: noWorkspace })).toBeVisible();
-  await expect(page.getByText('Ask your workspace admin to add you to their workspace.')).toBeVisible();
+  await expect(
+    page.getByText('Joining a team instead? Ask your workspace admin to add you to their workspace.'),
+  ).toBeVisible();
 });
 
 for (const theme of themes) {

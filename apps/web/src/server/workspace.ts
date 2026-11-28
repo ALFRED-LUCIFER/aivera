@@ -63,6 +63,15 @@ export function workspaceAction<Input, Result>(
 }
 
 /**
+ * The name of the agency client a job is for ("Client: Falcon Pay"), archived or not; null for a job with no client,
+ * and for hiring owners and interviewers, who may not list clients (`client.manage`).
+ */
+export const clientName = async (ctx: WorkspaceContext, clientId: string | null): Promise<string | null> =>
+  clientId && (ctx.role === 'admin' || ctx.role === 'recruiter')
+    ? ((await getWorkspaces().listClients(ctx)).find((c) => c.id === clientId)?.name ?? null)
+    : null;
+
+/**
  * The signed-in member as the shell shows them, with the workspace's status (a suspended one shows its banner), or
  * null when they belong to no workspace yet. Once per request.
  */

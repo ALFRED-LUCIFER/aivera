@@ -386,7 +386,8 @@
       "interviews": "Interviews",
       "packs": "Decision packs",
       "value": "Value dashboard",
-      "settings": "Settings"
+      "settings": "Settings",
+      "clients": "Clients"
     },
     "synthetic": "Synthetic demo data",
     "theme": {
@@ -425,12 +426,13 @@
   "access": {
     "forbiddenTitle": "No access",
     "forbidden": "You do not have access to this. Ask your workspace admin.",
-    "noWorkspaceTitle": "You are not in a workspace yet",
-    "noWorkspace": "Ask your workspace admin to add you to their workspace.",
+    "noWorkspaceTitle": "Create your workspace",
+    "noWorkspaceLead": "You are signed in and not in a workspace yet. Create yours to add your first job.",
+    "noWorkspace": "Joining a team instead? Ask your workspace admin to add you to their workspace.",
     "pausedTitle": "This workspace is paused.",
     "paused": "You can read everything. New work is paused until Credalent reactivates the workspace.",
     "waitingTitle": "Waiting for approval",
-    "waiting": "Your workspace is waiting for approval. We will email you when it is ready, usually within one working day.",
+    "waiting": "A Credalent operator reviews every new workspace before it opens. You can sign out and come back once it is approved: your desk opens when you sign in.",
     "rejectedTitle": "Your workspace was not approved",
     "rejected": "Your workspace was not approved. Reason: {reason}",
     "signOut": "Sign out",
@@ -447,13 +449,12 @@
       "rank": "See candidates ranked by work you can inspect.",
       "decide": "Keep every hiring decision with a person."
     },
-    "title": "Or create your own workspace",
     "company": "Company",
     "optional": "Optional",
     "companyHint": "Leave it empty if you hire for yourself: the workspace is then named after you.",
     "hiringFocus": "What do you hire for most?",
-    "choose": "Choose one",
-    "submit": "Create workspace",
+    "choose": "Not chosen",
+    "submit": "Create your workspace",
     "errors": {
       "failed": "We could not create your workspace. Try again."
     },
@@ -470,6 +471,7 @@
     "step2": "2. Competencies, drafted and suggested",
     "step3": "3. Save to the job as its rubric",
     "step4": "4. Hiring owner approves",
+    "step4Self": "4. You approve",
     "jobType": "Job type",
     "jobTypeHint": "The job type sets which kinds of work count as evidence.",
     "chooseJobType": "Choose a job type",
@@ -485,8 +487,9 @@
     "optional": "Optional",
     "hiringOwner": "Hiring owner",
     "notChosen": "Not chosen yet",
-    "noHiringOwner": "This workspace has no hiring owner yet.",
+    "noHiringOwner": "This workspace has no hiring owner, so you approve the rubric yourself.",
     "inviteHiringOwner": "Invite a hiring owner",
+    "editDetails": "Edit job details",
     "submit": "Draft competencies",
     "drafting": "Drafting competencies…",
     "save": "Save job and rubric",
@@ -504,6 +507,7 @@
       "footer": "Nothing changes until you confirm."
     },
     "close": "Close",
+    "savedTitle": "Job saved",
     "saved": "Job saved. These competencies are now version 1 of this job's own rubric, marked as a draft. Other jobs keep their own rubrics.",
     "savedNext": "Next: approve the rubric on its page. Candidates are assessed only after that.",
     "backToJobs": "Back to Jobs",
@@ -566,13 +570,13 @@
     "suggestionsCaption": "Suggested competencies",
     "noSuggestions": "Nothing obvious is missing from your description.",
     "suggestedBy": "Suggested by Credalent",
-    "why": "Why: {why}",
+    "whySuggested": "Why suggested?",
     "evidenceExpected": "Evidence expected: {evidence}",
     "removed": "{name} removed from this rubric.",
     "restore": "Restore {name}",
     "restoreAction": "Restore",
     "weightsTotal": "Weights total {total}%",
-    "rebalance": "Weights rebalance when you save",
+    "rebalance": "Weights total {total}%. They rebalance to 100% when you save.",
     "failed": "Credalent could not draft competencies. You can try again or add them yourself.",
     "budget": "This workspace has used today's AI allowance. You can add competencies yourself, or draft them tomorrow.",
     "empty": "Add a job description to draft competencies from it, or add them yourself.",
@@ -595,7 +599,12 @@
     "addAction": "Add",
     "regionHeading": "{region, select, uae {In the UAE} ksa {In KSA} india {In India} other {In {label}}}",
     "regionCaption": "{region, select, uae {Regional suggestions for the UAE} ksa {Regional suggestions for KSA} india {Regional suggestions for India} other {Regional suggestions for {label}}}",
-    "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable."
+    "regionalDesirable": "Regional knowledge is shown through evidence, so it can only be desirable.",
+    "duplicate": "Duplicate an earlier job or rubric",
+    "duplicateChoose": "Choose a job",
+    "duplicateAction": "Copy its competencies",
+    "copied": "Competencies copied from {job}. No candidate, note or decision was copied.",
+    "copyFailed": "That rubric was not copied. Choose another job, or draft the competencies."
   },
   "search": {
     "title": "Search",
@@ -1348,6 +1357,7 @@
     "breadcrumb": "Breadcrumb",
     "stagesLabel": "Stages of this job",
     "hiringOwner": "Hiring owner: {name}",
+    "client": "Client: {name}",
     "noHiringOwner": "Hiring owner: not assigned",
     "owner": {
       "assignOne": "Assign one",
@@ -1410,6 +1420,15 @@
     },
     "weight": "{weight}%",
     "level": "{level} of 5",
+    "levelOf": "Level {level} of 5",
+    "levelMeaning": {
+      "1": "Has used it with guidance.",
+      "2": "Does routine tasks alone.",
+      "3": "Does the job's usual work alone, with results to show.",
+      "4": "Handles the hard cases and guides others.",
+      "5": "Designs the approach others follow, proven in real use."
+    },
+    "mandatoryNote": "Mandatory never rejects anyone automatically. Every candidate stays in the ranking and a person decides.",
     "type": {
       "mandatory": "Mandatory",
       "desirable": "Desirable"
@@ -1420,6 +1439,7 @@
     "success": "What success means",
     "successEmpty": "Not written yet.",
     "scoring": "Scoring definitions",
+    "showScoring": "Show scoring definitions",
     "strength": {
       "strong": "Strong",
       "medium": "Medium",
@@ -1480,7 +1500,14 @@
       "introSent": "The hiring owner can approve it or return it with a note. You can still approve it yourself.",
       "changed": "What changed since version {version}",
       "changedNone": "What changed",
-      "approve": "Approve version {version}",
+      "approve": "Approve rubric",
+      "previewTitle": "Preview: approve rubric version {version}",
+      "previewConsequence": "Assessment starts for this job once you confirm.",
+      "reason": "Reason, recorded in the audit log",
+      "confirmApprove": "Confirm approval",
+      "approving": "Approving…",
+      "previewFooter": "Nothing changes until you confirm.",
+      "close": "Close",
       "return": "Return with a note",
       "send": "Send to the hiring owner",
       "noteLabel": "Note for the recruiter",
@@ -1710,7 +1737,8 @@
     "openLabel": "Open the {job} rubric",
     "loading": "Loading what is waiting…",
     "error": "We could not load your desk. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "addJob": "Add a job"
   },
   "files": {
     "upload": "Upload a file",
@@ -1862,6 +1890,7 @@
     "title": "{name}: {job}",
     "prepared": "Decision pack · prepared {date, date, ::d MMM yyyy}",
     "preparedOn": "Decision pack · prepared {date, date, ::d MMM yyyy} · rubric v{version}",
+    "preparedFor": "Prepared for {client}",
     "members": "{count, plural, one {# candidate} other {# candidates}}",
     "addedBy": "Added by {name} on {date, date, ::d MMM yyyy}",
     "basis": "Backed scores are observed from inspected evidence, as they were when each candidate joined the pack.",
@@ -1871,7 +1900,18 @@
     "loading": "Loading the decision pack…",
     "error": "We could not load the decision pack. Try again.",
     "openPreview": "Preview as the hiring owner sees it",
-    "empty": "This pack has no candidates. Add them from the ranking.",
+    "empty": "This pack has no candidates yet. In the ranking, tick the candidates to decide on, then choose “Add to decision pack”.",
+    "none": "This job has no decision pack yet. In the ranking, tick the candidates to decide on, then choose “Add to decision pack”.",
+    "toRanking": "Go to ranking",
+    "top": {
+      "title": "Summary",
+      "order": "In order of backed score, highest first. A claim counts zero in the backed score.",
+      "first": "Highest backed score in this pack.",
+      "below": "{points, plural, one {# point} other {# points}} below {name} on backed score.",
+      "level": "Level with {name} on backed score. Listed in the order they joined the pack.",
+      "strength": "Strength: {text}",
+      "risk": "Risk: {text}"
+    },
     "shared": "Shared packs show evidence summaries and sources, not raw files.",
     "role": {
       "needs": "What the job needs",
@@ -1883,7 +1923,9 @@
       "risks": "Outstanding risks",
       "round1": "Round 1 finding",
       "none": "None stated in this summary.",
-      "recommendation": "Credalent's recommendation:",
+      "yourRecommendation": "Your recommendation:",
+      "preparedWith": "Prepared with Credalent",
+      "sources": "Sources",
       "action": "{action, select, advance {advance} other {hold}}{hasFocus, select, yes {, and look into {focus} next} other {}}",
       "source": "Source: {label}",
       "assessment": "Source: the assessment",
@@ -1900,6 +1942,7 @@
       "risks": "Still to test in the interview",
       "noStrengths": "No competency meets the job's need on inspected evidence yet.",
       "noRisks": "Every competency meets the job's need on inspected evidence.",
+      "recommends": "{workspace} recommends:",
       "poweredBy": "Powered by Credalent"
     },
     "record": {
@@ -2000,13 +2043,21 @@
     "missingAny": "Missing evidence: any",
     "missingOption": "Missing evidence: {name}",
     "columnsMenu": "Columns",
+    "compareTop": "Compare top {count}",
+    "reason": {
+      "backed": "Largest part of the backed score:",
+      "backedLevel": ", proven at {level} of 5.",
+      "claim": "No work inspected yet. Largest claim:",
+      "claimLevel": ", claimed at {level} of 5. A claim counts 0."
+    },
+    "missingCount": "{count, plural, one {# competency} other {# competencies}}",
     "columnsLegend": "Columns to show",
     "columns": {
       "rank": "#",
       "candidate": "Candidate",
       "score": "Backed score",
       "meetsNeed": "Meets the job's need",
-      "confidence": "Confidence",
+      "confidence": "Weight on Strong evidence",
       "missing": "Missing critical evidence",
       "lastScored": "Last scored",
       "nextAction": "Next action"
@@ -2041,9 +2092,9 @@
     "scheduleRound": "Schedule {round}",
     "meetsNeed": "{meets} of {count}",
     "confidence": {
-      "High": "High",
-      "Medium": "Medium",
-      "Low": "Low"
+      "High": "60% or more",
+      "Medium": "30% to under 60%",
+      "Low": "Under 30%"
     },
     "noneMissing": "None",
     "scoredOn": "{value, date, ::d MMM}",
@@ -2067,7 +2118,7 @@
       "alreadyChosen": "Already chosen for interview",
       "onShortlist": "On the Round 2 shortlist by the hiring owner’s decision, so not chosen again",
       "notAdvanced": "Not advanced by the hiring owner’s decision, so not chosen again",
-      "round": "Round 1, structured screen",
+      "round": "Round 1",
       "interviewer": "Interviewer: You",
       "reason": "Reason",
       "defaultReason": "First shortlist",
@@ -2139,19 +2190,41 @@
     "checked": "{method}, checked {at, date, short}",
     "newTab": "(opens in a new tab)",
     "limit": "Limit:",
-    "claimLimit": "Claim only. Counts as zero in the backed score.",
+    "claimLimit": "A claim, not inspected work. It counts zero in the backed score.",
+    "previous": "Previous candidate",
+    "next": "Next candidate",
+    "index": {
+      "label": "On this page",
+      "fit": "Fit",
+      "needs": "Against what the job needs",
+      "evidence": "Competency by competency",
+      "questions": "Interview questions"
+    },
+    "name": {
+      "open": "Correct name",
+      "title": "Correct the candidate's name",
+      "description": "The new name shows everywhere for this candidate. The correction is recorded in the audit log with your name, the time and your reason.",
+      "label": "Name",
+      "reason": "Reason, recorded in the audit log (do not write the name here)",
+      "save": "Save name",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "failed": "That did not go through. Nothing was changed. Try again.",
+      "done": "Name corrected and recorded in the audit log."
+    },
     "noteHidden": "{citation} · Some text is not visible on the page ({count, plural, one {# place} other {# places}})",
     "loading": "Loading the candidate profile…",
     "error": "We could not load this candidate. Try again.",
     "uncited": "{count, plural, =1 {One line from this CV could not be cited, so it was not mapped.} other {# lines from this CV could not be cited, so they were not mapped.}} The CV is unchanged. Read it in full for them."
   },
   "suggestedQuestions": {
-    "title": "Needs live verification",
+    "title": "Interview questions",
     "intro": "Competencies whose evidence is below the job's need or rests on a claim. The questions are suggestions for the person who interviews: they change no score, stage or rank.",
     "suggest": "Suggest interview questions",
     "suggestAgain": "Suggest again",
     "suggesting": "Suggesting interview questions…",
-    "noGaps": "No open gaps. Nothing here needs live verification.",
+    "noGaps": "No open gaps. No competency is below the job's need or rests on a claim.",
     "stale": "Evidence changed since these questions were suggested.",
     "waiting": "Waiting for tomorrow's AI allowance",
     "failed": "Questions could not be suggested. You can write your own.",
@@ -2185,19 +2258,23 @@
       "none": "No time yet"
     },
     "openScorecard": "Open scorecard",
+    "start": "Start interview",
+    "startFor": "Start interview with {name}",
     "noGuide": "No guide yet",
     "summary": "{count, plural, one {# interview} other {# interviews}} completed with {people, plural, one {# person} other {# people}} across {jobs, plural, one {# job} other {# jobs}} so far.",
     "observed": "Observed",
-    "empty": "No interviews yet. Interviews are scheduled from a job’s ranking or decision pack.",
+    "empty": "No interviews yet. To choose candidates for interview, open a job’s ranking, tick them and choose “Choose for interview”.",
+    "emptyJob": "No candidate is chosen for interview yet. On the ranking, tick the candidates to interview and choose “Choose for interview”. Nobody is contacted.",
+    "goToRanking": "Go to ranking",
     "emptyOngoing": "No ongoing interviews.",
     "emptyCompleted": "No completed interviews yet.",
     "loading": "Loading interviews…",
     "error": "We could not load the interviews. Try again.",
     "retry": "Try again",
     "round": {
-      "structured_screen": "Round 1, structured screen",
-      "evidence_defence": "Round 2, evidence defence",
-      "panel": "Round 3, panel"
+      "structured_screen": "Round 1",
+      "evidence_defence": "Round 2",
+      "panel": "Round 3"
     },
     "status": {
       "to_schedule": "Not scheduled yet",
@@ -2248,11 +2325,6 @@
       "evidence_defence": "{name}, Round 2",
       "panel": "{name}, Round 3"
     },
-    "kind": {
-      "structured_screen": "structured screen",
-      "evidence_defence": "evidence defence",
-      "panel": "panel"
-    },
     "interviewer": "interviewer: {name}",
     "interviewerYou": "interviewer: you",
     "saveAndClose": "Save and close",
@@ -2281,7 +2353,7 @@
     },
     "notAssessed": "Not assessed in this round · stays a gap",
     "note": "What you saw or heard",
-    "notePlaceholder": "Evidence, not impressions",
+    "notePlaceholder": "What the candidate said or did",
     "recommendation": "Your recommendation",
     "recommendationGroup": "Next-stage recommendation",
     "recommendations": {
@@ -2297,15 +2369,15 @@
       "unavailable": "Submitting needs the preview of your ratings, which is unavailable now."
     },
     "noteCount": "{count, number} of {max, number} characters",
-    "rateOrMark": "Rate this competency, or mark its questions Not asked or Not answered, before submitting",
-    "addNote": "Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes",
+    "rateOrMark": "Rate at least one competency before submitting, or mark its questions Not asked or Not answered. Leave the rest unrated: they stay gaps.",
+    "addNote": "Write what you saw or heard before submitting: it is kept with your rating, and logged with any change it makes. Not shown needs no note.",
     "outcome": {
       "submitting": "Submitting your scorecard…",
       "updated": "Scorecard submitted and logged. {name}'s assessment has been updated.",
       "unchanged": "Scorecard submitted. {name}'s assessment is unchanged.",
       "already": "Already submitted",
       "changed": "The assessment changed since this preview. Check the new preview, then submit again.",
-      "incomplete": "Not submitted. Rate or mark every competency and write a note for each rating, then submit again.",
+      "incomplete": "Not submitted. Rate at least one competency and write a note for each rating except Not shown, then submit again.",
       "failed": "Not submitted. Your ratings are saved. Try again.",
       "notAssessed": "Not submitted. {name} has no assessment to change yet.",
       "rubricChanged": "Not submitted. The job's rubric changed after this interview was planned.",
@@ -2386,6 +2458,9 @@
     "awaitingRubric": "{job}. Jobs without an approved rubric are not assessed, so there is nothing to compare yet.",
     "changeSelection": "Change selection",
     "openPack": "Open decision pack",
+    "addToPack": "Add these to a decision pack",
+    "quote": "“{text}”",
+    "claimStatus": "Claim. Counts 0 against {needed}.",
     "tooFew": "Choose {min} to {max} candidates to compare",
     "notOnJob": "These candidates are not all on this job",
     "loading": "Loading the comparison…",
@@ -2406,9 +2481,10 @@
       "writing": "Finding the trade-offs…",
       "again": "Try again",
       "unavailable": "Trade-off summary unavailable. The grid above is complete.",
-      "notScored": "The trade-offs can be shown once every candidate here is scored.",
-      "closing": "{points, plural, one {# point separates} other {# points separate}} the {count} candidates.",
-      "couldChange": "Claims still to check could change this order."
+      "notScored": "The trade-offs compare scored candidates. Fewer than 2 here are scored.",
+      "notScoredYet": "{name} is not scored yet.",
+      "closing": "{points, plural, one {# point separates} other {# points separate}} the {count} {partial, select, true {scored candidates} other {candidates}}.",
+      "couldChange": "If the open claims hold, they can change this order."
     }
   }
 }

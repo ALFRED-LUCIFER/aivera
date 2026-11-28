@@ -57,6 +57,27 @@ afterEach(() => {
 });
 
 describe('loadInterviews', () => {
+  // AIV-P1-165 §12: a job's Interviews tab.
+  it("with a job id, gives that job's interviews only, and counts only them", async () => {
+    inWorkspace();
+    const here = interview({ id: 'i1', jobId: 'j-ai' });
+    const elsewhere = interview({ id: 'i2', jobId: 'j-pm', applicationId: 'a-karim', candidateId: 'p-karim' });
+    fake.list.mockImplementation(async (_ctx, filter) =>
+      filter === 'ongoing' ? [here, elsewhere] : [done('i3', 'p-sara', 'j-ai'), done('i4', 'p-omar', 'j-pm')],
+    );
+    fake.job.mockResolvedValue({ title: 'Senior AI Engineer' });
+    fake.applicants.mockResolvedValue([]);
+    fake.rubric.mockResolvedValue(null);
+
+    const data = await loadInterviews('j-ai');
+
+    expect(data?.ongoing.map((row) => row.id)).toEqual(['i1']);
+    expect(data?.completed.map((row) => row.id)).toEqual(['i3']);
+    expect([data?.people, data?.jobs]).toEqual([1, 1]);
+    // The other job is not read at all.
+    expect(fake.job.mock.calls.map(([, jobId]) => jobId)).toEqual(['j-ai', 'j-ai']);
+  });
+
   it('names each interview from the modules that own the names, on the viewer’s day', async () => {
     // 09:00 on 18 Nov in the Gulf: the Interviews artboard's "today".
     vi.useFakeTimers({ now: new Date('2026-11-18T05:00:00Z') });

@@ -72,6 +72,8 @@ export async function loadProfile(
       name: applicant.displayName,
       stage: applicant.stage,
       fileName,
+      // Decided here from the member's role, not in the browser (AGENTS.md 1.3); the candidates module checks it again.
+      canRename: seesFiles,
       uncitedLinkCount,
     };
     const none = { explanation: null, competencies: [], needs: [], notes: [] };

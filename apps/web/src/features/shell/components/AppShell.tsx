@@ -1,4 +1,5 @@
 // Deviation from the Main artboard: no "Credalent website" link in the sidebar footer (owner decision, 20 Nov 2026).
+// Deviation (AIV-P1-165): an agency's sidebar adds "Clients" under the sections, each client linking to its jobs.
 // Section counts only where a contract supplies a real one (AGENTS.md 1.7, AIV-P1-094): Interviews (AIV-P2-002).
 import { useTranslations } from '@credalent/i18n/react';
 import { Button } from '@credalent/ui';
@@ -14,6 +15,8 @@ export type AppShellProps = {
   screens: readonly NavigationEntry[];
   /** A section's count beside its name: Interviews is the member's ongoing interviews. None, or zero, shows no count. */
   counts: Partial<Record<ScreenId, number>>;
+  /** An agency's clients, each a link to its jobs (AIV-P1-165); null or absent for an in-house team: no Clients entry. */
+  clients?: readonly { id: string; name: string }[] | null;
   activeId: ScreenId | undefined;
   navOpen: boolean;
   onToggleNav: () => void;
@@ -38,6 +41,7 @@ export function AppShell({
   member,
   screens,
   counts,
+  clients,
   activeId,
   navOpen,
   onToggleNav,
@@ -162,6 +166,23 @@ export function AppShell({
             </li>
           ))}
         </ul>
+        {clients && (
+          <div className="flex flex-col gap-0.5">
+            <Link href="/app/settings/clients" onClick={onCloseNav} className={navLink}>
+              {t('nav.clients')}
+            </Link>
+            <ul className="flex flex-col gap-0.5 ps-3">
+              {clients.map(({ id, name }) => (
+                <li key={id}>
+                  {/* The client's opaque id, never its name, goes in the URL. */}
+                  <Link href={`/app/jobs?client=${id}`} onClick={onCloseNav} className={navLink}>
+                    {name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="mt-auto border-t border-border pt-3">
           {foot.map(({ id, path }) => (
             <Link

@@ -38,6 +38,30 @@ const review: ReviewView = {
 
 beforeEach(() => vi.resetAllMocks());
 
+// AIV-P1-165 "Approving is confirmed and audited".
+describe('Scenario: Approving is confirmed', () => {
+  // SAFETY: mutation check: called decideRubric from onApprovingChange(true) -> this test failed (approved on open)
+  it('opening and cancelling the preview calls nothing; Confirm sends the reason once', async () => {
+    decideRubric.mockResolvedValue({ ok: true });
+    const { result } = renderHook(() => useRubricDecisionController(JOB, review));
+    act(() => result.current.onApprovingChange(true));
+    act(() => result.current.onReason('Matches the job description'));
+    act(() => result.current.onApprovingChange(false));
+    expect(decideRubric).not.toHaveBeenCalled();
+    expect(result.current.status).toBe('idle');
+
+    act(() => result.current.onApprovingChange(true));
+    await act(() => result.current.onApprove());
+    expect(decideRubric).toHaveBeenCalledExactlyOnceWith({
+      jobId: JOB,
+      versionId: VERSION,
+      revision: 1,
+      reason: 'Matches the job description',
+    });
+    expect([result.current.status, result.current.approving]).toEqual(['approved', false]);
+  });
+});
+
 describe('Scenario Outline: A rejected save keeps the form', () => {
   // SAFETY: mutation check: removed the try/catch in useRubricEditController -> this test failed (unhandled rejection)
   it.each([

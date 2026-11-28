@@ -3,6 +3,7 @@ import { intlConfig } from '@credalent/i18n';
 import { IntlProvider } from '@credalent/i18n/react';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { InterviewRow } from '../domain/interviews.ts';
 import { InterviewsList, type InterviewsListView } from './InterviewsList.tsx';
@@ -14,10 +15,10 @@ beforeAll(async () => {
   intl = await intlConfig('en', 'Asia/Dubai');
 });
 
-const show = (view: InterviewsListView) =>
+const show = (view: InterviewsListView, empty?: ReactNode) =>
   render(
     <IntlProvider {...intl}>
-      <InterviewsList view={view} />
+      <InterviewsList view={view} empty={empty} />
     </IntlProvider>,
   );
 
@@ -68,6 +69,7 @@ const ready = (over: Partial<Extract<InterviewsListView, { status: 'ready' }>> =
   people: 0,
   jobs: 0,
   schedule: null,
+  start: { pending: false, onStart: () => {} },
   ...over,
 });
 
@@ -81,7 +83,8 @@ describe('Scenario: Ongoing interviews', () => {
     show(ready());
     expect(cellsOf('Daniel Novak')).toEqual([
       'Daniel NovakSenior AI Engineer',
-      'Round 1, structured screen',
+      // AIV-P1-165 §12: "Round 1", never "structured screen".
+      'Round 1',
       'You',
       'Today, 14:00',
       'In progress',
@@ -92,12 +95,7 @@ describe('Scenario: Ongoing interviews', () => {
 
   it("Karim Nasser's Round 2 names its interviewer and its time in the workspace time zone", () => {
     show(ready());
-    expect(cellsOf('Karim Nasser').slice(1, 5)).toEqual([
-      'Round 2, evidence defence',
-      'CPO, Payments',
-      '21 Nov, 11:00',
-      'Scheduled',
-    ]);
+    expect(cellsOf('Karim Nasser').slice(1, 5)).toEqual(['Round 2', 'CPO, Payments', '21 Nov, 11:00', 'Scheduled']);
   });
 
   it('the tabs carry each count', () => {
@@ -135,10 +133,11 @@ describe('Row action by status', () => {
     expect(screen.queryByText('Guide ready')).toBeNull();
   });
 
-  it('no time yet and completed: no action', () => {
+  it("no time yet on another member's interview, and completed: no action", () => {
     const unscheduled = row({
       id: 'i4',
       candidate: 'Omar Al Suwaidi',
+      interviewer: 'Lina Haddad',
       scheduledAt: null,
       today: false,
       status: 'to_schedule',
@@ -156,6 +155,36 @@ describe('Row action by status', () => {
       'Retrieval and evaluation, Cost and reliability',
       '',
     ]);
+  });
+
+  // AIV-P1-165 §12: a scheduled interview's scorecard can be opened.
+  it('"Start interview" on an interview that has not started, for its interviewer, starts that interview', async () => {
+    const onStart = vi.fn();
+    const mine = row({ id: 'i6', candidate: 'Maria Santos', today: false, status: 'scheduled' });
+    const unscheduled = row({ id: 'i7', candidate: 'Omar Al Suwaidi', scheduledAt: null, status: 'to_schedule' });
+    show(ready({ rows: [mine, unscheduled, karim], start: { pending: false, onStart } }));
+    await userEvent.click(screen.getByRole('button', { name: 'Start interview with Maria Santos' }));
+    expect(onStart).toHaveBeenCalledWith('i6');
+    expect(screen.getByRole('button', { name: 'Start interview with Omar Al Suwaidi' })).toBeTruthy();
+    // SAFETY: mutation check: `startable` offered it to any member -> this assertion failed (Karim's interview is
+    // another interviewer's, and this member does not plan interviews).
+    expect(screen.queryByRole('button', { name: 'Start interview with Karim Nasser' })).toBeNull();
+  });
+
+  it('a member who plans interviews may start any, beside "Schedule" while it has no time', () => {
+    const schedule = { onOpen: vi.fn(), done: false, row: null } as unknown as NonNullable<
+      Extract<InterviewsListView, { status: 'ready' }>['schedule']
+    >;
+    const unscheduled = row({
+      id: 'i7',
+      candidate: 'Omar Al Suwaidi',
+      interviewer: 'Lina Haddad',
+      scheduledAt: null,
+      status: 'to_schedule',
+    });
+    show(ready({ rows: [unscheduled, karim], schedule }));
+    expect(cellsOf('Omar Al Suwaidi').at(-1)).toBe('ScheduleStart interview');
+    expect(cellsOf('Karim Nasser').at(-1)).toBe('Start interview');
   });
 
   it('every status badge has an icon beside its word, never colour alone', () => {
@@ -189,11 +218,25 @@ describe('Scenario: Completed tab and summary', () => {
 });
 
 describe('Scenario: Empty state', () => {
-  it('a workspace with no interviews says where they come from', () => {
+  it('a workspace with no interviews says how to choose candidates', () => {
     show(ready({ rows: [], counts: { ongoing: 0, completed: 0 } }));
     expect(
-      screen.getByText('No interviews yet. Interviews are scheduled from a job’s ranking or decision pack.'),
+      screen.getByText(
+        'No interviews yet. To choose candidates for interview, open a job’s ranking, tick them and choose “Choose for interview”.',
+      ),
     ).toBeTruthy();
+  });
+
+  // AIV-P1-165 §12: a job's Interviews tab teaches the next step in place of an empty table.
+  it("with no interview at all, a job's tab shows its own empty state, and the table once there is one", () => {
+    const teach = <p>Choose candidates from the ranking</p>;
+    show(ready({ rows: [], counts: { ongoing: 0, completed: 0 } }), teach);
+    expect(screen.getByText('Choose candidates from the ranking')).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+    cleanup();
+    show(ready(), teach);
+    expect(screen.queryByText('Choose candidates from the ranking')).toBeNull();
+    expect(screen.getByRole('table', { name: 'Interviews' })).toBeTruthy();
   });
 
   it('an empty tab beside a full one says only that', () => {
