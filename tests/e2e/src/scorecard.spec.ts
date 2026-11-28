@@ -64,9 +64,9 @@ test('Scenario: Scorecard shows what to test', async ({ page }) => {
 
   const retrieval = card(page, 'Retrieval and evaluation');
   await expect(retrieval.getByRole('heading', { level: 2 })).toHaveText('Retrieval and evaluation · weight 20%');
-  // AIV-P1-165 §11: a CV claim reads "Claim only" in neutral ink, as on the profile, with no warning-coloured pill.
-  await expect(retrieval.getByText('Claim only', { exact: true })).toBeVisible();
-  await expect(retrieval.getByText('Claim awaiting validation')).toHaveCount(0);
+  // AIV-P1-165 §10/§11: a CV claim shows its stored strength, as on the profile and in Compare, named a claim beside it.
+  await expect(retrieval.getByText('Supporting', { exact: true })).toBeVisible();
+  await expect(retrieval.getByText('Claim awaiting validation', { exact: true })).toBeVisible();
   // A claim's words are shown plain, never highlighted (AGENTS.md 1.6).
   await expect(retrieval.getByText('raised answer accuracy from 71% to 88%', { exact: true })).toBeVisible();
   await expect(retrieval.locator('mark')).toHaveCount(0);
@@ -172,7 +172,8 @@ test('Scenario: Rate and note, and a competency that was not tested stays a gap:
     .getByRole('row')
     .filter({ hasText: 'Daniel Novak' });
   // AIV-P2-007: the line under his name is his round, still under way: the scorecard draft changed nothing.
-  await expect(ranked).toContainText('Daniel NovakRound 1 in progress55up to 78 if claims hold3 of 6Medium');
+  await expect(ranked).toContainText('Daniel NovakRound 1 in progress');
+  await expect(ranked).toContainText('55up to 78 if claims hold3 of 6');
 });
 
 // The seeded scores are hand-written (seed.ts), so the assessment cannot preview a rating of Daniel's: it reads them as

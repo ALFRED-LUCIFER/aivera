@@ -277,10 +277,9 @@ for (const theme of themes) {
     await expect(submitted.getByText('Candidate-submitted')).toBeVisible();
     await expect(submitted.locator('mark')).toHaveCount(1);
     const cvClaim = product.getByRole('listitem').filter({ hasText: 'Shipped a merchant help assistant.' });
-    // AIV-P1-165 §11: a claim reads "Claim only" in neutral ink, never its stored strength or a warning-coloured pill.
-    await expect(cvClaim.getByText('Claim only', { exact: true })).toBeVisible();
-    await expect(cvClaim.getByText('Supporting', { exact: true })).toHaveCount(0);
-    await expect(page.getByText('Claim awaiting validation')).toHaveCount(0);
+    // AIV-P1-165 §10/§11: a claim shows its stored strength, the label Compare shows, and is named a claim beside it.
+    await expect(cvClaim.getByText('Supporting', { exact: true })).toBeVisible();
+    await expect(cvClaim.getByText('Claim awaiting validation', { exact: true })).toBeVisible();
     // Each competency states its limit once.
     for (const card of await page.getByRole('article').all())
       expect(await card.getByText(/^Limit:/).count()).toBeLessThanOrEqual(1);

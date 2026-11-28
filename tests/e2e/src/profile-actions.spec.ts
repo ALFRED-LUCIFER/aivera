@@ -207,12 +207,12 @@ for (const theme of themes) {
 
       // Scenario: Calm evidence cards. A claim is called a claim, in neutral ink, and each card states its limit once.
       const claim = page.getByRole('article', { name: /^Retrieval and evaluation/ });
-      await expect(claim.getByText('Claim only', { exact: true })).toBeVisible();
+      await expect(claim.getByText('Supporting', { exact: true })).toBeVisible();
+      await expect(claim.getByText('Claim awaiting validation', { exact: true })).toHaveCount(1);
       await expect(claim.getByText(/^Limit:/)).toHaveCount(1);
       await expect(claim.getByText('A claim, not inspected work. It counts zero in the backed score.')).toBeVisible();
       // SAFETY: a claim's words are never highlighted (AGENTS.md 1.6).
       await expect(claim.locator('mark')).toHaveCount(0);
-      await expect(page.getByText('Claim awaiting validation')).toHaveCount(0);
       for (const card of await page.getByRole('article').all())
         expect(await card.getByText(/^Limit:/).count()).toBeLessThanOrEqual(1);
 
